@@ -1,29 +1,43 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/modules/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     extend: {
       colors: {
-        'propio-blue': '#04045E',
-        'propio-green': '#b9fa3c',
-        // Tokens de diseño Linear.app premium
-        'linear-canvas': '#010102',
-        'linear-surface-1': '#0f1011',
-        'linear-surface-2': '#141516',
-        'linear-surface-3': '#18191a',
-        'linear-hairline': '#23252a',
-        'linear-hairline-strong': '#34343a',
-        'linear-primary': '#5e6ad2',
-        'linear-primary-hover': '#828fff',
-        'linear-ink': '#f7f8f8',
-        'linear-ink-muted': '#d0d6e0',
-        'linear-ink-subtle': '#8a8f98',
-        'linear-success': '#27a644',
+        // Unificación: Paleta de colores oficial institucional de Propio (Hexadecimales exactos)
+        brand: {
+          lima: '#ccff00', // Verde Lima exacto
+          azuldoscuro: '#000033', // Azul Marino exacto
+          azulligero: '#0066ff', // Azul ligero exacto
+        },
+        branding: {
+          black: "#000000",
+          white: "#FFFFFF",
+          muted: "#F8FAFC"
+        },
+        'propio-blue': '#000033',
+        'propio-green': '#ccff00',
+        'propio-base': '#F8FAFC',
+        'propio-main': '#000033',
+        'propio-body': '#334155',
+        'btn-propio-action': '#ccff00',
+        'propio-bg': '#F8FAFC',
+        'propio-card': '#FFFFFF',
+        'propio-dark': '#000033',
+        'propio-text': '#475569',
+        'propio-accent': '#ccff00',
+        'propio-border': '#E2E8F0',
       },
       fontFamily: {
-        sans: ['MADE Tommy Soft', 'var(--font-plus-jakarta)', 'sans-serif'], // Cuerpo
-        heading: ['Amerika Sans', 'var(--font-outfit)', 'sans-serif'], // Títulos
+        // Unificación total: palo seco sin serifas
+        sans: ['Inter', 'sans-serif'],
+        heading: ['Inter', 'sans-serif'],
       },
     },
   },

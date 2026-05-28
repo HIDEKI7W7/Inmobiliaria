@@ -1,0 +1,11 @@
+# Semgrep ignore file
+# Exclude all third-party dependency folders from SAST analysis.
+# These are NOT project code — modifying them is incorrect.
+
+node_modules/
+.venv/
+dist/
+.next/
+out/
+coverage/
+*.min.js

@@ -12,10 +12,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// ENUMS Y TIPOS DE DATOS DE DOMINIO
-// ==========================================
-
 enum Role {
   ADMIN
   AGENTE
@@ -23,150 +19,210 @@ enum Role {
   CLIENTE
 }
 
-enum Currency {
-  USD
-  BOB
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+  APPLE
 }
 
-enum PropertyType {
+enum UserObjective {
+  COMPRAR
+  ALQUILAR
+  VENDER
+}
+
+enum PropertyInterest {
   CASA
   DEPARTAMENTO
   TERRENO
-  OFICINA
 }
 
 enum PropertyStatus {
   NUEVA_PUBLICACION
   APROBADO
-  OBSERVADO
-  LEGAL_VERDE      // Todo en regla
-  LEGAL_AMARILLO   // Trámites en proceso
-  LEGAL_ROJO       // Bloqueos legales/financieros
+  RECHAZADO
   RESERVADO
+  VENDIDO
 }
 
-enum OfferType {
-  VENTA
-  ALQUILER
-  ANTICRETICO
-  PROYECTO
+enum ContractStatus {
+  VIGENTE
+  VENCIDO
+  RESCINDIDO
 }
-
-
-enum LeadOrigin {
-  WEB
-  WHATSAPP
-  TELEGRAM
-}
-
-enum LeadStatus {
-  LEAD_ENTRANTE
-  CITA_AGENDADA
-  VISITA_REALIZADA
-  NEGOCIACION
-  RESERVA
-  CIERRE
-  NUEVO             // Para retrocompatibilidad
-  CONTACTADO
-  EN_NEGOCIACION
-  GANADO
-  PERDIDO
-}
-
-// ==========================================
-// MODELOS DEL SISTEMA (Tablas mapeadas a SQL)
-// ==========================================
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      Role     @default(CLIENTE)
-  
-  // Relaciones (1:N)
-  properties      Property[] @relation("PropertyAgent") // Propiedades que gestiona el agente
-  ownedProperties Property[] @relation("PropertyOwner") // Propiedades del propietario
-  leads      Lead[]     // Leads asignados al agente para su atención
+  id                 String          @id @default(uuid())
+  email              String          @unique
+  password           String?
+  name               String?
+  role               Role            @default(PROPIETARIO)
+  authProvider       AuthProvider     @default(LOCAL) @map("auth_provider")
+  providerId         String?         @map("provider_id")
+  whatsappPhone      String?         @map("whatsapp_phone")
+  objective          UserObjective?
+  propertyInterest   PropertyInterest? @map("property_interest")
+  onboardingCompleted Boolean        @default(false) @map("onboarding_completed")
+  ownedProperties    Property[]      @relation("PropertyOwner")
+  assignedProperties Property[]      @relation("PropertyAgent")
+  leads              Lead[]          @relation("LeadAgent")
+  propertyAlerts     PropertyAlert[] @relation("UserAlerts")
+  tenantContracts    Contract[]      @relation("TenantContracts")
+  ownerContracts     Contract[]      @relation("OwnerContracts")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
+  @@index([email])
+  @@index([role])
+  @@unique([authProvider, providerId])
   @@map("users")
 }
 
 model Property {
-  id          String         @id @default(uuid())
-  title       String
-  description String?        @db.Text
-  price       Float
-  minPrice    Float?         @map("min_price") // Precio Tope Mínimo (invisible para clientes)
-  currency    Currency       @default(USD)
-  type        PropertyType   @default(DEPARTAMENTO)
-  offerType   OfferType      @default(VENTA) @map("offer_type")
-  location    String         @default("Cochabamba")
-  address     String?        // Dirección manual
-  imageUrl    String?        @map("image_url")
-  
-  // Atributos físicos (Precisión métrica y geolocalización)
-  rooms       Int            @default(0)
-  bathrooms   Int            @default(0)
-  area        Float          // Área construida en m²
-  latitude    Float          // Latitud para renderizar en mapa Leaflet
-  longitude   Float          // Longitud para renderizar en mapa Leaflet
-  
-  // Identidad de marca y semáforo legal
-  isVerified  Boolean        @default(false) @map("is_verified") // Sello de Calidad / Sello Oro
-  status      PropertyStatus @default(NUEVA_PUBLICACION)
-  observationNotes String?   @map("observation_notes") @db.Text
-  
-  // Checklist Documental
-  hasFolioReal       Boolean        @default(false) @map("has_folio_real")
-  hasCatastro        Boolean        @default(false) @map("has_catastro")
-  hasTestimonio      Boolean        @default(false) @map("has_testimonio")
-  hasImpuestosAlDia  Boolean        @default(false) @map("has_impuestos_al_dia")
-  hasPlanoUsoSuelo   Boolean        @default(false) @map("has_plano_uso_suelo")
-  hasCI              Boolean        @default(false) @map("has_ci")
+  id                String         @id @default(uuid())
+  title             String
+  description       String         @db.Text
+  price             Float
+  minPrice          Float?         @map("min_price")
+  currency          String         @default("USD")
+  area              Float          @default(0.0)
+  rooms             Int            @default(0)
+  bathrooms         Int            @default(0)
+  latitude          Float          @map("latitude")
+  longitude         Float          @map("longitude")
+  location          String
+  address           String?
+  offerType         String         @default("VENTA") @map("offer_type")
+  imageUrl          String?        @map("image_url")
+  type              String         @default("DEPARTAMENTO")
+  isVerified        Boolean        @default(false) @map("is_verified")
+  status            PropertyStatus @default(NUEVA_PUBLICACION)
+  approvedAt        DateTime?      @map("approved_at")
+  observationNotes  String?        @map("observation_notes") @db.Text
+  hasFolioReal      Boolean        @default(false) @map("has_folio_real")
+  hasCatastro       Boolean        @default(false) @map("has_catastro")
+  hasTestimonio     Boolean        @default(false) @map("has_testimonio")
+  hasImpuestosAlDia Boolean        @default(false) @map("has_impuestos_al_dia")
+  hasPlanoUsoSuelo  Boolean        @default(false) @map("has_plano_uso_suelo")
+  hasCI             Boolean        @default(false) @map("has_ci")
+  ownerId           String?        @map("owner_id")
+  owner             User?          @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  agentId           String?        @map("agent_id")
+  agent             User?          @relation("PropertyAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  leads             Lead[]         @relation("LeadProperty")
+  priceHistory      PriceHistory[]
+  contracts         Contract[]
+  expenses          Expense[]
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  deletedAt         DateTime?      @map("deleted_at")
 
-  // Relaciones
-  agentId     String?        @map("agent_id")
-  agent       User?          @relation("PropertyAgent", fields: [agentId], references: [id], onDelete: SetNull)
-  ownerId     String?        @map("owner_id")
-  owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  leads       Lead[]         // Personas interesadas en este inmueble
-
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-
-  // Índices para optimizar velocidad de consultas geoespaciales y relación
-  @@index([agentId])
-  @@index([ownerId])
+  @@index([price])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([status, latitude, longitude])
   @@map("properties")
 }
 
 model Lead {
-  id         String     @id @default(uuid())
-  name       String
-  phone      String
-  email      String
-  message    String?    @db.Text
-  
-  // Automatización & Orquestación Webhooks (ej. n8n)
-  origin     LeadOrigin @default(WEB)
-  status     LeadStatus @default(NUEVO)
-  
-  // Relaciones
-  propertyId String     @map("property_id")
-  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
-  assignedAgentId String? @map("assigned_agent_id")
-  assignedAgent   User?   @relation(fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  email           String
+  message         String?  @db.Text
+  currentStage    String   @default("Lead Entrante") @map("current_stage")
+  assignedAgentId String   @map("assigned_agent_id")
+  agent           User     @relation("LeadAgent", fields: [assignedAgentId], references: [id], onDelete: Restrict)
+  propertyId      String   @map("property_id")
+  property        Property @relation("LeadProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+  status          String   @default("LEAD_ENTRANTE")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
-
-  // Índices para búsquedas ultra-rápidas y triggers automáticos
-  @@index([propertyId])
   @@index([assignedAgentId])
+  @@index([currentStage])
   @@map("leads")
+}
+
+model PropertyAlert {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
+  zona         String
+  precioMax    Float     @map("precio_max")
+  tipoInmueble String    @map("tipo_inmueble")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastMatchAt  DateTime? @map("last_match_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("property_alerts")
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  price      Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@index([propertyId])
+  @@map("price_histories")
+}
+
+model Contract {
+  id            String         @id @default(uuid())
+  propertyId    String         @map("property_id")
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId      String         @map("tenant_id")
+  tenant        User           @relation("TenantContracts", fields: [tenantId], references: [id], onDelete: Restrict)
+  ownerId       String         @map("owner_id")
+  owner         User           @relation("OwnerContracts", fields: [ownerId], references: [id], onDelete: Restrict)
+  startDate     DateTime       @map("start_date")
+  endDate       DateTime       @map("end_date")
+  monthlyAmount Float          @map("monthly_amount")
+  status        ContractStatus @default(VIGENTE)
+  observations  String?        @db.Text
+  payments      Payment[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("contracts")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  contractId    String   @map("contract_id")
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentDate   DateTime @map("payment_date")
+  paymentMethod String   @map("payment_method")
+  reference     String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([contractId])
+  @@map("payments")
+}
+
+model Expense {
+  id         String    @id @default(uuid())
+  concept    String
+  amount     Float
+  date       DateTime
+  propertyId String?   @map("property_id")
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  category   String
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([propertyId])
+  @@map("expenses")
 }

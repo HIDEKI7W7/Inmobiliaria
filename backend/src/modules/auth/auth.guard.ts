@@ -1,11 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  constructor(private readonly jwtService: JwtService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 
@@ -23,31 +23,43 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Token no especificado');
     }
 
-    // En un entorno de producción real, aquí se decodificaría el JWT.
-    // Para desarrollo y resiliencia local, asociamos el usuario según el token mock.
-    if (token === 'mock-admin-token') {
-      request.user = {
-        id: 'admin-1',
-        name: 'Administrador Propio',
-        email: 'admin@propio.com.bo',
-        role: 'ADMIN',
-      };
-    } else if (token === 'mock-agent-token') {
-      request.user = {
-        id: 'agent-1',
-        name: 'Agente Estrella',
-        email: 'agent@propio.com.bo',
-        role: 'AGENTE',
-      };
-    } else {
-      request.user = {
-        id: 'owner-1',
-        name: 'Propietario Legítimo',
-        email: 'owner@propio.com.bo',
-        role: 'PROPIETARIO',
-      };
+    // 1. Soporte para tokens mock de desarrollo y retrocompatibilidad (exclusivo para no-producción)
+    if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_TOKENS === 'true') {
+      if (token === 'mock-admin-token') {
+        request.user = {
+          id: 'admin-1',
+          name: 'Administrador Propio',
+          email: 'admin@propio.com.bo',
+          role: 'ADMIN',
+        };
+        return true;
+      } else if (token === 'mock-agent-token') {
+        request.user = {
+          id: 'agent-1',
+          name: 'Agente Estrella',
+          email: 'agent@propio.com.bo',
+          role: 'AGENTE',
+        };
+        return true;
+      }
     }
 
-    return true;
+    // 2. Verificación de JWT real de producción
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET || 'ea82a472bb58ffcdcf9e54a558b9f3d61b369c0d54020c68abef68dae178120d',
+      });
+      
+      // Adjuntar el usuario decodificado al contexto de la petición
+      request.user = {
+        id: payload.userId,
+        email: payload.email,
+        role: payload.role,
+      };
+      
+      return true;
+    } catch (error) {
+      throw new UnauthorizedException('Token de autorización inválido o expirado');
+    }
   }
 }

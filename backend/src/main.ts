@@ -1,9 +1,16 @@
-import { NestFactory } from '@nestjs/core';
+import 'dotenv/config';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { PerformanceLoggingInterceptor } from './common/interceptors/performance-logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Habilitar cabeceras de seguridad HTTP con Helmet
+  app.use(helmet());
 
   // Habilitar shutdown hooks para permitir el ciclo de vida de apagado controlado de Prisma
   app.enableShutdownHooks();
@@ -43,6 +50,14 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders: 'Content-Type, Accept, Authorization',
   });
+
+  // TSK-4.2 — Filtro global de excepciones: sanitiza errores de Prisma/DB antes
+  // de enviarlos al cliente, eliminando cualquier exposición de stack traces internos.
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // TSK-1.1 — Interceptor global de rendimiento: mide latencia por endpoint
+  // y la registra con umbrales visuales (🟢<100ms, 🟡<500ms, 🔴≥500ms).
+  app.useGlobalInterceptors(new PerformanceLoggingInterceptor());
 
   // Configuración global de pipes para validaciones de DTOs automáticas
   app.useGlobalPipes(

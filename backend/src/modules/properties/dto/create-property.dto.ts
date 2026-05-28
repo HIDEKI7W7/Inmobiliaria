@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsNotEmpty, IsPositive, Min, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsPositive, Min, IsOptional, IsBoolean, MaxLength, IsUrl } from 'class-validator';
 
 export class CreatePropertyDto {
   @IsString()
@@ -7,6 +7,7 @@ export class CreatePropertyDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(5000, { message: 'La descripción no puede superar los 5000 caracteres.' })
   description: string;
 
   @IsNumber()
@@ -46,6 +47,7 @@ export class CreatePropertyDto {
 
   @IsString()
   @IsOptional()
+  @IsUrl({}, { message: 'El campo imageUrl debe ser un URL válido.' })
   imageUrl?: string;
 
   @IsString()
@@ -84,4 +86,3 @@ export class CreatePropertyDto {
   @IsOptional()
   longitude?: number;
 }
-

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { LeadsService } from './leads.service';
+import { CreateLeadDto } from './dto/create-lead.dto';
 
 @Controller('leads')
 export class LeadsController {
@@ -11,7 +12,7 @@ export class LeadsController {
   }
 
   @Post()
-  async create(@Body() body: any) {
+  async create(@Body() body: CreateLeadDto) {
     return this.leadsService.create(body);
   }
 }

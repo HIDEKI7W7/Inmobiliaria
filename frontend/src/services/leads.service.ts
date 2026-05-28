@@ -15,12 +15,18 @@ export interface Lead {
     price: number;
     imageUrl: string;
   };
+  customerProfile?: {
+    whatsappPhone?: string | null;
+    objective?: 'COMPRAR' | 'ALQUILAR' | 'VENDER' | string | null;
+    propertyInterest?: 'CASA' | 'DEPARTAMENTO' | 'TERRENO' | string | null;
+    onboardingCompleted?: boolean;
+  } | null;
 }
 
 export const leadsService = {
   async getAgentLeads(token?: string): Promise<Lead[]> {
     try {
-      const data = await apiClient.getWithAuth<Lead[]>(`/agent/leads`, token || 'mock-agent-token');
+      const data = await apiClient.getWithAuth<Lead[]>(`/agente/leads`, token || 'mock-agent-token');
       return data;
     } catch (error) {
       console.warn('API de leads inalcanzable. Cargando fallback de leads del agente en memoria.');
@@ -97,7 +103,7 @@ export const leadsService = {
   async updateLeadStatus(id: string, status: string, token?: string): Promise<{ message: string; data: Lead }> {
     try {
       const response = await apiClient.patchWithAuth<{ message: string; data: Lead }>(
-        `/agent/leads/${id}/status`,
+        `/agente/leads/${id}/status`,
         { status },
         token || 'mock-agent-token'
       );

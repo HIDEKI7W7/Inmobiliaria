@@ -1,0 +1,4 @@
+{
+  "eslint.options": { "ignorePattern": ["dist/**", "node_modules/**"] },
+  "search.exclude": { "**/dist": true, "**/node_modules": true }
+}

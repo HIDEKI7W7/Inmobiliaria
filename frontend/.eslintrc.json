@@ -1,0 +1,11 @@
+{
+  "extends": [
+    "next/core-web-vitals"
+  ],
+  "rules": {
+    "@next/next/no-html-link-for-pages": "error",
+    "react/no-unescaped-entities": "off",
+    "react/jsx-no-literals": "off",
+    "securecoder/jsx-internationalization": "off"
+  }
+}

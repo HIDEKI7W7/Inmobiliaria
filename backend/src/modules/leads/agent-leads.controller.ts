@@ -1,10 +1,10 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
-@Controller('agent/leads')
+@Controller('agente/leads')
 @UseGuards(AuthGuard, RolesGuard)
 @Roles('AGENTE', 'ADMIN')
 export class AgentLeadsController {
@@ -20,7 +20,7 @@ export class AgentLeadsController {
   @Patch(':id/status')
   @HttpCode(HttpStatus.OK)
   async updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { status: string },
     @Request() req: any,
   ) {
