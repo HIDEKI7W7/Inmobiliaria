@@ -146,7 +146,7 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* LIENZO DE TRABAJO INYECTABLE - TOTALMENTE AISLADO */}
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-y-auto relative">
           {children}
         </main>
         
