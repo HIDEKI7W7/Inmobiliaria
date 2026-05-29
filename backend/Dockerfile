@@ -54,4 +54,4 @@ COPY --from=builder /usr/src/app/prisma ./prisma
 EXPOSE 4000
 
 # Comando definitivo de arranque combinando migraciones de base de datos antes de arrancar NestJS
-CMD ["sh", "-c", "sleep 10 && npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/main"]
+CMD ["npm", "run", "start:migrate:prod"]

@@ -7,7 +7,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "start:migrate:prod": "sleep 10 && npx prisma migrate deploy && node dist/main",
+    "start:migrate:prod": "for i in 1 2 3 4 5; do npx prisma migrate deploy && break || (echo '⏳ Neon DB se está despertando... Reintentando conexión en 6 segundos...' && sleep 6); done && node dist/main",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage --detectOpenHandles --forceExit"
