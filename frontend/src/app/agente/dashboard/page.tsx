@@ -40,7 +40,7 @@ export default function AgentDashboard() {
       </div>
 
       {/* Grid de Métricas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((m) => (
           <div key={m.title} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-350 hover:scale-[1.01]">
             <div className="flex justify-between items-center mb-4">
@@ -74,22 +74,24 @@ export default function AgentDashboard() {
           </div>
           <div className="space-y-5">
             {recentActivities.map((act) => (
-              <div key={act.id} className="flex items-start gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors">
-                <div className="h-10 w-10 rounded-full bg-[#04045E]/5 flex items-center justify-center text-xs font-black shrink-0 text-[#04045E] border border-[#04045E]/10">
-                  {act.user.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-700 leading-relaxed">
-                    <strong className="text-[#04045E] font-black">{act.user}</strong> {act.action}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[8px] font-black uppercase text-slate-400">
-                      {act.time}
-                    </span>
-                    <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-650 px-2 py-0.5 rounded-md border border-slate-200/50">
-                      {act.platform}
-                    </span>
+              <div key={act.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-full bg-[#04045E]/5 flex items-center justify-center text-xs font-black shrink-0 text-[#04045E] border border-[#04045E]/10">
+                    {act.user.substring(0, 2).toUpperCase()}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-700 leading-relaxed">
+                      <strong className="text-[#04045E] font-black">{act.user}</strong> {act.action}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 sm:self-center self-start pl-14 sm:pl-0">
+                  <span className="text-[8px] font-black uppercase text-slate-400">
+                    {act.time}
+                  </span>
+                  <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-650 px-2 py-0.5 rounded-md border border-slate-200/50 font-sans">
+                    {act.platform}
+                  </span>
                 </div>
               </div>
             ))}

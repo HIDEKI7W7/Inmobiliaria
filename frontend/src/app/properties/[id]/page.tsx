@@ -245,7 +245,7 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
       </div>
 
       {/* Layout Principal Asimétrico */}
-      <main className="max-w-[1440px] mx-auto flex flex-col lg:flex-row w-full relative">
+      <main className="max-w-[1440px] mx-auto flex flex-col lg:flex-row w-full relative pb-24 lg:pb-0">
         
         {/* =================================================================
             COLUMNA IZQUIERDA: CONTENIDO SCROLLABLE (65% de Ancho)
@@ -259,37 +259,57 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
               {/* Fotos Slider */}
               {activeTab === 'fotos' && (
                 <div className="w-full h-full relative">
-                  <img 
-                    src={currentProperty.images[activeImageIndex]} 
-                    alt={currentProperty.title}
-                    className="w-full h-full object-cover transition-all duration-700" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
-                  
-                  {currentProperty.images.length > 1 && (
-                    <>
-                      <button 
-                        onClick={() => setActiveImageIndex((prev) => (prev === 0 ? currentProperty.images.length - 1 : prev - 1))}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-[#b9fa3c] text-[#04045E] shadow transition-all duration-300 hover:scale-105 active:scale-95"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => setActiveImageIndex((prev) => (prev === currentProperty.images.length - 1 ? 0 : prev + 1))}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-[#b9fa3c] text-[#04045E] shadow transition-all duration-300 hover:scale-105 active:scale-95"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
-                      </button>
-                    </>
-                  )}
+                  {/* Desktop slider (hidden on mobile, block on md:) */}
+                  <div className="hidden md:block w-full h-full relative">
+                    <img 
+                      src={currentProperty.images[activeImageIndex]} 
+                      alt={currentProperty.title}
+                      className="w-full h-full object-cover transition-all duration-700" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+                    
+                    {currentProperty.images.length > 1 && (
+                      <>
+                        <button 
+                          onClick={() => setActiveImageIndex((prev) => (prev === 0 ? currentProperty.images.length - 1 : prev - 1))}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-[#b9fa3c] text-[#04045E] shadow transition-all duration-300 hover:scale-105 active:scale-95"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                          </svg>
+                        </button>
+                        <button 
+                          onClick={() => setActiveImageIndex((prev) => (prev === currentProperty.images.length - 1 ? 0 : prev + 1))}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-[#b9fa3c] text-[#04045E] shadow transition-all duration-300 hover:scale-105 active:scale-95"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
 
-                  <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
-                    Foto {activeImageIndex + 1} de {currentProperty.images.length}
-                  </span>
+                    <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                      Foto {activeImageIndex + 1} de {currentProperty.images.length}
+                    </span>
+                  </div>
+
+                  {/* Mobile Táctil Carousel (block on mobile, hidden on md:) */}
+                  <div className="flex md:hidden w-full h-full overflow-x-scroll snap-x scrollbar-none">
+                    {currentProperty.images.map((imgUrl: string, idx: number) => (
+                      <div key={idx} className="w-full h-full flex-shrink-0 snap-start relative">
+                        <img 
+                          src={imgUrl} 
+                          alt={`${currentProperty.title} - ${idx + 1}`}
+                          className="w-full h-full object-cover" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+                        <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                          Foto {idx + 1} de {currentProperty.images.length}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -832,6 +852,30 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
           </div>
         </div>
       )}
+
+      {/* Barra de Contacto Fija en la Base para Móviles (Zillow / Airbnb Style) */}
+      <div className="lg:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-fadeIn">
+        <div className="flex flex-col">
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Precio</span>
+          <span className="text-lg font-black text-[#04045E]">${currentProperty.price.toLocaleString()}</span>
+        </div>
+        <div className="flex gap-2 flex-1 max-w-[240px]">
+          <button 
+            onClick={() => setShowQR(true)}
+            className="flex-1 bg-[#b9fa3c] hover:bg-[#b0f02c] text-[#04045E] font-heading font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] border border-[#04045E]/10 cursor-pointer"
+          >
+            Reservar
+          </button>
+          <a 
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 bg-[#04045E] hover:bg-opacity-95 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-[0.98] text-center cursor-pointer"
+          >
+            WhatsApp
+          </a>
+        </div>
+      </div>
 
     </div>
   );

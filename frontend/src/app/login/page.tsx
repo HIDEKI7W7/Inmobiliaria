@@ -232,7 +232,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row antialiased font-sans">
       
       {/* Columna Izquierda: Formulario Institucional Propio */}
-      <div className="w-full md:w-1/2 flex flex-col justify-between p-8 md:p-16 bg-white min-h-screen relative overflow-y-auto">
+      <div className="w-full md:w-1/2 flex flex-col justify-between px-4 sm:px-6 py-8 md:p-16 bg-white min-h-screen relative overflow-y-auto">
         {/* Cabecera / Logo */}
         <div className="flex justify-between items-center w-full">
           <Link href="/" className="flex items-center gap-2 select-none group transition-transform">
@@ -302,27 +302,30 @@ export default function LoginPage() {
           )}
 
           {/* Botones de Autenticación Social COLORIDOS Y REALES */}
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 mb-8 w-full">
             <a
               href={`${socialAuthBaseUrl}/auth/google`}
-              className="flex justify-center items-center py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
               title={t("Google")}
             >
-              <img src="/images/logos/google_logo_colorful.svg" alt="Google" className="h-5" />
+              <img src="/images/logos/google_logo_colorful.svg" alt="Google" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-slate-700 sm:hidden">{t("Google")}</span>
             </a>
             <a
               href={`${socialAuthBaseUrl}/auth/apple`}
-              className="flex justify-center items-center py-3 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-black cursor-pointer shadow-sm"
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-black cursor-pointer shadow-sm"
               title={t("Apple")}
             >
-              <img src="/images/logos/apple_logo_white.svg" alt="Apple" className="h-5" />
+              <img src="/images/logos/apple_logo_white.svg" alt="Apple" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-white sm:hidden">{t("Apple")}</span>
             </a>
             <a
               href={`${socialAuthBaseUrl}/auth/facebook`}
-              className="flex justify-center items-center py-3 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-[#1877F2] cursor-pointer shadow-sm"
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-[#1877F2] cursor-pointer shadow-sm"
               title={t("Facebook")}
             >
-              <img src="/images/logos/facebook_logo_white.svg" alt="Facebook" className="h-5" />
+              <img src="/images/logos/facebook_logo_white.svg" alt="Facebook" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-white sm:hidden">{t("Facebook")}</span>
             </a>
           </div>
 

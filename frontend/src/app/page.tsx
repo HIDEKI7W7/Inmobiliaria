@@ -182,7 +182,7 @@ export default function HomePage() {
               </span>
             </div>
             
-            <h1 className="font-sans text-5xl md:text-7xl text-white font-black tracking-tight leading-[1.1] uppercase">
+            <h1 className="font-sans text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-black tracking-tight leading-[1.1] uppercase break-words hyphens-auto">
               {t("Arquitectura,")}<br />
               <span className="text-[#b9fa3c]">{t("Respaldo Legal")}</span><br />
               {t("y Trato Directo.")}
@@ -192,16 +192,16 @@ export default function HomePage() {
               {t("Una selección de propiedades exclusivas verificadas jurídicamente con Sello Oro en Bolivia. Conecta directamente con propietarios reales, sin comisiones de corretaje.")}
             </p>
 
-            <div className="flex flex-wrap gap-4 mt-6">
+            <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <Link
                 href="/properties"
-                className="bg-[#b9fa3c] text-[#04045E] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg shadow-lime-100"
+                className="w-full sm:w-auto text-center bg-[#b9fa3c] text-[#04045E] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg shadow-lime-100"
               >
                 {t("Explorar Propiedades")}
               </Link>
               <Link
                 href="/login?tab=register"
-                className="border-2 border-white/60 text-white px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#04045E] transition-all duration-300 rounded-xl"
+                className="w-full sm:w-auto text-center border-2 border-white/60 text-white px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#04045E] transition-all duration-300 rounded-xl"
               >
                 {t("Publicar Inmueble")}
               </Link>

@@ -154,11 +154,11 @@ function ListingCard({ prop, active, onClick, onHover }: {
   return (
     <article
       onClick={onClick}
-      className={`bg-white cursor-pointer overflow-hidden transition-all duration-300 group border-b border-neutral-200 pb-10 ${active ? 'bg-neutral-50/50' : ''}`}
+      className={`bg-white cursor-pointer overflow-hidden transition-all duration-300 group border-b border-neutral-200 pb-10 ${active ? 'bg-neutral-50/50' : ''} flex flex-col md:flex-row gap-6 items-start`}
       onMouseEnter={() => onHover(prop.id)}
       onMouseLeave={() => onHover(null)}
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100 border border-slate-100 rounded-2xl shadow-sm">
+      <div className="relative w-full md:w-2/5 aspect-[16/10] md:aspect-[4/3] overflow-hidden bg-neutral-100 border border-slate-100 rounded-2xl shadow-sm shrink-0">
         <img 
           src={prop.imageUrl} 
           alt={prop.title} 
@@ -173,8 +173,8 @@ function ListingCard({ prop, active, onClick, onHover }: {
           {prop.offerType}
         </span>
       </div>
-      <div className="mt-6 space-y-3">
-        <div className="flex justify-between items-baseline">
+      <div className="w-full md:flex-1 space-y-3">
+        <div className="flex justify-between items-baseline flex-wrap gap-2">
           <h3 className="font-sans text-xl font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
             {prop.title}
           </h3>
@@ -215,6 +215,7 @@ function PropertiesContent() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Estados del asistente de voz Google Speech
   const [isListening, setIsListening] = useState(false);
@@ -376,166 +377,182 @@ function PropertiesContent() {
     <div className="flex flex-col h-[calc(100vh-72px)] bg-[#fbf9f9] pt-[72px]">
       
       {/* ─── BARRA DE REFINAMIENTO DE ALTO CONTRASTE (ESTILO COMPASS / ZILLOW) ─── */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-4 flex flex-wrap items-center gap-4 z-20 relative">
+      <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 z-20 relative">
         
-        {/* Caja de Búsqueda inteligente con Voz */}
-        <div className="relative flex items-center bg-neutral-50 border border-black py-2 pl-4 pr-2 w-full max-w-xs transition-all duration-300">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por zona o palabras..."
-            className="bg-transparent text-xs font-semibold text-black placeholder-neutral-300 focus:outline-none w-full border-none focus:ring-0 p-0"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="p-1 text-neutral-400 hover:text-black transition-colors mr-1">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg>
+        {/* Caja de Búsqueda inteligente con Voz y Botón de Filtros en Móvil */}
+        <div className="flex items-center gap-2 w-full md:w-auto flex-1 md:flex-initial">
+          <div className="relative flex items-center bg-neutral-50 border border-black py-2 pl-4 pr-2 w-full md:w-64 transition-all duration-300">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por zona..."
+              className="bg-transparent text-xs font-semibold text-black placeholder-neutral-300 focus:outline-none w-full border-none focus:ring-0 p-0"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="p-1 text-neutral-400 hover:text-black transition-colors mr-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            )}
+            <button
+              onClick={startVoiceSearch}
+              className="h-7 w-7 rounded-none bg-black hover:bg-neutral-800 flex items-center justify-center text-white transition-all active:scale-95 shrink-0"
+              title="Búsqueda por voz inteligente"
+            >
+              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+              </svg>
             </button>
-          )}
-          <button
-            onClick={startVoiceSearch}
-            className="h-7 w-7 rounded-none bg-black hover:bg-neutral-800 flex items-center justify-center text-white transition-all active:scale-95 shrink-0"
-            title="Búsqueda por voz inteligente"
-          >
-            <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Píldora: Tipo de Inmueble */}
-        <div className="relative">
-          <button
-            onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
-            className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
-              activeType
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-black border-neutral-200 hover:border-black'
-            }`}
-          >
-            <span>{t("Tipo: ")}{activeType ? t(activeType) : t("Todos")}</span>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'type' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          
-          {activeDropdown === 'type' && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-              <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
-                {typeOptions.map(tOption => (
-                  <button
-                    key={tOption || 'all'}
-                    onClick={() => {
-                      setActiveType(tOption);
-                      setActiveDropdown(null);
-                    }}
-                    className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
-                      activeType === tOption
-                        ? 'bg-black text-white'
-                        : 'hover:bg-neutral-50 text-black'
-                    }`}
-                  >
-                    {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos los tipos'}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Píldora: Tipo de Oferta */}
-        <div className="relative">
-          <button
-            onClick={() => setActiveDropdown(activeDropdown === 'offer' ? null : 'offer')}
-            className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
-              activeOffer
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-black border-neutral-200 hover:border-black'
-            }`}
-          >
-            <span>{t("Oferta: ")}{activeOffer ? t(activeOffer) : t("Todos")}</span>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'offer' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          {activeDropdown === 'offer' && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-              <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
-                {offerOptions.map(o => (
-                  <button
-                    key={o || 'all-offer'}
-                    onClick={() => {
-                      setActiveOffer(o);
-                      setActiveDropdown(null);
-                    }}
-                    className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
-                      activeOffer === o
-                        ? 'bg-black text-white'
-                        : 'hover:bg-neutral-50 text-black'
-                    }`}
-                  >
-                    {o ? o : 'Todos los esquemas'}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Píldora: Presupuesto Máximo */}
-        <div className="relative">
-          <button
-            onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
-            className="bg-white text-black border border-neutral-200 hover:border-black text-[10px] font-bold px-4 py-3 transition-all flex items-center gap-2 uppercase tracking-widest rounded-none"
-          >
-            <span>{t("Precio: Hasta $")}{maxPrice.toLocaleString()}</span>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          {activeDropdown === 'price' && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-              <div className="absolute top-full left-0 mt-2 bg-white border border-black p-5 z-30 w-80 flex flex-col gap-4 rounded-none shadow-xl animate-fadeIn">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Límite de Compra</span>
-                  <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
-                </div>
-                <input
-                  type="range"
-                  min={40000}
-                  max={600000}
-                  step={5000}
-                  value={maxPrice}
-                  onChange={e => setMaxPrice(Number(e.target.value))}
-                  className="w-full h-1 bg-neutral-200 accent-black cursor-pointer rounded-none appearance-none"
-                />
-                <button
-                  onClick={() => setActiveDropdown(null)}
-                  className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold py-3 text-[10px] uppercase tracking-widest transition-all rounded-none"
-                >
-                  Aplicar Presupuesto
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="w-px h-6 bg-neutral-200 hidden md:block" />
-
-        {/* Toggle: Verificadas Sello Oro */}
-        <label className="flex items-center gap-3 cursor-pointer group shrink-0 select-none">
-          <div
-            onClick={() => setOnlyVerified(!onlyVerified)}
-            className={`relative w-12 h-6 transition-colors duration-200 border border-black p-0.5 rounded-none ${onlyVerified ? 'bg-black' : 'bg-white'}`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-neutral-200 group-hover:bg-neutral-400 transition-all rounded-none ${onlyVerified ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
           </div>
-          <span className="text-[10px] font-bold text-neutral-400 group-hover:text-black transition-colors uppercase tracking-widest">
-            {t("Solo propiedades ")}<span className="text-black font-bold">{t("Verificadas")}</span>
-          </span>
-        </label>
+
+          {/* Botón de Filtros en Móvil */}
+          <button
+            onClick={() => setShowMobileFilters(true)}
+            className="md:hidden flex items-center justify-center gap-1.5 text-[10px] font-bold px-3 py-3 border border-black hover:bg-black hover:text-white transition-all uppercase tracking-widest shrink-0"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
+            <span>{t("Filtros")}</span>
+          </button>
+        </div>
+
+        {/* ─── FILTROS DE ESCRITORIO (hidden md:flex) ─── */}
+        <div className="hidden md:flex items-center gap-4 z-20">
+          {/* Píldora: Tipo de Inmueble */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
+              className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
+                activeType
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-neutral-200 hover:border-black'
+              }`}
+            >
+              <span>{t("Tipo: ")}{activeType ? t(activeType) : t("Todos")}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'type' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            
+            {activeDropdown === 'type' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
+                  {typeOptions.map(tOption => (
+                    <button
+                      key={tOption || 'all'}
+                      onClick={() => {
+                        setActiveType(tOption);
+                        setActiveDropdown(null);
+                      }}
+                      className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
+                        activeType === tOption
+                          ? 'bg-black text-white'
+                          : 'hover:bg-neutral-50 text-black'
+                      }`}
+                    >
+                      {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos los tipos'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Píldora: Tipo de Oferta */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'offer' ? null : 'offer')}
+              className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
+                activeOffer
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-neutral-200 hover:border-black'
+              }`}
+            >
+              <span>{t("Oferta: ")}{activeOffer ? t(activeOffer) : t("Todos")}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'offer' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {activeDropdown === 'offer' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
+                  {offerOptions.map(o => (
+                    <button
+                      key={o || 'all-offer'}
+                      onClick={() => {
+                        setActiveOffer(o);
+                        setActiveDropdown(null);
+                      }}
+                      className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
+                        activeOffer === o
+                          ? 'bg-black text-white'
+                          : 'hover:bg-neutral-50 text-black'
+                      }`}
+                    >
+                      {o ? o : 'Todos los esquemas'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Píldora: Presupuesto Máximo */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
+              className="bg-white text-black border border-neutral-200 hover:border-black text-[10px] font-bold px-4 py-3 transition-all flex items-center gap-2 uppercase tracking-widest rounded-none"
+            >
+              <span>{t("Precio: Hasta $")}{maxPrice.toLocaleString()}</span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {activeDropdown === 'price' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-5 z-30 w-80 flex flex-col gap-4 rounded-none shadow-xl animate-fadeIn">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Límite de Compra</span>
+                    <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={40000}
+                    max={600000}
+                    step={5000}
+                    value={maxPrice}
+                    onChange={e => setMaxPrice(Number(e.target.value))}
+                    className="w-full h-1 bg-neutral-200 accent-black cursor-pointer rounded-none appearance-none"
+                  />
+                  <button
+                    onClick={() => setActiveDropdown(null)}
+                    className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold py-3 text-[10px] uppercase tracking-widest transition-all rounded-none"
+                  >
+                    Aplicar Presupuesto
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-neutral-200" />
+
+          {/* Toggle: Verificadas Sello Oro */}
+          <label className="flex items-center gap-3 cursor-pointer group shrink-0 select-none">
+            <div
+              onClick={() => setOnlyVerified(!onlyVerified)}
+              className={`relative w-12 h-6 transition-colors duration-200 border border-black p-0.5 rounded-none ${onlyVerified ? 'bg-black' : 'bg-white'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-neutral-200 group-hover:bg-neutral-400 transition-all rounded-none ${onlyVerified ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-[10px] font-bold text-neutral-400 group-hover:text-black transition-colors uppercase tracking-widest">
+              {t("Solo propiedades ")}<span className="text-black font-bold">{t("Verificadas")}</span>
+            </span>
+          </label>
+        </div>
 
         {/* Contador */}
-        <span className="ml-auto text-[10px] font-bold text-neutral-400 tracking-widest uppercase">{filtered.length} {t("Resultados")}</span>
+        <span className="ml-auto text-[10px] font-bold text-neutral-400 tracking-widest uppercase hidden md:inline">{filtered.length} {t("Resultados")}</span>
       </div>
 
       {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA IZQUIERDA / LISTADO DERECHA) ─── */}
@@ -556,7 +573,7 @@ function PropertiesContent() {
         <div className="w-full md:w-1/2 overflow-y-auto bg-white no-scrollbar">
 
           {/* Panel de Tendencia y Analytics */}
-          <div className="p-8 border-b border-neutral-200 bg-[#fbf9f9] space-y-6">
+          <div className="p-4 sm:p-8 border-b border-neutral-200 bg-[#fbf9f9] space-y-6">
             <div>
               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-3">TENDENCIA INMOBILIARIA DE LA ZONA</p>
               <PriceTrendChart
@@ -581,7 +598,7 @@ function PropertiesContent() {
           </div>
 
           {/* Listado de Propiedades */}
-          <div className="p-8 pb-20 space-y-12">
+          <div className="p-4 sm:p-8 pb-20 space-y-12">
             <header className="mb-4">
               <h1 className="font-serif text-3xl font-light text-black uppercase tracking-tight">
                 {t("Catálogo de Propiedades")}
@@ -598,14 +615,14 @@ function PropertiesContent() {
                 <p className="text-neutral-400 text-xs font-medium mt-2">{t("Intenta ampliar el presupuesto, modificar los términos o ajustar los filtros de búsqueda.")}</p>
               </div>
             ) : (
-              <div className="space-y-16">
+              <div className="space-y-12">
                 {filtered.map(p => (
                   <ListingCard
-                    key={p.id}
-                    prop={p}
-                    active={hoveredPin === p.id}
-                    onClick={() => setSelectedPropertyId(p.id)}
-                    onHover={setHoveredPin}
+                     key={p.id}
+                     prop={p}
+                     active={hoveredPin === p.id}
+                     onClick={() => setSelectedPropertyId(p.id)}
+                     onHover={setHoveredPin}
                   />
                 ))}
               </div>
@@ -626,7 +643,7 @@ function PropertiesContent() {
           } flex flex-col justify-between h-full`}
         >
           {selectedProperty ? (
-            <div className="h-full flex flex-col justify-between p-8 relative overflow-y-auto">
+            <div className="h-full flex flex-col justify-between p-4 sm:p-8 relative overflow-y-auto">
               
               <div className="space-y-6">
                 {/* Header */}
@@ -639,7 +656,7 @@ function PropertiesContent() {
                     onClick={() => setSelectedPropertyId(null)}
                     className="p-2 border border-neutral-200 hover:border-black text-neutral-400 hover:text-black transition-colors rounded-none"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M6 18L18 6M6 6l12 12"/></svg>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
                   </button>
                 </div>
 
@@ -705,6 +722,151 @@ function PropertiesContent() {
         </div>
 
       </div>
+
+      {/* Botón flotante de Filtros Móvil */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="bg-black text-white hover:bg-neutral-800 text-[10px] font-black px-6 py-4 uppercase tracking-widest shadow-2xl flex items-center gap-2 border border-neutral-800 rounded-full"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.822c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+          </svg>
+          {t("Filtrar Propiedades")}
+        </button>
+      </div>
+
+      {/* ─── MODAL DE FILTROS EN PANTALLA COMPLETA MÓVIL ─── */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 animate-fadeIn">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Búsqueda Avanzada</span>
+              <h2 className="font-serif text-2xl font-light text-black uppercase tracking-tight">{t("Filtros")}</h2>
+            </div>
+            <button
+              onClick={() => setShowMobileFilters(false)}
+              className="p-2 border border-neutral-200 hover:border-black text-neutral-400 hover:text-black transition-colors rounded-none"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto py-6 space-y-6">
+            {/* Búsqueda por Texto */}
+            <div className="space-y-2">
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Buscar por Zona o Palabra")}</label>
+              <div className="relative flex items-center bg-neutral-50 border border-black py-3 px-4 w-full">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ej: Cala Cala, Prado..."
+                  className="bg-transparent text-sm font-semibold text-black placeholder-neutral-350 focus:outline-none w-full border-none focus:ring-0 p-0"
+                />
+              </div>
+            </div>
+
+            {/* Tipo de Inmueble */}
+            <div className="space-y-2">
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Tipo de Inmueble")}</label>
+              <div className="grid grid-cols-2 gap-2">
+                {typeOptions.map(tOption => (
+                  <button
+                    key={tOption || 'all'}
+                    type="button"
+                    onClick={() => {
+                      setActiveType(tOption);
+                    }}
+                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
+                      activeType === tOption ? 'bg-black text-white border-black' : 'bg-white text-black border-neutral-200'
+                    }`}
+                  >
+                    {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tipo de Oferta */}
+            <div className="space-y-2">
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Tipo de Oferta")}</label>
+              <div className="grid grid-cols-2 gap-2">
+                {offerOptions.map(o => (
+                  <button
+                    key={o || 'all-offer'}
+                    type="button"
+                    onClick={() => {
+                      setActiveOffer(o);
+                    }}
+                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
+                      activeOffer === o ? 'bg-black text-white border-black' : 'bg-white text-black border-neutral-200'
+                    }`}
+                  >
+                    {o ? o : 'Todos'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Presupuesto */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Presupuesto Máximo")}</label>
+                <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
+              </div>
+              <input
+                type="range"
+                min={40000}
+                max={600000}
+                step={5000}
+                value={maxPrice}
+                onChange={e => setMaxPrice(Number(e.target.value))}
+                className="w-full h-1.5 bg-neutral-200 accent-black cursor-pointer rounded-none appearance-none"
+              />
+            </div>
+
+            {/* Verificado Sello Oro */}
+            <div className="flex items-center justify-between py-2 border-t border-neutral-100">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                {t("Solo propiedades Verificadas")}
+              </span>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => setOnlyVerified(!onlyVerified)}
+                  className={`relative w-12 h-6 transition-colors duration-200 border border-black p-0.5 rounded-none ${onlyVerified ? 'bg-black' : 'bg-white'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-neutral-200 transition-all rounded-none ${onlyVerified ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="border-t border-neutral-200 pt-4 flex flex-col gap-2">
+            <button
+              onClick={() => setShowMobileFilters(false)}
+              className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all"
+            >
+              {t("Ver ")}{filtered.length}{t(" Resultados")}
+            </button>
+            <button
+              onClick={() => {
+                setActiveType('');
+                setActiveOffer('');
+                setMaxPrice(500000);
+                setOnlyVerified(false);
+                setSearchQuery('');
+              }}
+              className="w-full border border-neutral-200 hover:border-black text-black font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all bg-white"
+            >
+              {t("Restablecer Filtros")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─── DRAWER ASISTENTE DE VOZ MONOCROMÁTICO INMERSIVO ─── */}
       {isListening && (

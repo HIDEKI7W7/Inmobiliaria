@@ -271,7 +271,8 @@ export default function PublicarPropiedadPage() {
             
             {/* Stepper del Formulario */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+              {/* Desktop Stepper */}
+              <div className="hidden md:flex items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400">
                 <div className={`flex items-center gap-2 pb-2 ${step >= 1 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>1</span> Datos Básicos
                 </div>
@@ -284,6 +285,19 @@ export default function PublicarPropiedadPage() {
                 <div className={`flex items-center gap-2 pb-2 ${step >= 4 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 4 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>4</span> Fotos
                 </div>
+              </div>
+              {/* Mobile Stepper */}
+              <div className="flex md:hidden items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400 select-none">
+                <div className="text-[#04045E] flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#b9fa3c] text-[#04045E] flex items-center justify-center text-[10px] font-black">{step}</span>
+                  <span>
+                    {step === 1 && 'Datos Básicos'}
+                    {step === 2 && 'Ubicación'}
+                    {step === 3 && 'Legal'}
+                    {step === 4 && 'Fotos'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-450">Paso {step} de 4</span>
               </div>
             </div>
 
@@ -632,14 +646,17 @@ export default function PublicarPropiedadPage() {
                   {files.length > 0 && (
                     <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
                       <h4 className="text-[10px] uppercase font-bold text-slate-450 tracking-widest">Archivos en proceso de carga</h4>
-                      <div className="space-y-2.5">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {files.map((file, idx) => (
-                          <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold text-[#04045E]">
-                              <span className="truncate max-w-[200px]">{file.name}</span>
-                              <span className="text-slate-400">{file.size} - {file.progress}%</span>
+                          <div key={idx} className="space-y-1 p-3 bg-white border border-slate-100 rounded-lg shadow-sm">
+                            <div className="text-[9px] font-bold text-[#04045E] truncate" title={file.name}>
+                              {file.name}
                             </div>
-                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="flex justify-between text-[8px] text-slate-400">
+                              <span>{file.size}</span>
+                              <span className="font-bold">{file.progress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
                               <div
                                 className="h-full bg-[#04045E] transition-all"
                                 style={{ width: `${file.progress}%` }}
