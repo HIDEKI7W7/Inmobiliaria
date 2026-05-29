@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npx prisma generate --schema=./prisma/schema.prisma --generator client && nest build",
-    "vercel-build": "npx prisma generate --schema=./prisma/schema.prisma",
+    "build": "npx prisma generate --schema=../prisma/schema.prisma --generator client && nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "start:migrate:prod": "npx prisma migrate deploy --schema=./prisma/schema.prisma && npx prisma generate --schema=./prisma/schema.prisma --generator client && node dist/main",
+    "start:migrate:prod": "npx prisma migrate deploy --schema=../prisma/schema.prisma && npx prisma generate --schema=../prisma/schema.prisma --generator client && node dist/main",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage --detectOpenHandles --forceExit"
@@ -35,7 +34,6 @@
     "passport-apple": "^2.0.2",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
-    "pg": "^8.21.0",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1"
   },
@@ -55,7 +53,7 @@
     "typescript": "^5.3.3"
   },
   "prisma": {
-    "seed": "npx ts-node ./prisma/seed.ts"
+    "seed": "npx ts-node ../prisma/seed.ts"
   },
   "jest": {
     "moduleFileExtensions": [
