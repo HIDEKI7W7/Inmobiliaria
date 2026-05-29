@@ -3,6 +3,9 @@
 # ==========================================
 FROM node:20-alpine AS builder
 
+# Instalar OpenSSL y otras dependencias necesarias para Prisma
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /usr/src/app
 
 # Copiar archivos de dependencias del backend
@@ -28,6 +31,9 @@ RUN npx nest build
 # ==========================================
 FROM node:20-alpine AS runner
 
+# Instalar OpenSSL y otras dependencias necesarias para Prisma en runtime
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /usr/src/app
 
 # Declarar variables de entorno por defecto
@@ -51,3 +57,4 @@ EXPOSE 4000
 
 # Comando definitivo de arranque combinando migraciones de base de datos antes de arrancar NestJS
 CMD ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/main"]
+
