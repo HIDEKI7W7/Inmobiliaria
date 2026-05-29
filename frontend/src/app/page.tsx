@@ -96,12 +96,53 @@ function PropertyCard({ property }: { property: (typeof FEATURED_PROPERTIES)[0] 
   );
 }
 
+const UBICACIONES_BOLIVIA = [
+  { label: "Cochabamba - Cala Cala", valor: "cochabamba_cala_cala" },
+  { label: "Cochabamba - Queru Queru", valor: "cochabamba_queru_queru" },
+  { label: "Cochabamba - El Prado", valor: "cochabamba_el_prado" },
+  { label: "Cochabamba - Sacaba", valor: "cochabamba_sacaba" },
+  { label: "Cochabamba - Quillacollo", valor: "cochabamba_quillacollo" },
+  { label: "Santa Cruz - Equipetrol", valor: "santa_cruz_equipetrol" },
+  { label: "Santa Cruz - Urubó", valor: "santa_cruz_urubo" },
+  { label: "Santa Cruz - Centro", valor: "santa_cruz_centro" },
+  { label: "La Paz - Sopocachi", valor: "la_paz_sopocachi" },
+  { label: "La Paz - Zona Sur (Calacoto)", valor: "la_paz_calacoto" },
+  { label: "La Paz - El Alto", valor: "la_paz_el_alto" },
+  { label: "Chuquisaca - Sucre Centro", valor: "chuquisaca_sucre" },
+  { label: "Tarija - Barrio El Molino", valor: "tarija_el_molino" },
+  { label: "Oruro - Zona Central", valor: "oruro_centro" },
+  { label: "Potosí - Centro Histórico", valor: "potosi_centro" },
+  { label: "Beni - Trinidad", valor: "beni_trinidad" },
+  { label: "Pando - Cobija", valor: "pando_cobija" }
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [zona, setZona] = useState('');
   const [tipo, setTipo] = useState('casa');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const t = (key: string) => key;
+
+  // Estados del Buscador Predictivo (Autocomplete)
+  const [showMenu, setShowMenu] = useState(false);
+  const [opcionesFiltradas, setOpcionesFiltradas] = useState(UBICACIONES_BOLIVIA);
+
+  const handleZonaChange = (value: string) => {
+    setZona(value);
+    setShowMenu(true);
+    if (!value.trim()) {
+      setOpcionesFiltradas(UBICACIONES_BOLIVIA);
+    } else {
+      const filtered = UBICACIONES_BOLIVIA.filter((loc) =>
+        loc.label.toLowerCase().includes(value.toLowerCase())
+      );
+      setOpcionesFiltradas(filtered);
+    }
+  };
+
+  const handleInputFocus = () => {
+    setShowMenu(true);
+  };
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -175,15 +216,37 @@ export default function HomePage() {
           onSubmit={handleSearchSubmit}
           className="bg-white p-8 md:p-10 border border-slate-100 rounded-3xl grid grid-cols-1 md:grid-cols-4 gap-8 items-end shadow-xl"
         >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 relative">
             <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Ubicación / Zona")}</label>
-            <input
-              type="text"
-              placeholder="Cala Cala, Queru Queru..."
-              className="border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] placeholder:text-slate-350 text-sm font-semibold text-[#04045E]"
-              value={zona}
-              onChange={(e) => setZona(e.target.value)}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cala Cala, Queru Queru..."
+                className="w-full border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] placeholder:text-slate-350 text-sm font-semibold text-[#04045E]"
+                value={zona}
+                onFocus={handleInputFocus}
+                onBlur={() => setTimeout(() => setShowMenu(false), 200)}
+                onChange={(e) => handleZonaChange(e.target.value)}
+              />
+              
+              {showMenu && opcionesFiltradas.length > 0 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-b-xl shadow-xl max-h-[200px] overflow-y-auto z-50 animate-fadeIn">
+                  {opcionesFiltradas.map((loc) => (
+                    <button
+                      key={loc.valor}
+                      type="button"
+                      onClick={() => {
+                        setZona(loc.label);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-[#b9fa3c]/20 hover:text-[#04045E] transition-colors border-b border-slate-50 last:border-b-0 uppercase tracking-wide"
+                    >
+                      📍 {loc.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Tipo de Inmueble")}</label>
