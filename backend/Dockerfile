@@ -21,7 +21,7 @@ COPY backend/src/ ./src/
 RUN npx prisma generate --schema=prisma/schema.prisma
 
 # Compilar la aplicación de NestJS a código de producción (dist/)
-RUN npm run build
+RUN npx nest build
 
 # ==========================================
 # STAGE 2: Imagen de Ejecución de Producción
