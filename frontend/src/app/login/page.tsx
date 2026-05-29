@@ -152,7 +152,18 @@ export default function LoginPage() {
           }
 
           setTimeout(() => {
-            router.push(redirectPath);
+            try {
+              router.push(redirectPath);
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
+                  window.location.href = redirectPath;
+                }
+              }, 150);
+            } catch (e) {
+              if (typeof window !== 'undefined') {
+                window.location.href = redirectPath;
+              }
+            }
           }, 1200);
         } else {
           setTimeout(() => {
@@ -195,7 +206,18 @@ export default function LoginPage() {
           setSuccessMsg(`${t("¡Bienvenido,")} ${authResponse.user.name || authResponse.user.email}!`);
 
           setTimeout(() => {
-            router.push(redirectPath);
+            try {
+              router.push(redirectPath);
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
+                  window.location.href = redirectPath;
+                }
+              }, 150);
+            } catch (e) {
+              if (typeof window !== 'undefined') {
+                window.location.href = redirectPath;
+              }
+            }
           }, 800);
         }
       }
