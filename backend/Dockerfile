@@ -3,6 +3,8 @@
 # ==========================================
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl openssl-dev
+
 WORKDIR /usr/src/app
 
 # Copiar archivos de dependencias del backend
@@ -27,6 +29,8 @@ RUN npx nest build
 # STAGE 2: Imagen de Ejecución de Producción
 # ==========================================
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache openssl openssl-dev
 
 WORKDIR /usr/src/app
 
