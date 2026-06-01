@@ -305,7 +305,67 @@ export class AuthService {
       propertyInterest: user.propertyInterest || null,
       whatsappPhone: user.whatsappPhone || null,
       onboardingCompleted: Boolean(user.onboardingCompleted),
+      status: (user as any).status || 'ACTIVE',
+      nickname: (user as any).nickname || null,
+      avatarUrl: (user as any).avatarUrl || null,
     };
+  }
+
+  async updateProfile(userId: string, data: { name?: string; nickname?: string; whatsappPhone?: string; avatarUrl?: string }) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name,
+        nickname: data.nickname,
+        whatsappPhone: data.whatsappPhone,
+        avatarUrl: data.avatarUrl,
+      },
+    });
+    return {
+      message: 'Perfil actualizado con éxito',
+      user: this.toPublicUser(updated),
+    };
+  }
+
+  async changePassword(userId: string, currentPass: string, newPass: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Usuario no encontrado');
+
+    if (user.password) {
+      const isMatch = await bcrypt.compare(currentPass, user.password);
+      if (!isMatch) throw new BadRequestException('La contraseña actual es incorrecta');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Contraseña actualizada con éxito' };
+  }
+
+  async unlinkGoogle(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Usuario no encontrado');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        authProvider: 'LOCAL',
+        providerId: null,
+      },
+    });
+
+    return { message: 'Cuenta de Google desvinculada' };
+  }
+
+  async suspendAccount(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'INACTIVE' },
+    });
+    return { message: 'Cuenta desactivada de forma lógica' };
   }
 
   private getPostLoginPath(role: string, objective?: string | null) {

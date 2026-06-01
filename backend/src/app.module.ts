@@ -11,6 +11,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { StitchModule } from './modules/stitch/stitch.module';
 import { FavoritosModule } from './modules/favoritos/favoritos.module';
+import { BusquedasGuardadasModule } from './modules/busquedas-guardadas/busquedas-guardadas.module';
+import { HistorialVistasModule } from './modules/historial-vistas/historial-vistas.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { FavoritosModule } from './modules/favoritos/favoritos.module';
     ExpensesModule,
     StitchModule,
     FavoritosModule,
+    BusquedasGuardadasModule,
+    HistorialVistasModule,
   ],
   controllers: [],
   providers: [],

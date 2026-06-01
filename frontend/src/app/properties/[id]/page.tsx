@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { getToken, getCurrentUser } from '@/utils/session';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
 import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
@@ -148,6 +149,40 @@ const staffAgents: Agent[] = [
 
 export default function PropertyDetailPage({ params }: { params: { id: string } }) {
   const currentProperty = PROPERTIES_CATALOG[params.id] || { ...DEFAULT_PROPERTY, id: params.id };
+
+  useEffect(() => {
+    const recordPropertyView = async () => {
+      const token = getToken();
+      const user = getCurrentUser();
+      if (token && user && currentProperty.id) {
+        try {
+          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+          await fetch(`${apiBaseUrl}/historial-vistas/${currentProperty.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+        } catch (err) {
+          console.error('Error recording view on backend:', err);
+        }
+      }
+      
+      // Local storage fallback for view history
+      try {
+        const localViews = localStorage.getItem('propio_recent_views');
+        let viewsArray: string[] = localViews ? JSON.parse(localViews) : [];
+        viewsArray = viewsArray.filter(id => id !== currentProperty.id);
+        viewsArray.unshift(currentProperty.id);
+        localStorage.setItem('propio_recent_views', JSON.stringify(viewsArray.slice(0, 10)));
+      } catch (err) {
+        console.error('Error writing to local recent views:', err);
+      }
+    };
+
+    recordPropertyView();
+  }, [currentProperty.id]);
 
   const [activeTab, setActiveTab] = useState<'fotos' | '3d' | 'plano' | 'mapa'>('fotos');
   const [selectedAgent, setSelectedAgent] = useState<string>('age_1');

@@ -250,6 +250,7 @@ function PropertiesContent() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [showSavedSearchModal, setShowSavedSearchModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>('default');
 
   const router = useRouter();
@@ -313,6 +314,40 @@ function PropertiesContent() {
       }
     } catch (err) {
       console.error('Error al alternar favorito:', err);
+    }
+  };
+
+  const handleSaveSearch = async () => {
+    const user = getCurrentUser();
+    const token = getToken();
+    
+    if (user && token) {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const res = await fetch(`${apiBaseUrl}/busquedas-guardadas`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            query: JSON.stringify(filtros),
+          }),
+        });
+        if (res.ok) {
+          alert(t('¡Búsqueda guardada con éxito en tu panel de alertas!'));
+        } else {
+          console.error('Error saving search on backend');
+          alert(t('Búsqueda guardada localmente.'));
+        }
+      } catch (err) {
+        console.error('Error saving search:', err);
+        alert(t('Búsqueda guardada localmente.'));
+      }
+    } else {
+      // Anonymous user
+      localStorage.setItem('propio_saved_search', JSON.stringify(filtros));
+      setShowSavedSearchModal(true);
     }
   };
 
@@ -708,14 +743,14 @@ function PropertiesContent() {
       <div className="hidden md:flex items-center gap-2.5 p-3 bg-white border-b border-gray-200 w-full z-20 relative font-sans shrink-0">
         
         {/* Caja de Búsqueda inteligente con Lupa, Limpieza, Voz y Botón de Filtros en Móvil */}
-        <div className="flex items-center gap-2 w-full md:w-auto flex-1 md:flex-initial">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-1 md:flex-initial h-10">
           <div className="relative w-full max-w-md flex-grow">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("Buscar por Cochabamba, zona...")}
-              className="w-full px-4 py-2.5 pr-24 border border-gray-300 rounded-lg text-sm font-normal text-neutral-800 focus:outline-none focus:border-[#006AFF] bg-white shadow-sm transition-all focus:ring-0"
+              className="w-full px-4 pr-24 border border-gray-300 rounded-lg text-sm font-normal text-neutral-800 focus:outline-none focus:border-[#006AFF] bg-white shadow-sm transition-all focus:ring-0 h-10"
             />
             
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-neutral-400">
@@ -753,7 +788,7 @@ function PropertiesContent() {
           {/* Botón de Filtros en Móvil */}
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="md:hidden flex items-center justify-center gap-1.5 text-[11px] font-bold px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-neutral-800 hover:border-neutral-400 transition-all shrink-0"
+            className="md:hidden flex items-center justify-center gap-1.5 text-[11px] font-bold px-4 bg-white border border-gray-300 rounded-lg text-neutral-800 hover:border-neutral-400 transition-all shrink-0 h-10 shadow-sm"
           >
             <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
@@ -771,8 +806,8 @@ function PropertiesContent() {
               onClick={() => setActiveDropdown(activeDropdown === 'transaction' ? null : 'transaction')}
               className={
                 filtros.tipoTransaccion !== 'en_venta'
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
@@ -823,8 +858,8 @@ function PropertiesContent() {
               onClick={() => setActiveDropdown(activeDropdown === 'price_range' ? null : 'price_range')}
               className={
                 filtros.precioMin !== null || filtros.precioMax !== null
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
@@ -858,10 +893,10 @@ function PropertiesContent() {
                   {/* Inputs Min/Max */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Mínimo</span>
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Min</span>
                       <input
                         type="number"
-                        placeholder="No Min"
+                        placeholder="Min ($)"
                         value={filtros.precioMin || ''}
                         onChange={(e) => setFiltros(f => ({ ...f, precioMin: e.target.value ? Number(e.target.value) : null }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
@@ -869,10 +904,10 @@ function PropertiesContent() {
                     </div>
                     <span className="text-gray-400 mt-4">-</span>
                     <div className="flex-1 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Máximo</span>
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Max</span>
                       <input
                         type="number"
-                        placeholder="No Max"
+                        placeholder="Max ($)"
                         value={filtros.precioMax || ''}
                         onChange={(e) => setFiltros(f => ({ ...f, precioMax: e.target.value ? Number(e.target.value) : null }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
@@ -929,8 +964,8 @@ function PropertiesContent() {
               onClick={() => setActiveDropdown(activeDropdown === 'rooms_baths' ? null : 'rooms_baths')}
               className={
                 filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
@@ -955,33 +990,42 @@ function PropertiesContent() {
                           key={d}
                           type="button"
                           onClick={() => setFiltros(f => ({ ...f, dormitorios: d }))}
-                          className={`flex-1 py-2 border-r last:border-r-0 border-gray-300 cursor-pointer ${filtros.dormitorios === d ? 'bg-[#006AFF] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                          className={`flex-1 py-2 transition-all cursor-pointer ${
+                            filtros.dormitorios === d
+                              ? 'bg-[#e7f4ff] text-[#006AFF] font-bold'
+                              : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
+                          }`}
                         >
                           {d === 'cualquiera' ? 'Any' : `${d}+`}
                         </button>
                       ))}
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-[11px] text-neutral-600 select-none">
+
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700 pt-1">
                       <input
                         type="checkbox"
                         checked={filtros.coincidenciaExactaDorms}
                         onChange={(e) => setFiltros(f => ({ ...f, coincidenciaExactaDorms: e.target.checked }))}
-                        className="rounded text-[#006AFF] focus:ring-[#006AFF] w-3.5 h-3.5"
+                        className="rounded text-[#006AFF] focus:ring-[#006AFF] border-gray-300"
                       />
-                      <span>Utilice la coincidencia exacta</span>
+                      <span>Usar coincidencia exacta</span>
                     </label>
                   </div>
 
                   {/* Baños */}
-                  <div className="space-y-2 border-t border-gray-100 pt-3">
+                  <div className="space-y-2">
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Baños</span>
                     <div className="flex border border-gray-300 rounded-lg overflow-hidden text-xs font-bold text-center">
-                      {['cualquiera', 1, 2, 3, 4].map((b) => (
+                      {['cualquiera', 1, 1.5, 2, 3].map((b) => (
                         <button
                           key={b}
                           type="button"
                           onClick={() => setFiltros(f => ({ ...f, banos: b }))}
-                          className={`flex-1 py-2 border-r last:border-r-0 border-gray-300 cursor-pointer ${filtros.banos === b ? 'bg-[#006AFF] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                          className={`flex-1 py-2 transition-all cursor-pointer ${
+                            filtros.banos === b
+                              ? 'bg-[#e7f4ff] text-[#006AFF] font-bold'
+                              : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
+                          }`}
                         >
                           {b === 'cualquiera' ? 'Any' : `${b}+`}
                         </button>
@@ -991,7 +1035,7 @@ function PropertiesContent() {
 
                   <button
                     onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all mt-1 cursor-pointer"
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
                   >
                     Aplicar habitaciones
                   </button>
@@ -1006,8 +1050,8 @@ function PropertiesContent() {
               onClick={() => setActiveDropdown(activeDropdown === 'home_type' ? null : 'home_type')}
               className={
                 filtros.tiposCasa.length > 0
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
@@ -1022,29 +1066,20 @@ function PropertiesContent() {
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
                 <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tipo de casa</span>
-                    <button
-                      onClick={() => setFiltros(f => ({ ...f, tiposCasa: [] }))}
-                      className="text-[11px] font-semibold text-[#006AFF] hover:underline cursor-pointer bg-transparent border-none p-0"
-                    >
-                      Deseleccionar todo
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Tipo de inmueble</span>
+                  
+                  <div className="flex flex-col gap-2">
                     {[
                       { id: 'casa', label: 'Casas' },
-                      { id: 'departamento', label: 'Apartamentos / Depas' },
-                      { id: 'terreno', label: 'Lotes / Terrenos' },
-                      { id: 'oficina', label: 'Oficinas / Comercial' }
+                      { id: 'departamento', label: 'Departamentos / Condos' },
+                      { id: 'oficina', label: 'Oficinas / Comercial' },
+                      { id: 'terreno', label: 'Lotes / Terrenos' }
                     ].map((item) => {
-                      const isChecked = filtros.tiposCasa.includes(item.id);
                       return (
-                        <label key={item.id} className="flex items-center gap-2.5 cursor-pointer py-1 select-none font-semibold text-xs text-neutral-800">
+                        <label key={item.id} className="flex items-center gap-2.5 cursor-pointer font-semibold text-xs text-neutral-800 select-none">
                           <input
                             type="checkbox"
-                            checked={isChecked}
+                            checked={filtros.tiposCasa.includes(item.id)}
                             onChange={() => {
                               setFiltros(f => {
                                 const exist = f.tiposCasa.includes(item.id);
@@ -1078,7 +1113,7 @@ function PropertiesContent() {
           {/* Píldora 5: Más Filtros (Modal Slide-over Trigger) */}
           <button
             onClick={() => setShowMoreFilters(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
           >
             <span>{t("Más filtros")}</span>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neutral-500"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1089,30 +1124,26 @@ function PropertiesContent() {
             onClick={() => setOnlyVerified(!onlyVerified)}
             className={
               onlyVerified
-                ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+                ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
             }
           >
             <span>{t("Sello Oro")}</span>
             {onlyVerified && <span className="w-1.5 h-1.5 bg-[#006AFF] rounded-full inline-block"></span>}
           </button>
         </div>
-
-        {/* Botón Guardar Búsqueda (Estilo Zillow) */}
-        <button
-          onClick={() => {
-            setShowAnalytics(true);
-            alert(t("Búsqueda guardada con éxito en tu panel de alertas."));
-          }}
-          className="px-5 py-2.5 bg-[#006AFF] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-all cursor-pointer whitespace-nowrap ml-auto hidden md:inline-block"
-        >
-          {t("Guardar búsqueda")}
-        </button>
-
-        {/* Contador */}
-        <span className="text-[11px] font-bold text-neutral-450 uppercase tracking-widest hidden lg:inline-block">
-          {filtered.length} {t("Resultados")}
-        </span>
+        {/* Grupo de Acción Extremo Derecho (Resultados + Guardar búsqueda) */}
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          <span className="text-[11px] font-bold text-neutral-450 uppercase tracking-widest hidden md:inline-block">
+            {filtered.length} {t("Resultados")}
+          </span>
+          <button
+            onClick={handleSaveSearch}
+            className="h-10 bg-[#006AFF] hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-5 shadow-sm transition-all cursor-pointer whitespace-nowrap flex items-center justify-center"
+          >
+            {t("Guardar búsqueda")}
+          </button>
+        </div>
       </div>
 
       {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA IZQUIERDA / LISTADO DERECHA) ─── */}
@@ -1985,6 +2016,36 @@ function PropertiesContent() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE BÚSQUEDA GUARDADA ANÓNIMO */}
+      {showSavedSearchModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-6 transform scale-100 transition-all duration-300">
+            <div className="text-4xl">💾</div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-[#04045E] uppercase tracking-tight">¡Búsqueda Guardada Localmente!</h3>
+              <p className="text-slate-500 text-xs font-medium leading-relaxed">
+                Hemos guardado tu búsqueda de forma local en tu navegador. 
+                Inicia sesión o regístrate en <strong>Propio.</strong> para sincronizarla en la nube y recibir alertas automáticas en tu WhatsApp cuando aparezcan nuevas opciones.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={() => setShowSavedSearchModal(false)}
+                className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer bg-white"
+              >
+                Cerrar
+              </button>
+              <Link
+                href={`/login?redirect=${encodeURIComponent('/properties')}`}
+                className="flex-1 py-3 bg-[#006AFF] hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm block text-center cursor-pointer"
+              >
+                Iniciar sesión
+              </Link>
             </div>
           </div>
         </div>

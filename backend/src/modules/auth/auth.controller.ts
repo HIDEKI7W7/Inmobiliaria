@@ -131,6 +131,38 @@ export class AuthController {
     return result;
   }
 
+  @Patch('profile')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(@Req() req: Request, @Body() body: any) {
+    const user = AuthController.getAuthUser(req);
+    return this.authService.updateProfile(user.id, body);
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Req() req: Request, @Body() body: any) {
+    const user = AuthController.getAuthUser(req);
+    return this.authService.changePassword(user.id, body.currentPassword, body.newPassword);
+  }
+
+  @Post('unlink-google')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async unlinkGoogle(@Req() req: Request) {
+    const user = AuthController.getAuthUser(req);
+    return this.authService.unlinkGoogle(user.id);
+  }
+
+  @Post('deactivate')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async suspendAccount(@Req() req: Request) {
+    const user = AuthController.getAuthUser(req);
+    return this.authService.suspendAccount(user.id);
+  }
+
   private async finishSocialLogin(profile: OAuthProfile, res: Response) {
     const result = await this.authService.socialLogin(profile);
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
