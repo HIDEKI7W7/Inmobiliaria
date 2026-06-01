@@ -1053,17 +1053,25 @@ function PropertiesContent() {
         </div>
       )}
 
-      {/* ─── BOTTOM-SHEET DE ORDENAMIENTO ESTILO ZILLOW CLON DE image_e3b822.png ─── */}
+      {/* ─── MODAL DE ORDENAMIENTO CENTRADO FLOTANTE (CLON DE image_e3a8c3.png) ─── */}
       {isSortOpen && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 md:hidden animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300">
           <div className="absolute inset-0" onClick={() => setIsSortOpen(false)} />
-          <div className="relative w-full bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-2xl z-10">
-            <div className="flex items-center justify-between p-4 border-b border-neutral-200">
-              <h3 className="text-xl font-bold text-center w-full text-neutral-900">Ordenar resultados por</h3>
-              <button onClick={() => setIsSortOpen(false)} className="text-2xl p-1 text-neutral-500 absolute right-4">✕</button>
+          
+          <div className="relative w-full max-w-[360px] sm:max-w-sm bg-white rounded-[24px] shadow-2xl overflow-hidden transform scale-100 transition-all duration-300 flex flex-col border border-neutral-100">
+            <div className="relative flex items-center justify-center py-4 border-b border-neutral-100 bg-white">
+              <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+                Ordenar resultados por
+              </h3>
+              <button 
+                onClick={() => setIsSortOpen(false)} 
+                className="absolute right-5 text-xl font-light text-neutral-400 hover:text-neutral-600 transition-colors p-1 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            
-            <div className="flex flex-col text-center divide-y divide-neutral-200 font-medium text-neutral-800">
+
+            <div className="flex flex-col text-center divide-y divide-neutral-100 bg-white">
               {[
                 { id: 'default', text: 'Recomendados para ti' },
                 { id: 'price_desc', text: 'Precio (Mayor a menor)' },
@@ -1072,20 +1080,27 @@ function PropertiesContent() {
                 { id: 'rooms', text: 'Dormitorios' },
                 { id: 'bathrooms', text: 'Baños' },
                 { id: 'size', text: 'Superficie (m²)' }
-              ].map((opcion) => (
-                <button
-                  key={opcion.id}
-                  onClick={() => {
-                    setSortBy(opcion.id);
-                    setIsSortOpen(false);
-                  }}
-                  className={`w-full py-4 text-base font-semibold transition-colors ${
-                    sortBy === opcion.id ? 'bg-[#FFD250]/30 text-neutral-900 font-bold' : 'bg-white hover:bg-neutral-50'
-                  }`}
-                >
-                  {opcion.text}
-                </button>
-              ))}
+              ].map((opcion) => {
+                const isActive = sortBy === opcion.id;
+                return (
+                  <button
+                    key={opcion.id}
+                    onClick={() => {
+                      setSortBy(opcion.id);
+                      setIsSortOpen(false);
+                    }}
+                    className={`w-full py-3.5 text-sm sm:text-base font-semibold transition-all duration-150 cursor-pointer ${
+                      isActive 
+                        ? 'bg-lime-500/15 text-neutral-900 font-bold border-y border-lime-500/30' 
+                        : 'bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
+                    }`}
+                  >
+                    <span className={isActive ? 'underline decoration-2 decoration-neutral-900 underline-offset-4' : ''}>
+                      {opcion.text}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
