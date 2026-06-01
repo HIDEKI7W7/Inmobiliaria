@@ -391,7 +391,7 @@ function PropertiesContent() {
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#fbf9f9] pt-[72px]">
+    <div className="flex flex-col h-[calc(100vh-76px)] overflow-hidden bg-[#fbf9f9]">
       {/* ─── BARRA DE REFINAMIENTO PIXEL-PERFECT (ESTILO DE CLON DE TOOLBAR ZILLOW) ─── */}
       <div className="flex flex-wrap items-center gap-2.5 p-3 bg-white border-b border-gray-200 w-full z-20 relative font-sans">
         
