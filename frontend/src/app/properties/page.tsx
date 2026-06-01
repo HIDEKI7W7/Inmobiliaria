@@ -215,7 +215,7 @@ function PropertiesContent() {
   const [activeType, setActiveType] = useState<string>('');
   const [activeOffer, setActiveOffer] = useState<string>('');
   const [activeRooms, setActiveRooms] = useState<number | ''>('');
-  const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
+  const [isMapView, setIsMapView] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -648,7 +648,7 @@ function PropertiesContent() {
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ── MAPA DINÁMICO LEAFLET REAL (IZQUIERDA - 50%) ── */}
-        <div className={`${vistaMovil === 'mapa' ? 'block w-full' : 'hidden'} md:block md:w-1/2 relative overflow-hidden h-full border-r border-neutral-200`}>
+        <div className={`${isMapView ? 'block w-full' : 'hidden'} md:block md:w-1/2 relative overflow-hidden h-full border-r border-neutral-200`}>
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
@@ -659,7 +659,7 @@ function PropertiesContent() {
         </div>
 
         {/* ── GRILLA DE RESULTADOS EDITORIAL (DERECHA - 50%) ── */}
-        <div className={`${vistaMovil === 'lista' ? 'block w-full' : 'hidden'} md:block md:w-1/2 overflow-y-auto bg-white no-scrollbar`}>
+        <div className={`${!isMapView ? 'block w-full' : 'hidden'} md:block md:w-1/2 overflow-y-auto bg-white no-scrollbar`}>
 
           {/* Listado de Propiedades */}
           <div className="p-4 sm:p-6 pb-20 space-y-6">
@@ -830,21 +830,35 @@ function PropertiesContent() {
 
       </div>
 
-      {/* Botón flotante de Alternancia de Vista en Móvil Estilo Zillow */}
-      <button
-        onClick={() => setVistaMovil(vistaMovil === 'lista' ? 'mapa' : 'lista')}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-neutral-900 text-white font-semibold text-sm rounded-full shadow-xl hover:scale-105 active:scale-95 md:hidden transition-all duration-200 cursor-pointer"
-      >
-        {vistaMovil === 'lista' ? (
-          <>
-            <span>🗺️</span> Ver Mapa
-          </>
-        ) : (
-          <>
-            <span>📋</span> Ver Lista
-          </>
-        )}
-      </button>
+      {/* ─── CÁPSULA FLOTANTE DE ALTERNANCIA (ESTILO ZILLOW CLON DE image_ee2142.png) ─── */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none">
+        <div 
+          onClick={() => setIsMapView(!isMapView)}
+          className="flex items-center gap-2 text-sm font-semibold text-neutral-900 cursor-pointer hover:opacity-80 transition-opacity pr-2"
+        >
+          {isMapView ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+              <span>List</span>
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M15.817.113A.5.5 0 0 0 15.5 0H14.5a.5.5 0 0 0-.402.201L10.2 5.333 5.8.201A.5.5 0 0 0 5.4 0H4.5a.5.5 0 0 0-.402.201L.183 5.513A.5.5 0 0 0 0 5.817v9.5a.5.5 0 0 0 .5.5h.9a.5.5 0 0 0 .402-.201l3.998-5.132 4.4 5.132a.5.5 0 0 0 .402.201h.9a.5.5 0 0 0 .5-.5v-9.5a.5.5 0 0 0-.183-.304L15.817.113zM1 6.133l3-3.857v7.592l-3 3.857V6.133zm4 3.735l4 4.667v-7.592L5 3.076v6.792zm5 4.667l3-3.857V3.076l-3 3.857v7.592z"/></svg>
+              <span>Map</span>
+            </>
+          )}
+        </div>
+
+        <div className="w-[1px] h-5 bg-neutral-300 mx-2"></div>
+
+        <div 
+          onClick={() => alert('Próximamente: Ordenamiento de propiedades')}
+          className="flex items-center gap-2 text-sm font-semibold text-neutral-900 cursor-pointer hover:opacity-80 transition-opacity pl-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a.5.5 0 0 1 .5.5v4H14a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zM13 1.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V3.707L9.354 6.854a.5.5 0 1 1-.708-.708L11.793 3H10.5a.5.5 0 0 1 0-1h2.5a.5.5 0 0 1 .5.5zm-11 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
+          <span>Sort</span>
+        </div>
+      </div>
 
       {/* ─── MODAL DE FILTROS EN PANTALLA COMPLETA MÓVIL ─── */}
       {showMobileFilters && (
