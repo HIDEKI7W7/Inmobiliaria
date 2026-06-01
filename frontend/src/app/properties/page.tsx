@@ -214,6 +214,7 @@ function PropertiesContent() {
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [activeType, setActiveType] = useState<string>('');
   const [activeOffer, setActiveOffer] = useState<string>('');
+  const [activeRooms, setActiveRooms] = useState<number | ''>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -226,7 +227,7 @@ function PropertiesContent() {
   const [speechStatus, setSpeechStatus] = useState<'listening' | 'processing' | 'idle'>('idle');
 
   // Control de dropdowns activos
-  const [activeDropdown, setActiveDropdown] = useState<'type' | 'offer' | 'price' | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<'type' | 'offer' | 'price' | 'rooms' | null>(null);
 
   // Prefiltrar desde query params
   useEffect(() => {
@@ -234,10 +235,12 @@ function PropertiesContent() {
     const max = searchParams.get('max');
     const zone = searchParams.get('zone');
     const id = searchParams.get('id');
+    const rooms = searchParams.get('rooms');
     if (type) setActiveType(type.toLowerCase());
     if (max) setMaxPrice(Number(max));
     if (zone) setSearchQuery(zone);
     if (id) setSelectedPropertyId(id);
+    if (rooms) setActiveRooms(Number(rooms));
   }, [searchParams]);
 
   // NLP Parser local de Comandos de Voz (Google Speech)
@@ -269,7 +272,15 @@ function PropertiesContent() {
       setOnlyVerified(true);
     }
 
-    // 4. Parser inteligente de Presupuesto / Precios
+    // 4. Detectar habitaciones
+    const roomsRegex = /(\d+)\s*(?:habitaciones|dormitorios|cuartos|dorms)/i;
+    const matchRooms = query.match(roomsRegex);
+    if (matchRooms) {
+      const val = parseInt(matchRooms[1], 10);
+      if (!isNaN(val)) setActiveRooms(val);
+    }
+
+    // 5. Parser inteligente de Presupuesto / Precios
     const thousandRegex = /(?:menos de|hasta|bajo de|menor a)\s*(\d+|doscientos|trescientos|cuatrocientos|quinientos|cien|ciento)\s*mil/i;
     const matchThousand = query.match(thousandRegex);
     if (matchThousand) {
@@ -362,6 +373,7 @@ function PropertiesContent() {
     if (onlyVerified && !p.verified) return false;
     if (activeType && p.type !== activeType) return false;
     if (activeOffer && p.offerType !== activeOffer) return false;
+    if (activeRooms && p.rooms < activeRooms) return false;
     if (searchQuery) {
       const matchQuery = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -373,47 +385,64 @@ function PropertiesContent() {
 
   const typeOptions = ['', 'casa', 'departamento', 'terreno', 'oficina'];
   const offerOptions = ['', 'VENTA', 'ALQUILER', 'ANTICRETICO'];
+  const roomsOptions: (number | '')[] = ['', 1, 2, 3, 4, 5];
 
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#fbf9f9] pt-[72px]">
-      
-      {/* ─── BARRA DE REFINAMIENTO DE ALTO CONTRASTE (ESTILO COMPASS / ZILLOW) ─── */}
-      <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 z-20 relative">
+      {/* ─── BARRA DE REFINAMIENTO PIXEL-PERFECT (ESTILO DE CLON DE TOOLBAR ZILLOW) ─── */}
+      <div className="flex flex-wrap items-center gap-2.5 p-3 bg-white border-b border-gray-200 w-full z-20 relative font-sans">
         
-        {/* Caja de Búsqueda inteligente con Voz y Botón de Filtros en Móvil */}
+        {/* Caja de Búsqueda inteligente con Lupa, Limpieza, Voz y Botón de Filtros en Móvil */}
         <div className="flex items-center gap-2 w-full md:w-auto flex-1 md:flex-initial">
-          <div className="relative flex items-center bg-neutral-50 border border-black py-2 pl-4 pr-2 w-full md:w-64 transition-all duration-300">
+          <div className="relative w-full max-w-md flex-grow">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por zona..."
-              className="bg-transparent text-xs font-semibold text-black placeholder-neutral-300 focus:outline-none w-full border-none focus:ring-0 p-0"
+              placeholder={t("Buscar por Cochabamba, zona...")}
+              className="w-full px-4 py-2.5 pr-24 border border-gray-300 rounded-lg text-sm font-normal text-neutral-800 focus:outline-none focus:border-[#006AFF] bg-white shadow-sm transition-all focus:ring-0"
             />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="p-1 text-neutral-400 hover:text-black transition-colors mr-1">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg>
+            
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-neutral-400">
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')} 
+                  className="p-1 hover:text-neutral-850 transition-colors"
+                  title={t("Limpiar búsqueda")}
+                >
+                  <span className="text-[12px] font-bold">✕</span>
+                </button>
+              )}
+              {/* Lupa de búsqueda Zillow style */}
+              <button
+                className="p-1 hover:text-[#006AFF] transition-colors"
+                title={t("Buscar")}
+              >
+                <svg className="w-4 h-4 text-neutral-500 hover:text-[#006AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </button>
-            )}
-            <button
-              onClick={startVoiceSearch}
-              className="h-7 w-7 rounded-none bg-black hover:bg-neutral-800 flex items-center justify-center text-white transition-all active:scale-95 shrink-0"
-              title="Búsqueda por voz inteligente"
-            >
-              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-              </svg>
-            </button>
+              {/* Asistente de Voz */}
+              <button
+                onClick={startVoiceSearch}
+                className="p-1 hover:text-[#006AFF] transition-colors"
+                title={t("Búsqueda por voz inteligente")}
+              >
+                <svg className="h-4 w-4 fill-current text-neutral-500 hover:text-[#006AFF]" viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Botón de Filtros en Móvil */}
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="md:hidden flex items-center justify-center gap-1.5 text-[10px] font-bold px-3 py-3 border border-black hover:bg-black hover:text-white transition-all uppercase tracking-widest shrink-0"
+            className="md:hidden flex items-center justify-center gap-1.5 text-[11px] font-bold px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-neutral-800 hover:border-neutral-400 transition-all shrink-0"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
             </svg>
             <span>{t("Filtros")}</span>
@@ -421,25 +450,25 @@ function PropertiesContent() {
         </div>
 
         {/* ─── FILTROS DE ESCRITORIO (hidden md:flex) ─── */}
-        <div className="hidden md:flex items-center gap-4 z-20">
+        <div className="hidden md:flex items-center gap-2 z-20">
           {/* Píldora: Tipo de Inmueble */}
           <div className="relative">
             <button
               onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
-              className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
+              className={
                 activeType
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-black border-neutral-200 hover:border-black'
-              }`}
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
             >
-              <span>{t("Tipo: ")}{activeType ? t(activeType) : t("Todos")}</span>
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'type' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+              <span>{activeType ? t(activeType.charAt(0).toUpperCase() + activeType.slice(1).toLowerCase()) : t("Tipo")}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'type' ? 'rotate-180' : ''} ${activeType ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             
             {activeDropdown === 'type' && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
                   {typeOptions.map(tOption => (
                     <button
                       key={tOption || 'all'}
@@ -447,10 +476,10 @@ function PropertiesContent() {
                         setActiveType(tOption);
                         setActiveDropdown(null);
                       }}
-                      className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
+                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
                         activeType === tOption
-                          ? 'bg-black text-white'
-                          : 'hover:bg-neutral-50 text-black'
+                          ? 'bg-[#e7f4ff] text-[#006AFF]'
+                          : 'hover:bg-neutral-50 text-neutral-800'
                       }`}
                     >
                       {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos los tipos'}
@@ -465,20 +494,20 @@ function PropertiesContent() {
           <div className="relative">
             <button
               onClick={() => setActiveDropdown(activeDropdown === 'offer' ? null : 'offer')}
-              className={`text-[10px] font-bold px-4 py-3 border transition-all flex items-center gap-2 uppercase tracking-widest rounded-none ${
+              className={
                 activeOffer
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-black border-neutral-200 hover:border-black'
-              }`}
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
             >
-              <span>{t("Oferta: ")}{activeOffer ? t(activeOffer) : t("Todos")}</span>
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'offer' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+              <span>{activeOffer ? t(activeOffer) : t("Esquema")}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'offer' ? 'rotate-180' : ''} ${activeOffer ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
 
             {activeDropdown === 'offer' && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-3 z-30 min-w-[200px] flex flex-col gap-1 rounded-none shadow-xl animate-fadeIn">
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
                   {offerOptions.map(o => (
                     <button
                       key={o || 'all-offer'}
@@ -486,10 +515,10 @@ function PropertiesContent() {
                         setActiveOffer(o);
                         setActiveDropdown(null);
                       }}
-                      className={`w-full text-left text-xs font-bold px-3 py-2.5 transition-all rounded-none ${
+                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
                         activeOffer === o
-                          ? 'bg-black text-white'
-                          : 'hover:bg-neutral-50 text-black'
+                          ? 'bg-[#e7f4ff] text-[#006AFF]'
+                          : 'hover:bg-neutral-50 text-neutral-800'
                       }`}
                     >
                       {o ? o : 'Todos los esquemas'}
@@ -504,18 +533,22 @@ function PropertiesContent() {
           <div className="relative">
             <button
               onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
-              className="bg-white text-black border border-neutral-200 hover:border-black text-[10px] font-bold px-4 py-3 transition-all flex items-center gap-2 uppercase tracking-widest rounded-none"
+              className={
+                maxPrice !== 500000
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
             >
-              <span>{t("Precio: Hasta $")}{maxPrice.toLocaleString()}</span>
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+              <span>{maxPrice !== 500000 ? `${t("Hasta $")}${maxPrice.toLocaleString()}` : t("Precio")}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price' ? 'rotate-180' : ''} ${maxPrice !== 500000 ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
 
             {activeDropdown === 'price' && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-black p-5 z-30 w-80 flex flex-col gap-4 rounded-none shadow-xl animate-fadeIn">
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Límite de Compra</span>
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Límite de Compra</span>
                     <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
                   </div>
                   <input
@@ -525,11 +558,11 @@ function PropertiesContent() {
                     step={5000}
                     value={maxPrice}
                     onChange={e => setMaxPrice(Number(e.target.value))}
-                    className="w-full h-1 bg-neutral-200 accent-black cursor-pointer rounded-none appearance-none"
+                    className="w-full h-1 bg-neutral-200 accent-[#006AFF] cursor-pointer rounded-none appearance-none"
                   />
                   <button
                     onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold py-3 text-[10px] uppercase tracking-widest transition-all rounded-none"
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2.5 text-xs rounded-lg transition-all"
                   >
                     Aplicar Presupuesto
                   </button>
@@ -538,24 +571,76 @@ function PropertiesContent() {
             )}
           </div>
 
-          <div className="w-px h-6 bg-neutral-200" />
-
-          {/* Toggle: Verificadas Sello Oro */}
-          <label className="flex items-center gap-3 cursor-pointer group shrink-0 select-none">
-            <div
-              onClick={() => setOnlyVerified(!onlyVerified)}
-              className={`relative w-12 h-6 transition-colors duration-200 border border-black p-0.5 rounded-none ${onlyVerified ? 'bg-black' : 'bg-white'}`}
+          {/* Píldora: Habitaciones */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'rooms' ? null : 'rooms')}
+              className={
+                activeRooms
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
             >
-              <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-neutral-200 group-hover:bg-neutral-400 transition-all rounded-none ${onlyVerified ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
-            </div>
-            <span className="text-[10px] font-bold text-neutral-400 group-hover:text-black transition-colors uppercase tracking-widest">
-              {t("Solo propiedades ")}<span className="text-black font-bold">{t("Verificadas")}</span>
-            </span>
-          </label>
+              <span>{activeRooms ? `${activeRooms}+ ${t("Dorms")}` : t("Habitaciones")}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'rooms' ? 'rotate-180' : ''} ${activeRooms ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {activeDropdown === 'rooms' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
+                  {roomsOptions.map(rOption => (
+                    <button
+                      key={rOption || 'all-rooms'}
+                      onClick={() => {
+                        setActiveRooms(rOption);
+                        setActiveDropdown(null);
+                      }}
+                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
+                        activeRooms === rOption
+                          ? 'bg-[#e7f4ff] text-[#006AFF]'
+                          : 'hover:bg-neutral-50 text-neutral-800'
+                      }`}
+                    >
+                      {rOption ? `${rOption}+ Dormitorios` : 'Cualquier cantidad'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-gray-200" />
+
+          {/* Píldora: Solo Verificadas Sello Oro */}
+          <button
+            onClick={() => setOnlyVerified(!onlyVerified)}
+            className={
+              onlyVerified
+                ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+            }
+          >
+            <span>{t("Sello Oro")}</span>
+            {onlyVerified && <span className="w-1.5 h-1.5 bg-[#006AFF] rounded-full inline-block"></span>}
+          </button>
         </div>
 
+        {/* Botón Guardar Búsqueda (Estilo Zillow) */}
+        <button
+          onClick={() => {
+            setShowAnalytics(true);
+            alert(t("Búsqueda guardada con éxito en tu panel de alertas."));
+          }}
+          className="px-5 py-2.5 bg-[#006AFF] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-all cursor-pointer whitespace-nowrap ml-auto hidden md:inline-block"
+        >
+          {t("Guardar búsqueda")}
+        </button>
+
         {/* Contador */}
-        <span className="ml-auto text-[10px] font-bold text-neutral-400 tracking-widest uppercase hidden md:inline">{filtered.length} {t("Resultados")}</span>
+        <span className="text-[11px] font-bold text-neutral-450 uppercase tracking-widest hidden lg:inline-block">
+          {filtered.length} {t("Resultados")}
+        </span>
       </div>
 
       {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA IZQUIERDA / LISTADO DERECHA) ─── */}
@@ -849,6 +934,27 @@ function PropertiesContent() {
               />
             </div>
 
+            {/* Habitaciones */}
+            <div className="space-y-2">
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Habitaciones / Dormitorios")}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {roomsOptions.map(rOption => (
+                  <button
+                    key={rOption || 'all-rooms-mob'}
+                    type="button"
+                    onClick={() => {
+                      setActiveRooms(rOption);
+                    }}
+                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
+                      activeRooms === rOption ? 'bg-[#006AFF] text-white border-[#006AFF]' : 'bg-white text-black border-neutral-200'
+                    }`}
+                  >
+                    {rOption ? `${rOption}+` : 'Todos'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Verificado Sello Oro */}
             <div className="flex items-center justify-between py-2 border-t border-neutral-100">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
@@ -869,7 +975,7 @@ function PropertiesContent() {
           <div className="border-t border-neutral-200 pt-4 flex flex-col gap-2">
             <button
               onClick={() => setShowMobileFilters(false)}
-              className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all"
+              className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all"
             >
               {t("Ver ")}{filtered.length}{t(" Resultados")}
             </button>
@@ -878,6 +984,7 @@ function PropertiesContent() {
                 setActiveType('');
                 setActiveOffer('');
                 setMaxPrice(500000);
+                setActiveRooms('');
                 setOnlyVerified(false);
                 setSearchQuery('');
               }}

@@ -36,8 +36,8 @@ const config: Config = {
       },
       fontFamily: {
         // Unificación total: palo seco sin serifas
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Inter', 'sans-serif'],
+        sans: ['var(--font-inter)', 'sans-serif'],
+        heading: ['var(--font-inter)', 'sans-serif'],
       },
     },
   },
