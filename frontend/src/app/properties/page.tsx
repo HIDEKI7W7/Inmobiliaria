@@ -154,50 +154,52 @@ function ListingCard({ prop, active, onClick, onHover }: {
   return (
     <article
       onClick={onClick}
-      className={`bg-white cursor-pointer overflow-hidden transition-all duration-300 group border-b border-neutral-200 pb-10 ${active ? 'bg-neutral-50/50' : ''} flex flex-col md:flex-row gap-6 items-start`}
+      className={`bg-white cursor-pointer overflow-hidden border border-neutral-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col ${active ? 'bg-neutral-50/50 ring-2 ring-black' : ''}`}
       onMouseEnter={() => onHover(prop.id)}
       onMouseLeave={() => onHover(null)}
     >
-      <div className="relative w-full md:w-2/5 aspect-[16/10] md:aspect-[4/3] overflow-hidden bg-neutral-100 border border-slate-100 rounded-2xl shadow-sm shrink-0">
+      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100 shrink-0">
         <img 
           src={prop.imageUrl} 
           alt={prop.title} 
           className="w-full h-full object-cover transition-all duration-700 group-hover:scale-103" 
         />
         {prop.verified && (
-          <span className="absolute top-6 left-6 bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3 py-1.5 uppercase tracking-wider rounded-full">
+          <span className="absolute top-4 left-4 bg-[#04045E] text-[#b9fa3c] text-[8px] font-black px-2.5 py-1.5 uppercase tracking-wider rounded-full shadow z-10">
             {t("VERIFICADO SELLO ORO")}
           </span>
         )}
-        <span className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm text-[#04045E] text-[9px] font-black px-3 py-1.5 uppercase tracking-wider border border-slate-150 rounded-full">
+        <span className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm text-[#04045E] text-[8px] font-black px-2.5 py-1.5 uppercase tracking-wider border border-slate-150 rounded-full shadow-sm z-10">
           {prop.offerType}
         </span>
       </div>
-      <div className="w-full md:flex-1 space-y-3">
-        <div className="flex justify-between items-baseline flex-wrap gap-2">
-          <h3 className="font-sans text-xl font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
+      
+      <div className="p-4 flex flex-col justify-between flex-1 space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-baseline gap-2">
+            <span className="font-serif text-2xl font-black text-black block">
+              ${prop.price.toLocaleString()}
+            </span>
+          </div>
+          <h3 className="font-sans text-sm font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
             {prop.title}
           </h3>
-          <span className="font-serif text-2xl font-medium text-black">
-            ${prop.price.toLocaleString()}
-          </span>
+          <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            <span className="truncate">{prop.location}</span>
+          </p>
         </div>
-        
-        <p className="text-neutral-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-          </svg>
-          {prop.location}
-        </p>
 
-        <div className="flex gap-6 pt-3 border-t border-neutral-100 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+        <div className="flex gap-4 pt-3 border-t border-neutral-100 text-[9px] font-bold uppercase tracking-wider text-neutral-400">
           {prop.rooms > 0 && <span>{prop.rooms} {t("Dorms")}</span>}
           {prop.bathrooms > 0 && <span>{prop.bathrooms} {t("Baños")}</span>}
           <span>{prop.area} {t("m²")}</span>
         </div>
         
-        <div className="pt-2">
+        <div className="pt-1 flex items-center justify-between">
           <DaysOnMarketBadge propertyId={prop.id} size="sm" />
         </div>
       </div>
@@ -216,6 +218,7 @@ function PropertiesContent() {
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Estados del asistente de voz Google Speech
   const [isListening, setIsListening] = useState(false);
@@ -374,7 +377,7 @@ function PropertiesContent() {
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-72px)] bg-[#fbf9f9] pt-[72px]">
+    <div className="flex flex-col h-screen overflow-hidden bg-[#fbf9f9] pt-[72px]">
       
       {/* ─── BARRA DE REFINAMIENTO DE ALTO CONTRASTE (ESTILO COMPASS / ZILLOW) ─── */}
       <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 z-20 relative">
@@ -572,40 +575,58 @@ function PropertiesContent() {
         {/* ── GRILLA DE RESULTADOS EDITORIAL (DERECHA - 50%) ── */}
         <div className="w-full md:w-1/2 overflow-y-auto bg-white no-scrollbar">
 
-          {/* Panel de Tendencia y Analytics */}
-          <div className="p-4 sm:p-8 border-b border-neutral-200 bg-[#fbf9f9] space-y-6">
-            <div>
-              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-3">TENDENCIA INMOBILIARIA DE LA ZONA</p>
-              <PriceTrendChart
-                zona={searchParams.get('zone') || 'Cala Cala'}
-                height={140}
-                showSummary={false}
-              />
-            </div>
-            <details className="group">
-              <summary className="flex items-center justify-between cursor-pointer text-[10px] font-bold text-black py-2 list-none uppercase tracking-widest select-none border-t border-neutral-200 pt-4">
-                <span>{t("🔔 Suscribirse a alertas de esta búsqueda")}</span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
-              </summary>
-              <div className="pt-4 border-t border-neutral-100 mt-2">
-                <PropertyAlertForm
-                  defaultZona={searchParams.get('zone') || ''}
-                  defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
-                  defaultMaxPrice={maxPrice}
-                />
-              </div>
-            </details>
-          </div>
-
           {/* Listado de Propiedades */}
-          <div className="p-4 sm:p-8 pb-20 space-y-12">
-            <header className="mb-4">
-              <h1 className="font-serif text-3xl font-light text-black uppercase tracking-tight">
-                {t("Catálogo de Propiedades")}
-              </h1>
-              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
-                {filtered.length} {t("PROPIEDADES ENCONTRADAS EN LA REGIÓN")}
-              </p>
+          <div className="p-4 sm:p-6 pb-20 space-y-6">
+            <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h1 className="font-serif text-2xl font-light text-black uppercase tracking-tight">
+                    {t("Catálogo de Propiedades")}
+                  </h1>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
+                    {filtered.length} {t("PROPIEDADES ENCONTRADAS EN LA REGIÓN")}
+                  </p>
+                </div>
+                
+                {/* Botón de Estadísticas Colapsable */}
+                <button
+                  onClick={() => setShowAnalytics(!showAnalytics)}
+                  className="bg-neutral-50 hover:bg-neutral-100 text-[#04045E] border border-neutral-200 text-[9px] font-black px-3.5 py-2.5 uppercase tracking-widest transition-all rounded-none flex items-center gap-1.5 shadow-sm shrink-0"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v16.5M12 3v16.5m8.25-16.5v16.5" />
+                  </svg>
+                  {showAnalytics ? t("Ocultar Análisis") : t("Ver Análisis de Zona")}
+                </button>
+              </div>
+
+              {/* Contenedor de Estadísticas (Analytics) Colapsable */}
+              {showAnalytics && (
+                <div className="p-4 border border-neutral-200 bg-[#fbf9f9] space-y-4 rounded-xl animate-fadeIn">
+                  <div>
+                    <p className="text-[9px] font-bold text-[#04045E] uppercase tracking-widest mb-3">{t("Tendencia de Precios en ")}{searchParams.get('zone') || 'Cala Cala'}</p>
+                    <PriceTrendChart
+                      zona={searchParams.get('zone') || 'Cala Cala'}
+                      height={120}
+                      showSummary={false}
+                    />
+                  </div>
+                  
+                  <details className="group border-t border-neutral-250 pt-3">
+                    <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#04045E] py-1 list-none uppercase tracking-widest select-none">
+                      <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div className="pt-3 border-t border-neutral-100 mt-2">
+                      <PropertyAlertForm
+                        defaultZona={searchParams.get('zone') || ''}
+                        defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
+                        defaultMaxPrice={maxPrice}
+                      />
+                    </div>
+                  </details>
+                </div>
+              )}
             </header>
 
             {filtered.length === 0 ? (
@@ -615,7 +636,7 @@ function PropertiesContent() {
                 <p className="text-neutral-400 text-xs font-medium mt-2">{t("Intenta ampliar el presupuesto, modificar los términos o ajustar los filtros de búsqueda.")}</p>
               </div>
             ) : (
-              <div className="space-y-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
                 {filtered.map(p => (
                   <ListingCard
                      key={p.id}
