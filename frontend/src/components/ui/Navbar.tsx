@@ -175,7 +175,7 @@ export const Navbar = () => {
 
             {isDropdownOpen && (
               <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2.5 z-50 text-left font-sans animate-fade-in transform origin-top-right">
-                
+                {/* ── DROPDOWN DE USUARIO PURGADO (4 OPCIONES) ── */}
                 <div className="flex flex-col">
                   <Link 
                     className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
