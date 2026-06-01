@@ -31,6 +31,7 @@ const MapWrapper = dynamic(() => import('@/components/modules/properties/MapWrap
 interface EnhancedProperty extends Property {
   priceLabel: string;
   offerType: 'VENTA' | 'ALQUILER' | 'ANTICRETICO';
+  lotSize?: number;
 }
 
 // ─── Datos Geográficos Reales de Cochabamba ────────────────────────────────────────────────
@@ -394,6 +395,7 @@ function PropertiesContent() {
     if (sortBy === 'rooms') return b.rooms - a.rooms;
     if (sortBy === 'bathrooms') return b.bathrooms - a.bathrooms;
     if (sortBy === 'size') return b.area - a.area;
+    if (sortBy === 'lot_size') return (b.lotSize || b.area || 0) - (a.lotSize || a.area || 0);
     if (sortBy === 'newest') return b.id.localeCompare(a.id); // Fallback local de ordenamiento por ID
     return 0; // 'default'
   });
@@ -1073,13 +1075,14 @@ function PropertiesContent() {
 
             <div className="flex flex-col text-center divide-y divide-neutral-100 bg-white">
               {[
-                { id: 'default', text: 'Recomendados para ti' },
-                { id: 'price_desc', text: 'Precio (Mayor a menor)' },
-                { id: 'price_asc', text: 'Precio (Menor a mayor)' },
-                { id: 'newest', text: 'Más recientes' },
+                { id: 'default', text: 'Casas para ti' },
+                { id: 'price_desc', text: 'Precio (de mayor a menor)' },
+                { id: 'price_asc', text: 'Precio (de menor a mayor)' },
+                { id: 'newest', text: 'Más reciente' },
                 { id: 'rooms', text: 'Dormitorios' },
                 { id: 'bathrooms', text: 'Baños' },
-                { id: 'size', text: 'Superficie (m²)' }
+                { id: 'size', text: 'Pies cuadrados' },
+                { id: 'lot_size', text: 'Tamaño del lote' }
               ].map((opcion) => {
                 const isActive = sortBy === opcion.id;
                 return (
