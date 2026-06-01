@@ -222,6 +222,8 @@ function PropertiesContent() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('default');
 
   // Estados del asistente de voz Google Speech
   const [isListening, setIsListening] = useState(false);
@@ -383,6 +385,17 @@ function PropertiesContent() {
       if (!matchQuery) return false;
     }
     return true;
+  });
+
+  // Ordenamiento responsivo de inventario
+  const sortedProperties = [...filtered].sort((a, b) => {
+    if (sortBy === 'price_desc') return b.price - a.price;
+    if (sortBy === 'price_asc') return a.price - b.price;
+    if (sortBy === 'rooms') return b.rooms - a.rooms;
+    if (sortBy === 'bathrooms') return b.bathrooms - a.bathrooms;
+    if (sortBy === 'size') return b.area - a.area;
+    if (sortBy === 'newest') return b.id.localeCompare(a.id); // Fallback local de ordenamiento por ID
+    return 0; // 'default'
   });
 
   const typeOptions = ['', 'casa', 'departamento', 'terreno', 'oficina'];
@@ -716,7 +729,7 @@ function PropertiesContent() {
               )}
             </header>
 
-            {filtered.length === 0 ? (
+            {sortedProperties.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center border border-dashed border-neutral-300 p-8">
                 <div className="text-4xl mb-4">🏠</div>
                 <h3 className="font-serif text-xl font-light text-black uppercase tracking-wider">Sin Resultados</h3>
@@ -724,7 +737,7 @@ function PropertiesContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-                {filtered.map(p => (
+                {sortedProperties.map(p => (
                   <ListingCard
                      key={p.id}
                      prop={p}
@@ -856,10 +869,10 @@ function PropertiesContent() {
         <div className="w-[1px] h-5 bg-neutral-300 mx-2"></div>
 
         <div 
-          onClick={() => alert('Próximamente: Ordenamiento de propiedades')}
+          onClick={() => setIsSortOpen(true)}
           className="flex items-center gap-2 text-sm font-semibold text-neutral-900 cursor-pointer hover:opacity-80 transition-opacity pl-2"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a.5.5 0 0 1 .5.5v4H14a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zM13 1.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V3.707L9.354 6.854a.5.5 0 1 1-.708-.708L11.793 3H10.5a.5.5 0 0 1 0-1h2.5a.5.5 0 0 1 .5.5zm-11 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
+          <svg xmlns="http://www.w3.org/2050/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a.5.5 0 0 1 .5.5v4H14a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zM13 1.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V3.707L9.354 6.854a.5.5 0 1 1-.708-.708L11.793 3H10.5a.5.5 0 0 1 0-1h2.5a.5.5 0 0 1 .5.5zm-11 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
           <span>Sort</span>
         </div>
       </div>
@@ -1036,6 +1049,44 @@ function PropertiesContent() {
             <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">
               {speechStatus === 'listening' ? t("Reconociendo voz...") : t("Ajustando filtros inteligentes...")}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── BOTTOM-SHEET DE ORDENAMIENTO ESTILO ZILLOW CLON DE image_e3b822.png ─── */}
+      {isSortOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40 md:hidden animate-fadeIn">
+          <div className="absolute inset-0" onClick={() => setIsSortOpen(false)} />
+          <div className="relative w-full bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-2xl z-10">
+            <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+              <h3 className="text-xl font-bold text-center w-full text-neutral-900">Ordenar resultados por</h3>
+              <button onClick={() => setIsSortOpen(false)} className="text-2xl p-1 text-neutral-500 absolute right-4">✕</button>
+            </div>
+            
+            <div className="flex flex-col text-center divide-y divide-neutral-200 font-medium text-neutral-800">
+              {[
+                { id: 'default', text: 'Recomendados para ti' },
+                { id: 'price_desc', text: 'Precio (Mayor a menor)' },
+                { id: 'price_asc', text: 'Precio (Menor a mayor)' },
+                { id: 'newest', text: 'Más recientes' },
+                { id: 'rooms', text: 'Dormitorios' },
+                { id: 'bathrooms', text: 'Baños' },
+                { id: 'size', text: 'Superficie (m²)' }
+              ].map((opcion) => (
+                <button
+                  key={opcion.id}
+                  onClick={() => {
+                    setSortBy(opcion.id);
+                    setIsSortOpen(false);
+                  }}
+                  className={`w-full py-4 text-base font-semibold transition-colors ${
+                    sortBy === opcion.id ? 'bg-[#FFD250]/30 text-neutral-900 font-bold' : 'bg-white hover:bg-neutral-50'
+                  }`}
+                >
+                  {opcion.text}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
