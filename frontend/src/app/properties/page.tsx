@@ -215,6 +215,7 @@ function PropertiesContent() {
   const [activeType, setActiveType] = useState<string>('');
   const [activeOffer, setActiveOffer] = useState<string>('');
   const [activeRooms, setActiveRooms] = useState<number | ''>('');
+  const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -647,7 +648,7 @@ function PropertiesContent() {
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ── MAPA DINÁMICO LEAFLET REAL (IZQUIERDA - 50%) ── */}
-        <div className="hidden md:block w-1/2 relative overflow-hidden h-full border-r border-neutral-200">
+        <div className={`${vistaMovil === 'mapa' ? 'block w-full' : 'hidden'} md:block md:w-1/2 relative overflow-hidden h-full border-r border-neutral-200`}>
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
@@ -658,7 +659,7 @@ function PropertiesContent() {
         </div>
 
         {/* ── GRILLA DE RESULTADOS EDITORIAL (DERECHA - 50%) ── */}
-        <div className="w-full md:w-1/2 overflow-y-auto bg-white no-scrollbar">
+        <div className={`${vistaMovil === 'lista' ? 'block w-full' : 'hidden'} md:block md:w-1/2 overflow-y-auto bg-white no-scrollbar`}>
 
           {/* Listado de Propiedades */}
           <div className="p-4 sm:p-6 pb-20 space-y-6">
@@ -829,18 +830,21 @@ function PropertiesContent() {
 
       </div>
 
-      {/* Botón flotante de Filtros Móvil */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className="bg-black text-white hover:bg-neutral-800 text-[10px] font-black px-6 py-4 uppercase tracking-widest shadow-2xl flex items-center gap-2 border border-neutral-800 rounded-full"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.822c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-          </svg>
-          {t("Filtrar Propiedades")}
-        </button>
-      </div>
+      {/* Botón flotante de Alternancia de Vista en Móvil Estilo Zillow */}
+      <button
+        onClick={() => setVistaMovil(vistaMovil === 'lista' ? 'mapa' : 'lista')}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-neutral-900 text-white font-semibold text-sm rounded-full shadow-xl hover:scale-105 active:scale-95 md:hidden transition-all duration-200 cursor-pointer"
+      >
+        {vistaMovil === 'lista' ? (
+          <>
+            <span>🗺️</span> Ver Mapa
+          </>
+        ) : (
+          <>
+            <span>📋</span> Ver Lista
+          </>
+        )}
+      </button>
 
       {/* ─── MODAL DE FILTROS EN PANTALLA COMPLETA MÓVIL ─── */}
       {showMobileFilters && (
