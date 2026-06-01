@@ -174,37 +174,43 @@ export const Navbar = () => {
             </div>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-3 z-50 text-left transform origin-top-right transition-all animate-fade-in font-sans">
-                {/* Sección 1 */}
+              <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2.5 z-50 text-left font-sans animate-fade-in transform origin-top-right">
                 <div className="flex flex-col">
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href={redirectPath} onClick={() => setIsDropdownOpen(false)}>Tu hogar</Link>
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tu-equipo" onClick={() => setIsDropdownOpen(false)}>Tu equipo</Link>
+                  <Link 
+                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block" 
+                    href="/dashboard/visto-recientemente"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Visto recientemente
+                  </Link>
+                  
+                  {/* NUEVO APARTADO DE FAVORITOS (CORAZONES) */}
+                  <Link 
+                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer" 
+                    href="/dashboard/favoritos"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <span>❤️</span> Favoritos
+                  </Link>
                 </div>
                 
                 <hr className="border-neutral-100 my-2" />
 
-                {/* Sección 2 */}
                 <div className="flex flex-col">
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/visto-recientemente" onClick={() => setIsDropdownOpen(false)}>Visto recientemente</Link>
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tours" onClick={() => setIsDropdownOpen(false)}>Tours</Link>
-                </div>
-
-                <hr className="border-neutral-100 my-2" />
-
-                {/* Sección 3 */}
-                <div className="flex flex-col">
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/aplicaciones" onClick={() => setIsDropdownOpen(false)}>Aplicaciones</Link>
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tu-alquiler" onClick={() => setIsDropdownOpen(false)}>Tu alquiler</Link>
-                </div>
-
-                <hr className="border-neutral-100 my-2" />
-
-                {/* Sección 4 */}
-                <div className="flex flex-col">
-                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/configuracion" onClick={() => setIsDropdownOpen(false)}>Configuración de la cuenta</Link>
+                  <Link 
+                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block" 
+                    href="/dashboard/configuracion"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Configuración de la cuenta
+                  </Link>
+                  
                   <button 
-                    onClick={handleLogout}
-                    className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
+                    onClick={() => {
+                      handleLogout();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-5 py-3 font-bold text-red-600 hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
                   >
                     Cerrar sesión
                   </button>
