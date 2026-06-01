@@ -116,6 +116,28 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     }
   };
 
+  const handleCardClick = async () => {
+    const token = getToken();
+    const user = getCurrentUser();
+    const isAuthenticated = !!(user && token);
+
+    if (isAuthenticated && propertyId) {
+      // Registro en segundo plano sin bloquear la UI
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      fetch(`${apiBaseUrl}/historial-vistas/${propertyId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      }).catch(err => console.error('Error tracking view history asynchronously:', err));
+    }
+    
+    if (propertyId) {
+      router.push(`/properties/${propertyId}`);
+    }
+  };
+
   // Cálculo de precio según tasa de cambio corporativa (1 USD = 10 BOB)
   const formattedPrice =
     currency === 'USD'
@@ -126,7 +148,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`group relative rounded-2xl overflow-hidden bg-linear-surface-1 border transition-all duration-300 ease-out flex flex-col h-full ${
+      onClick={handleCardClick}
+      className={`group relative rounded-2xl overflow-hidden bg-linear-surface-1 border transition-all duration-300 ease-out flex flex-col h-full cursor-pointer ${
         isHovered
           ? 'border-linear-primary ring-1 ring-linear-primary/30 scale-[1.01] shadow-xl bg-linear-surface-1/90'
           : 'border-linear-hairline shadow-sm hover:shadow-lg hover:scale-[1.005] hover:border-linear-primary/30'

@@ -215,7 +215,7 @@ export const Navbar = () => {
                       handleLogout();
                       setIsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-2.5 font-bold text-red-600 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
+                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
                   >
                     Cerrar sesión
                   </button>

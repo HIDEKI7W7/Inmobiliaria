@@ -317,6 +317,25 @@ function PropertiesContent() {
     }
   };
 
+  const handleListingCardClick = async (propId: string) => {
+    const token = getToken();
+    const user = getCurrentUser();
+    const isAuthenticated = !!(user && token);
+
+    if (isAuthenticated) {
+      // Registro en segundo plano sin bloquear la UI
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      fetch(`${apiBaseUrl}/historial-vistas/${propId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      }).catch(err => console.error('Error tracking view history asynchronously:', err));
+    }
+    router.push(`/properties/${propId}`);
+  };
+
   const handleSaveSearch = async () => {
     const user = getCurrentUser();
     const token = getToken();
@@ -1134,14 +1153,14 @@ function PropertiesContent() {
         </div>
         {/* Grupo de Acción Extremo Derecho (Resultados + Guardar búsqueda) */}
         <div className="ml-auto flex items-center gap-3 shrink-0">
-          <span className="text-[11px] font-bold text-neutral-450 uppercase tracking-widest hidden md:inline-block">
-            {filtered.length} {t("Resultados")}
+          <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest hidden md:inline-block">
+            {filtered.length} RESULTADOS
           </span>
           <button
             onClick={handleSaveSearch}
-            className="h-10 bg-[#006AFF] hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-5 shadow-sm transition-all cursor-pointer whitespace-nowrap flex items-center justify-center"
+            className="h-10 px-5 bg-[#006AFF] hover:bg-blue-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center whitespace-nowrap cursor-pointer"
           >
-            {t("Guardar búsqueda")}
+            Guardar búsqueda
           </button>
         </div>
       </div>
@@ -1150,7 +1169,7 @@ function PropertiesContent() {
       <div className="flex flex-1 overflow-hidden relative">
 
         {/* ── MAPA DINÁMICO LEAFLET REAL (IZQUIERDA - 50%) ── */}
-        <div className={`${isMapView ? 'block w-full' : 'hidden'} md:block md:w-1/2 relative overflow-hidden h-full border-r border-neutral-200`}>
+        <div className={`${isMapView ? 'block w-full' : 'hidden'} md:block w-full md:w-1/2 h-full max-w-full max-h-full relative overflow-hidden border-r border-neutral-200`}>
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
@@ -1235,7 +1254,7 @@ function PropertiesContent() {
                      key={p.id}
                      prop={p}
                      active={hoveredPin === p.id}
-                     onClick={() => setSelectedPropertyId(p.id)}
+                     onClick={() => handleListingCardClick(p.id)}
                      onHover={setHoveredPin}
                      isFavorite={favoritosIds.has(p.id)}
                      onFavoriteToggle={handleFavoriteToggle}
