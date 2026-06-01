@@ -174,11 +174,20 @@ export const Navbar = () => {
             </div>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-2.5 z-50 text-left font-sans animate-fade-in transform origin-top-right">
-                {/* ── DROPDOWN DE USUARIO PURGADO (4 OPCIONES) ── */}
+              <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-3.5 z-50 text-left font-sans animate-fade-in transform origin-top-right">
+                
                 <div className="flex flex-col">
+                  
                   <Link 
-                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
+                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
+                    href="/dashboard/perfil"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Mi perfil
+                  </Link>
+
+                  <Link 
+                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
                     href="/dashboard/visto-recientemente"
                     onClick={() => setIsDropdownOpen(false)}
                   >
@@ -186,19 +195,15 @@ export const Navbar = () => {
                   </Link>
                   
                   <Link 
-                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors flex items-center gap-2" 
+                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
                     href="/dashboard/favoritos"
                     onClick={() => setIsDropdownOpen(false)}
                   >
-                    <span>❤️</span> Favoritos
+                    Favoritos
                   </Link>
-                </div>
-                
-                <hr className="border-neutral-100 my-2" />
 
-                <div className="flex flex-col">
                   <Link 
-                    className="w-full text-left px-5 py-3 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
+                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
                     href="/dashboard/configuracion"
                     onClick={() => setIsDropdownOpen(false)}
                   >
@@ -210,7 +215,7 @@ export const Navbar = () => {
                       handleLogout();
                       setIsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 font-bold text-red-600 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
+                    className="w-full text-left px-5 py-2.5 font-bold text-red-600 text-[15px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
                   >
                     Cerrar sesión
                   </button>
