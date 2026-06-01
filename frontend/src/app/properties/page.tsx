@@ -551,15 +551,7 @@ function PropertiesContent() {
   return (
     <div className="flex flex-col h-[calc(100vh-76px)] overflow-hidden bg-[#fbf9f9]">
       {/* HEADER SUPERIOR CONSOLIDADO PARA MÓVIL (ESTILO ZILLOW - image_e2cb84.jpg) */}
-      <div className="flex md:hidden items-center justify-between gap-3 px-3 py-2 bg-white border-b border-gray-150 w-full z-20 shrink-0 font-sans">
-        {/* Menú Hamburguesa */}
-        <button 
-          onClick={() => setShowMoreFilters(true)}
-          className="text-blue-600 text-2xl p-1.5 focus:outline-none cursor-pointer"
-        >
-          ☰
-        </button>
-        
+      <div className="flex md:hidden items-center justify-between gap-3 px-4 py-2 bg-white border-b border-gray-150 w-full z-20 shrink-0 font-sans">
         {/* Buscador de Ancho Completo */}
         <div className="relative flex-grow">
           <input
