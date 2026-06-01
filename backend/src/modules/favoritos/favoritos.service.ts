@@ -58,4 +58,16 @@ export class FavoritosService {
     // Retornamos únicamente el array con los datos completos de las propiedades guardadas
     return list.map(f => f.property);
   }
+
+  async checkFavorite(userId: string, propertyId: string) {
+    const existing = await this.prisma.favorito.findUnique({
+      where: {
+        userId_propertyId: {
+          userId,
+          propertyId,
+        },
+      },
+    });
+    return { isFavorited: !!existing };
+  }
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getToken, getCurrentUser } from '@/utils/session';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
@@ -150,25 +151,46 @@ const staffAgents: Agent[] = [
 export default function PropertyDetailPage({ params }: { params: { id: string } }) {
   const currentProperty = PROPERTIES_CATALOG[params.id] || { ...DEFAULT_PROPERTY, id: params.id };
 
+  const router = useRouter();
+  const [isFavorited, setIsFavorited] = useState<boolean>(false);
+
   useEffect(() => {
-    const recordPropertyView = async () => {
+    const recordPropertyViewAndCheckFavorite = async () => {
       const token = getToken();
       const user = getCurrentUser();
-      if (token && user && currentProperty.id) {
-        try {
-          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-          await fetch(`${apiBaseUrl}/historial-vistas/${currentProperty.id}`, {
+      const isAuthenticated = !!(token && user);
+
+      if (currentProperty.id) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+        if (isAuthenticated) {
+          // A. REGISTRO INMEDIATO EN HISTORIAL DE VISTAS (Al cargar la página)
+          fetch(`${apiBaseUrl}/historial-vistas/${currentProperty.id}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-          });
-        } catch (err) {
-          console.error('Error recording view on backend:', err);
+          }).catch(err => console.error("Error al registrar historial de vista:", err));
+
+          // B. CONSULTA DE ESTADO REAL DE FAVORITO (Para mantener el corazón relleno al refrescar)
+          fetch(`${apiBaseUrl}/favoritos/check/${currentProperty.id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data && typeof data.isFavorited !== 'undefined') {
+                setIsFavorited(data.isFavorited);
+              }
+            })
+            .catch(err => console.error("Error al verificar estado de favorito:", err));
         }
       }
-      
+
       // Local storage fallback for view history
       try {
         const localViews = localStorage.getItem('propio_recent_views');
@@ -181,12 +203,41 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
       }
     };
 
-    recordPropertyView();
+    recordPropertyViewAndCheckFavorite();
   }, [currentProperty.id]);
+
+  const handleFavoriteToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const token = getToken();
+    const user = getCurrentUser();
+    if (!token || !user) {
+      router.push(`/login?redirect=/properties/${currentProperty.id}`);
+      return;
+    }
+
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const response = await fetch(`${apiBaseUrl}/favoritos/toggle/${currentProperty.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsFavorited(data.favorited);
+      }
+    } catch (error) {
+      console.error("Falla en el guardado de favoritos:", error);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<'fotos' | '3d' | 'plano' | 'mapa'>('fotos');
   const [selectedAgent, setSelectedAgent] = useState<string>('age_1');
-  const [isSaved, setIsSaved] = useState<boolean>(false);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [showQR, setShowQR] = useState<boolean>(false);
 
@@ -510,10 +561,10 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
 
               {/* Favoritos */}
               <button 
-                onClick={() => setIsSaved(!isSaved)}
+                onClick={handleFavoriteToggle}
                 className="absolute top-4 right-4 z-10 p-3 rounded-full bg-white/95 backdrop-blur shadow hover:scale-110 active:scale-95 transition-all text-[#04045E]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill={isSaved ? '#ef4444' : 'none'} viewBox="0 0 24 24" stroke={isSaved ? '#ef4444' : 'currentColor'} strokeWidth={2.5} className="w-5 h-5 transition-transform duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" fill={isFavorited ? '#ef4444' : 'none'} viewBox="0 0 24 24" stroke={isFavorited ? '#ef4444' : 'currentColor'} strokeWidth={2.5} className="w-5 h-5 transition-transform duration-300">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                 </svg>
               </button>

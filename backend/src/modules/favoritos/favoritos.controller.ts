@@ -40,4 +40,19 @@ export class FavoritosController {
     const userId = req.user.id;
     return this.favoritosService.getFavorites(userId);
   }
+
+  /**
+   * GET /api/favoritos/check/:propiedadId
+   * Verifica si una propiedad ya es favorita para el usuario autenticado.
+   * Protegido por AuthGuard.
+   */
+  @Get('check/:propiedadId')
+  @UseGuards(AuthGuard)
+  async checkFavorite(
+    @Param('propiedadId', ParseUUIDPipe) propertyId: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user.id;
+    return this.favoritosService.checkFavorite(userId, propertyId);
+  }
 }

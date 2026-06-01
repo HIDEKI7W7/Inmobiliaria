@@ -14,30 +14,22 @@ export class HistorialVistasService {
       throw new NotFoundException('Propiedad no encontrada o inactiva');
     }
 
-    // Buscar si ya existe una vista registrada para este usuario e inmueble
-    const existing = await this.prisma.historialVista.findFirst({
+    return await this.prisma.historialVista.upsert({
       where: {
-        userId,
-        propertyId,
-      },
-    });
-
-    if (existing) {
-      return this.prisma.historialVista.update({
-        where: { id: existing.id },
-        data: {
-          vistoEn: new Date(),
-        },
-      });
-    } else {
-      return this.prisma.historialVista.create({
-        data: {
+        userId_propertyId: {
           userId,
           propertyId,
-          vistoEn: new Date(),
         },
-      });
-    }
+      },
+      update: {
+        vistoEn: new Date(),
+      },
+      create: {
+        userId,
+        propertyId,
+        vistoEn: new Date(),
+      },
+    });
   }
 
   async getHistory(userId: string) {

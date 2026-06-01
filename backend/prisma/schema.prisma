@@ -269,6 +269,7 @@ model HistorialVista {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, propertyId])
   @@map("historial_vistas")
 }
 
