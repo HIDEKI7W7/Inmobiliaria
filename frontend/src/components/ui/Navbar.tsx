@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCurrentUser } from '@/utils/session';
+import { getCurrentUser, removeToken, getRedirectPathByRole } from '@/utils/session';
 
 const NAV_LINKS = [
   { href: '/properties', label: 'Comprar' },
@@ -39,6 +39,55 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Estados de Autenticación reactivos del cliente
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [redirectPath, setRedirectPath] = useState('/cliente');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setRedirectPath(getRedirectPathByRole(currentUser.role));
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  }, [pathname]); // Recargar al cambiar de ruta para reflejar cambios de sesión
+
+  // Detector de clics externos para cerrar el dropdown flotante
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Función para obtener las iniciales de manera segura
+  const obtenerIniciales = () => {
+    if (!user) return 'CC';
+    const nombreCompleto = user.name || user.email?.split('@')[0] || 'Cliente';
+    const partes = nombreCompleto.trim().split(/\s+/);
+    if (partes.length >= 2) {
+      return `${partes[0][0]}${partes[1][0]}`.toUpperCase();
+    }
+    return nombreCompleto.substring(0, 2).toUpperCase();
+  };
+
+  const handleLogout = () => {
+    removeToken();
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsDropdownOpen(false);
+    router.push('/');
+  };
 
   const isActive = (href: string) => {
     const baseHref = href.split('?')[0];
@@ -114,13 +163,63 @@ export const Navbar = () => {
           Publicar Gratis <span className="text-xs">→</span>
         </button>
 
-        {/* [INGRESAR] — Redirige SIEMPRE a /login, nunca a /admin directamente */}
-        <Link
-          href="/login"
-          className="px-5 py-2.5 rounded-xl border border-[#04045E]/40 font-bold text-[11px] tracking-wide text-[#04045E] hover:bg-[#04045E]/5 active:scale-[0.98] transition-all duration-200"
-        >
-          Ingresar / Registrarse
-        </Link>
+        {/* [INGRESAR / AVATAR DROPDOWN] */}
+        {isAuthenticated ? (
+          <div className="relative" ref={dropdownRef}>
+            <div
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="bg-[#0A4D54] text-white font-bold text-sm rounded-full w-9 h-9 flex items-center justify-center cursor-pointer select-none transition-transform active:scale-95 border border-white shadow-sm"
+            >
+              {obtenerIniciales()}
+            </div>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl border border-neutral-100 py-3 z-50 text-left transform origin-top-right transition-all animate-fade-in font-sans">
+                {/* Sección 1 */}
+                <div className="flex flex-col">
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href={redirectPath} onClick={() => setIsDropdownOpen(false)}>Tu hogar</Link>
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tu-equipo" onClick={() => setIsDropdownOpen(false)}>Tu equipo</Link>
+                </div>
+                
+                <hr className="border-neutral-100 my-2" />
+
+                {/* Sección 2 */}
+                <div className="flex flex-col">
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/visto-recientemente" onClick={() => setIsDropdownOpen(false)}>Visto recientemente</Link>
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tours" onClick={() => setIsDropdownOpen(false)}>Tours</Link>
+                </div>
+
+                <hr className="border-neutral-100 my-2" />
+
+                {/* Sección 3 */}
+                <div className="flex flex-col">
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/aplicaciones" onClick={() => setIsDropdownOpen(false)}>Aplicaciones</Link>
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/tu-alquiler" onClick={() => setIsDropdownOpen(false)}>Tu alquiler</Link>
+                </div>
+
+                <hr className="border-neutral-100 my-2" />
+
+                {/* Sección 4 */}
+                <div className="flex flex-col">
+                  <Link className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors block cursor-pointer" href="/dashboard/configuracion" onClick={() => setIsDropdownOpen(false)}>Configuración de la cuenta</Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-5 py-2 font-bold text-neutral-900 text-[14px] hover:bg-neutral-50 transition-colors cursor-pointer block border-none bg-transparent"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="px-5 py-2.5 rounded-xl border border-[#04045E]/40 font-bold text-[11px] tracking-wide text-[#04045E] hover:bg-[#04045E]/5 active:scale-[0.98] transition-all duration-200"
+          >
+            Ingresar / Registrarse
+          </Link>
+        )}
       </div>
 
       {/* ── HAMBURGUESA MÓVIL ── */}
@@ -174,14 +273,35 @@ export const Navbar = () => {
 
           {/* CTAs móviles */}
           <div className="flex flex-col gap-3 pt-2">
-            {/* Ingresar → siempre /login */}
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="text-center py-3.5 border border-[#04045E]/40 text-[#04045E] font-bold rounded-xl text-[11px] hover:bg-[#04045E]/5 transition-all"
-            >
-              Ingresar / Registrarse
-            </Link>
+            {/* Ingresar → condicional a sesión */}
+            {isAuthenticated ? (
+              <>
+                <Link
+                  href={redirectPath}
+                  onClick={() => setIsOpen(false)}
+                  className="text-center py-3 bg-[#0A4D54] text-white font-bold rounded-xl text-[11px] hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[9px] font-bold">
+                    {obtenerIniciales()}
+                  </span>
+                  Mi Panel ({user?.name || user?.email?.split('@')[0] || 'Mi cuenta'})
+                </Link>
+                <button
+                  onClick={() => { setIsOpen(false); handleLogout(); }}
+                  className="text-center py-3 border border-[#04045E]/40 text-[#04045E] font-bold rounded-xl text-[11px] hover:bg-[#04045E]/5 transition-all cursor-pointer border-none bg-transparent"
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="text-center py-3.5 border border-[#04045E]/40 text-[#04045E] font-bold rounded-xl text-[11px] hover:bg-[#04045E]/5 transition-all"
+              >
+                Ingresar / Registrarse
+              </Link>
+            )}
 
             {/* Publicar Gratis → validación de sesión */}
             <button
