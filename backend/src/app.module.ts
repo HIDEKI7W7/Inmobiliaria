@@ -10,6 +10,7 @@ import { ContractsModule } from './modules/contracts/contracts.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { StitchModule } from './modules/stitch/stitch.module';
+import { FavoritosModule } from './modules/favoritos/favoritos.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { StitchModule } from './modules/stitch/stitch.module';
     PaymentsModule,
     ExpensesModule,
     StitchModule,
+    FavoritosModule,
   ],
   controllers: [],
   providers: [],

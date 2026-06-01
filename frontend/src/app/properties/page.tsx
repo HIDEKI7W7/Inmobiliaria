@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
 import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
@@ -11,6 +11,7 @@ import { Property } from '@/components/modules/properties/PropertyCard';
 import { LogoIcon } from '../page';
 import { Footer } from '@/components/ui/Footer';
 import { apiClient } from '@/services/api.client';
+import { getToken, getCurrentUser } from '@/utils/session';
 
 const t = (key: string) => key;
 
@@ -148,11 +149,13 @@ const ALL_PROPERTIES: EnhancedProperty[] = [
 ];
 
 // ─── Tarjeta de Listado del Inventario (Estilo Monocromático de Lujo) ─────────────────
-function ListingCard({ prop, active, onClick, onHover }: {
+function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteToggle }: {
   prop: EnhancedProperty;
   active: boolean;
   onClick: () => void;
   onHover: (id: string | null) => void;
+  isFavorite: boolean;
+  onFavoriteToggle: (id: string) => void;
 }) {
   return (
     <article
@@ -173,15 +176,25 @@ function ListingCard({ prop, active, onClick, onHover }: {
           </span>
         )}
         
-        {/* Botón de favoritos estilo Zillow */}
+        {/* Botón de favoritos interactivo en verde lima */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            alert("¡Guardado en tus favoritos de Propio!");
+            onFavoriteToggle(prop.id);
           }}
-          className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white p-1.5 rounded-full shadow-md transition-all active:scale-95"
+          className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white p-1.5 rounded-full shadow-md transition-all active:scale-95 flex items-center justify-center cursor-pointer border border-neutral-100"
         >
-          <span className="text-red-500 text-xs sm:text-sm">❤️</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-300 ${
+              isFavorite
+                ? 'stroke-[#A3E635] fill-[#A3E635] drop-shadow-md hover:scale-110 transition-transform'
+                : 'stroke-[#A3E635] stroke-2 fill-transparent hover:scale-110 transition-transform'
+            }`}
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
         </button>
 
         <span className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 bg-white/95 backdrop-blur-sm text-[#04045E] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider border border-slate-150 rounded-full shadow-sm z-10">
@@ -238,6 +251,70 @@ function PropertiesContent() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<string>('default');
+
+  const router = useRouter();
+  const [favoritosIds, setFavoritosIds] = useState<Set<string>>(new Set());
+
+  // Cargar propiedades favoritas al cargar el componente
+  useEffect(() => {
+    const loadFavoritos = async () => {
+      const token = getToken();
+      if (!token) return;
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const res = await fetch(`${apiBaseUrl}/favoritos`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const ids = new Set<string>(data.map((p: any) => p.id));
+          setFavoritosIds(ids);
+        }
+      } catch (err) {
+        console.error('Error al cargar favoritos:', err);
+      }
+    };
+    loadFavoritos();
+  }, []);
+
+  const handleFavoriteToggle = async (propertyId: string) => {
+    const token = getToken();
+    const user = getCurrentUser();
+
+    if (!user || !token) {
+      // Redirigir a Login con callback
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const res = await fetch(`${apiBaseUrl}/favoritos/toggle/${propertyId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setFavoritosIds((prev) => {
+          const next = new Set(prev);
+          if (data.favorited) {
+            next.add(propertyId);
+          } else {
+            next.delete(propertyId);
+          }
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Error al alternar favorito:', err);
+    }
+  };
 
   // Estados del asistente de voz Google Speech
   const [isListening, setIsListening] = useState(false);
@@ -1129,6 +1206,8 @@ function PropertiesContent() {
                      active={hoveredPin === p.id}
                      onClick={() => setSelectedPropertyId(p.id)}
                      onHover={setHoveredPin}
+                     isFavorite={favoritosIds.has(p.id)}
+                     onFavoriteToggle={handleFavoriteToggle}
                   />
                 ))}
               </div>

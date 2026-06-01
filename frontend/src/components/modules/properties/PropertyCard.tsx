@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getToken, getCurrentUser } from '@/utils/session';
 
 export interface Property {
   id: string;
@@ -49,6 +51,9 @@ interface PropertyCardProps {
   isHovered?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  propertyId?: string;
+  isFavorite?: boolean;
+  onFavoriteToggle?: (id: string, isFav: boolean) => void;
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({
@@ -63,7 +68,54 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   isHovered = false,
   onMouseEnter,
   onMouseLeave,
+  propertyId,
+  isFavorite = false,
+  onFavoriteToggle,
 }) => {
+  const router = useRouter();
+  const [isFav, setIsFav] = useState(isFavorite);
+
+  useEffect(() => {
+    setIsFav(isFavorite);
+  }, [isFavorite]);
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const token = getToken();
+    const user = getCurrentUser();
+
+    if (!user || !token) {
+      // Redirigir a Login con callback
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
+    if (!propertyId) return;
+
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const response = await fetch(`${apiBaseUrl}/favoritos/toggle/${propertyId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsFav(data.favorited);
+        if (onFavoriteToggle) {
+          onFavoriteToggle(propertyId, data.favorited);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
   // Cálculo de precio según tasa de cambio corporativa (1 USD = 10 BOB)
   const formattedPrice =
     currency === 'USD'
@@ -97,6 +149,24 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             </span>
           )}
         </div>
+
+        {/* Botón de favoritos interactivo en verde lima */}
+        <button
+          onClick={handleFavoriteClick}
+          className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white p-2 rounded-full shadow-md transition-all active:scale-95 cursor-pointer border border-neutral-100 flex items-center justify-center"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            className={`w-5 h-5 transition-all duration-300 ${
+              isFav
+                ? 'stroke-[#A3E635] fill-[#A3E635] drop-shadow-md hover:scale-110 transition-transform'
+                : 'stroke-[#A3E635] stroke-2 fill-transparent hover:scale-110 transition-transform'
+            }`}
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        </button>
 
         {/* Contenedor del Precio */}
         <div className="absolute bottom-4 right-4 z-10">

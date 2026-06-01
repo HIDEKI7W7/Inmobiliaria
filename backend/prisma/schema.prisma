@@ -71,6 +71,7 @@ model User {
   propertyAlerts     PropertyAlert[] @relation("UserAlerts")
   tenantContracts    Contract[]      @relation("TenantContracts")
   ownerContracts     Contract[]      @relation("OwnerContracts")
+  favoritos          Favorito[]
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
@@ -115,6 +116,7 @@ model Property {
   priceHistory      PriceHistory[]
   contracts         Contract[]
   expenses          Expense[]
+  favorecidoPor     Favorito[]
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
   deletedAt         DateTime?      @map("deleted_at")
@@ -227,3 +229,17 @@ model Expense {
   @@index([propertyId])
   @@map("expenses")
 }
+
+model Favorito {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  propertyId  String   @map("property_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("favoritos")
+}
+
