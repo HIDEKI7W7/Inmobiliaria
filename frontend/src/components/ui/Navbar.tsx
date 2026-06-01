@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCurrentUser, removeToken, getRedirectPathByRole } from '@/utils/session';
+import { getCurrentUser, removeToken, getRedirectPathByRole, getToken } from '@/utils/session';
 
 const NAV_LINKS = [
   { href: '/properties', label: 'Comprar' },
@@ -46,6 +46,34 @@ export const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [redirectPath, setRedirectPath] = useState('/cliente');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [favoritos, setFavoritos] = useState<any[]>([]);
+  const [vistosRecientes, setVistosRecientes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (isDropdownOpen && isAuthenticated && token) {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      
+      fetch(`${apiBaseUrl}/favoritos`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setFavoritos(data))
+        .catch(err => console.error("Error favoritos UI:", err));
+
+      fetch(`${apiBaseUrl}/historial-vistas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setVistosRecientes(data))
+        .catch(err => console.error("Error historial UI:", err));
+    }
+  }, [isDropdownOpen, isAuthenticated]);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -191,7 +219,7 @@ export const Navbar = () => {
                     href="/dashboard/visto-recientemente"
                     onClick={() => setIsDropdownOpen(false)}
                   >
-                    Visto recientemente
+                    Visto recientemente {vistosRecientes.length > 0 ? `(${vistosRecientes.length})` : ''}
                   </Link>
                   
                   <Link 
@@ -199,7 +227,7 @@ export const Navbar = () => {
                     href="/dashboard/favoritos"
                     onClick={() => setIsDropdownOpen(false)}
                   >
-                    Favoritos
+                    Favoritos {favoritos.length > 0 ? `(${favoritos.length})` : ''}
                   </Link>
 
                   <Link 
