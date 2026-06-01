@@ -3,11 +3,11 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 
-export const Footer = () => {
+export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
   const pathname = usePathname();
 
-  // Ocultar Footer en paneles administrativos, login y rutas de agente
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/agente') || pathname === '/login') {
+  // Ocultar Footer en paneles administrativos, login, rutas de agente y buscador (salvo que sea forzado en scroll)
+  if (!forceRender && (pathname?.startsWith('/admin') || pathname?.startsWith('/agente') || pathname === '/login' || pathname === '/properties')) {
     return null;
   }
 

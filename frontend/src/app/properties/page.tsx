@@ -9,6 +9,7 @@ import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
 import dynamic from 'next/dynamic';
 import { Property } from '@/components/modules/properties/PropertyCard';
 import { LogoIcon } from '../page';
+import { Footer } from '@/components/ui/Footer';
 
 const t = (key: string) => key;
 
@@ -735,6 +736,9 @@ function PropertiesContent() {
               </div>
             )}
           </div>
+          
+          {/* Footer en el fondo del contenedor de scroll independiente */}
+          <Footer forceRender={true} />
         </div>
 
         {/* ─── DRAWER MASTER-DETAIL MONOCROMÁTICO DE LUJO (DRAWER DERECHO) ─── */}
