@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { Property } from '@/components/modules/properties/PropertyCard';
 import { LogoIcon } from '../page';
 import { Footer } from '@/components/ui/Footer';
+import { apiClient } from '@/services/api.client';
 
 const t = (key: string) => key;
 
@@ -231,8 +232,45 @@ function PropertiesContent() {
   const [voiceText, setVoiceText] = useState('');
   const [speechStatus, setSpeechStatus] = useState<'listening' | 'processing' | 'idle'>('idle');
 
+  // ─── ESTADO GLOBAL DE FILTRADO ZILLOW (FiltrosState) ───────────────────────────
+  const [filtros, setFiltros] = useState({
+    tipoTransaccion: 'en_venta', // 'en_venta', 'en_alquiler', 'vendido'
+    precioMin: null as number | null,
+    precioMax: null as number | null,
+    modoPrecio: 'list_price', // 'list_price' o 'monthly_payment'
+    downPayment: null as number | null,
+    creditScore: 700 as number | null,
+    dormitorios: 'cualquiera' as string | number,
+    coincidenciaExactaDorms: false,
+    banos: 'cualquiera' as string | number,
+    tiposCasa: [] as string[], // 'casa', 'departamento', 'terreno', 'oficina', etc.
+    hoaMax: null as number | null,
+    tipoListado: [] as string[], // owner, agent, new_construction, foreclosures, auctions
+    estadoListado: [] as string[], // coming_soon, backup_offers, pending
+    tours: [] as string[], // open_house, tour_3d, showcase
+    parqueosMin: 'Any',
+    piesCuadradosMin: null as number | null,
+    piesCuadradosMax: null as number | null,
+    loteMin: null as number | null,
+    loteMax: null as number | null,
+    anoConstruccionMin: null as number | null,
+    anoConstruccionMax: null as number | null,
+    tieneSotano: false,
+    unSoloPiso: false,
+    comunidad55Plus: 'include', // include, dont_show, only_show
+    aireAcondicionado: false,
+    piscina: false,
+    frenteAlAgua: false,
+    vista: [] as string[],
+    tiempoViaje: { direccion: '', modo: 'Drive', hora: 'Now', maxMinutos: 'Any' }
+  });
+
+  const [properties, setProperties] = useState<EnhancedProperty[]>(ALL_PROPERTIES);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+
   // Control de dropdowns activos
-  const [activeDropdown, setActiveDropdown] = useState<'type' | 'offer' | 'price' | 'rooms' | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<'transaction' | 'price_range' | 'rooms_baths' | 'home_type' | 'more_filters' | null>(null);
 
   // Prefiltrar desde query params
   useEffect(() => {
@@ -241,12 +279,128 @@ function PropertiesContent() {
     const zone = searchParams.get('zone');
     const id = searchParams.get('id');
     const rooms = searchParams.get('rooms');
-    if (type) setActiveType(type.toLowerCase());
-    if (max) setMaxPrice(Number(max));
+    if (type) {
+      setActiveType(type.toLowerCase());
+      setFiltros(f => ({ ...f, tiposCasa: [type.toLowerCase()] }));
+    }
+    if (max) {
+      setMaxPrice(Number(max));
+      setFiltros(f => ({ ...f, precioMax: Number(max) }));
+    }
     if (zone) setSearchQuery(zone);
     if (id) setSelectedPropertyId(id);
-    if (rooms) setActiveRooms(Number(rooms));
+    if (rooms) {
+      setActiveRooms(Number(rooms));
+      setFiltros(f => ({ ...f, dormitorios: Number(rooms) }));
+    }
   }, [searchParams]);
+
+  // Sincronizaciones de estados locales con FiltrosState para compatibilidad total
+  useEffect(() => {
+    setFiltros(f => ({
+      ...f,
+      precioMax: maxPrice !== 500000 ? maxPrice : null,
+      dormitorios: activeRooms || 'cualquiera',
+      tiposCasa: activeType ? [activeType] : [],
+      tipoTransaccion: activeOffer === 'ALQUILER' || activeOffer === 'ANTICRETICO' ? 'en_alquiler' : activeOffer === 'VENTA' ? 'en_venta' : f.tipoTransaccion
+    }));
+  }, [maxPrice, activeRooms, activeType, activeOffer]);
+
+  // Petición HTTP al Backend NestJS con fallback local a prueba de fallos
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setIsLoading(true);
+      try {
+        const queryParams = new URLSearchParams();
+        if (filtros.tipoTransaccion) queryParams.append('tipoTransaccion', filtros.tipoTransaccion);
+        if (filtros.precioMin) queryParams.append('precioMin', String(filtros.precioMin));
+        if (filtros.precioMax) queryParams.append('precioMax', String(filtros.precioMax));
+        if (filtros.dormitorios !== 'cualquiera') {
+          queryParams.append('dormitorios', String(filtros.dormitorios));
+          if (filtros.coincidenciaExactaDorms) {
+            queryParams.append('coincidenciaExactaDorms', 'true');
+          }
+        }
+        if (filtros.banos !== 'cualquiera') queryParams.append('banos', String(filtros.banos));
+        if (filtros.tiposCasa.length > 0) {
+          queryParams.append('tiposCasa', filtros.tiposCasa.join(','));
+        }
+        if (filtros.piesCuadradosMin) queryParams.append('piesCuadradosMin', String(filtros.piesCuadradosMin));
+        if (filtros.piesCuadradosMax) queryParams.append('piesCuadradosMax', String(filtros.piesCuadradosMax));
+        if (searchQuery) queryParams.append('text', searchQuery);
+
+        if (sortBy !== 'default') {
+          if (sortBy === 'price_desc') {
+            queryParams.append('sortBy', 'price');
+            queryParams.append('sortDir', 'desc');
+          } else if (sortBy === 'price_asc') {
+            queryParams.append('sortBy', 'price');
+            queryParams.append('sortDir', 'asc');
+          } else if (sortBy === 'size') {
+            queryParams.append('sortBy', 'area');
+            queryParams.append('sortDir', 'desc');
+          } else if (sortBy === 'newest') {
+            queryParams.append('sortBy', 'createdAt');
+            queryParams.append('sortDir', 'desc');
+          }
+        }
+
+        const res = await apiClient.get<any>(`/properties?${queryParams.toString()}`);
+        if (res && res.data) {
+          setProperties(res.data);
+        }
+      } catch (err) {
+        console.warn('Conexión con backend falló, usando filtrado reactivo local premium:', err);
+        // Filtrado reactivo en local
+        const localFiltered = ALL_PROPERTIES.filter(p => {
+          if (onlyVerified && !p.verified) return false;
+          if (filtros.tipoTransaccion === 'en_venta' && p.offerType !== 'VENTA') return false;
+          if (filtros.tipoTransaccion === 'en_alquiler' && !['ALQUILER', 'ANTICRETICO'].includes(p.offerType)) return false;
+          if (filtros.tipoTransaccion === 'vendido' && p.status !== 'VENDIDO') return false;
+
+          if (filtros.precioMin && p.price < filtros.precioMin) return false;
+          if (filtros.precioMax && p.price > filtros.precioMax) return false;
+
+          if (filtros.dormitorios !== 'cualquiera') {
+            const minRooms = Number(filtros.dormitorios);
+            if (filtros.coincidenciaExactaDorms) {
+              if (p.rooms !== minRooms) return false;
+            } else {
+              if (p.rooms < minRooms) return false;
+            }
+          }
+          if (filtros.banos !== 'cualquiera' && p.bathrooms < Number(filtros.banos)) return false;
+          if (filtros.tiposCasa.length > 0 && !filtros.tiposCasa.includes(p.type)) return false;
+
+          if (searchQuery) {
+            const match = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          p.location.toLowerCase().includes(searchQuery.toLowerCase());
+            if (!match) return false;
+          }
+          return true;
+        });
+
+        // Ordenamiento local
+        const sorted = [...localFiltered].sort((a, b) => {
+          if (sortBy === 'price_desc') return b.price - a.price;
+          if (sortBy === 'price_asc') return a.price - b.price;
+          if (sortBy === 'rooms') return b.rooms - a.rooms;
+          if (sortBy === 'bathrooms') return b.bathrooms - a.bathrooms;
+          if (sortBy === 'size') return b.area - a.area;
+          if (sortBy === 'lot_size') return (b.lotSize || b.area || 0) - (a.lotSize || a.area || 0);
+          if (sortBy === 'newest') return b.id.localeCompare(a.id);
+          return 0;
+        });
+
+        setProperties(sorted);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [filtros, searchQuery, sortBy, onlyVerified]);
 
   // NLP Parser local de Comandos de Voz (Google Speech)
   const parseVoiceCommand = (transcript: string) => {
@@ -372,33 +526,9 @@ function PropertiesContent() {
     recognition.start();
   };
 
-  // Filtrado reactivo de inventario
-  const filtered = ALL_PROPERTIES.filter(p => {
-    if (p.price > maxPrice) return false;
-    if (onlyVerified && !p.verified) return false;
-    if (activeType && p.type !== activeType) return false;
-    if (activeOffer && p.offerType !== activeOffer) return false;
-    if (activeRooms && p.rooms < activeRooms) return false;
-    if (searchQuery) {
-      const matchQuery = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.location.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchQuery) return false;
-    }
-    return true;
-  });
-
-  // Ordenamiento responsivo de inventario
-  const sortedProperties = [...filtered].sort((a, b) => {
-    if (sortBy === 'price_desc') return b.price - a.price;
-    if (sortBy === 'price_asc') return a.price - b.price;
-    if (sortBy === 'rooms') return b.rooms - a.rooms;
-    if (sortBy === 'bathrooms') return b.bathrooms - a.bathrooms;
-    if (sortBy === 'size') return b.area - a.area;
-    if (sortBy === 'lot_size') return (b.lotSize || b.area || 0) - (a.lotSize || a.area || 0);
-    if (sortBy === 'newest') return b.id.localeCompare(a.id); // Fallback local de ordenamiento por ID
-    return 0; // 'default'
-  });
+  // Usar el estado dinámico cargado del backend con fallback local premium
+  const filtered = properties;
+  const sortedProperties = properties;
 
   const typeOptions = ['', 'casa', 'departamento', 'terreno', 'oficina'];
   const offerOptions = ['', 'VENTA', 'ALQUILER', 'ANTICRETICO'];
@@ -468,166 +598,325 @@ function PropertiesContent() {
 
         {/* ─── FILTROS DE ESCRITORIO (hidden md:flex) ─── */}
         <div className="hidden md:flex items-center gap-2 z-20">
-          {/* Píldora: Tipo de Inmueble */}
+          
+          {/* Píldora 1: Tipo de Transacción (venta, alquiler, vendido) */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
+              onClick={() => setActiveDropdown(activeDropdown === 'transaction' ? null : 'transaction')}
               className={
-                activeType
+                filtros.tipoTransaccion !== 'en_venta'
                   ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
                   : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
               }
             >
-              <span>{activeType ? t(activeType.charAt(0).toUpperCase() + activeType.slice(1).toLowerCase()) : t("Tipo")}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'type' ? 'rotate-180' : ''} ${activeType ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
+              <span>
+                {filtros.tipoTransaccion === 'en_venta' ? t('En venta') :
+                 filtros.tipoTransaccion === 'en_alquiler' ? t('En alquiler') : t('Vendido')}
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'transaction' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             
-            {activeDropdown === 'type' && (
+            {activeDropdown === 'transaction' && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
-                  {typeOptions.map(tOption => (
-                    <button
-                      key={tOption || 'all'}
-                      onClick={() => {
-                        setActiveType(tOption);
-                        setActiveDropdown(null);
-                      }}
-                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
-                        activeType === tOption
-                          ? 'bg-[#e7f4ff] text-[#006AFF]'
-                          : 'hover:bg-neutral-50 text-neutral-800'
-                      }`}
-                    >
-                      {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos los tipos'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Píldora: Tipo de Oferta */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'offer' ? null : 'offer')}
-              className={
-                activeOffer
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
-              }
-            >
-              <span>{activeOffer ? t(activeOffer) : t("Esquema")}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'offer' ? 'rotate-180' : ''} ${activeOffer ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            {activeDropdown === 'offer' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
-                  {offerOptions.map(o => (
-                    <button
-                      key={o || 'all-offer'}
-                      onClick={() => {
-                        setActiveOffer(o);
-                        setActiveDropdown(null);
-                      }}
-                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
-                        activeOffer === o
-                          ? 'bg-[#e7f4ff] text-[#006AFF]'
-                          : 'hover:bg-neutral-50 text-neutral-800'
-                      }`}
-                    >
-                      {o ? o : 'Todos los esquemas'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Píldora: Presupuesto Máximo */}
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
-              className={
-                maxPrice !== 500000
-                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
-                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
-              }
-            >
-              <span>{maxPrice !== 500000 ? `${t("Hasta $")}${maxPrice.toLocaleString()}` : t("Precio")}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price' ? 'rotate-180' : ''} ${maxPrice !== 500000 ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            {activeDropdown === 'price' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Límite de Compra</span>
-                    <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-4 z-30 min-w-[220px] flex flex-col gap-3 shadow-lg animate-fadeIn">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tipo transacción</span>
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { value: 'en_venta', label: 'En venta' },
+                      { value: 'en_alquiler', label: 'En alquiler' },
+                      { value: 'vendido', label: 'Vendido' }
+                    ].map((op) => (
+                      <label key={op.value} className="flex items-center gap-2.5 cursor-pointer font-semibold text-xs text-neutral-800 select-none">
+                        <input
+                          type="radio"
+                          name="tipoTransaccion"
+                          value={op.value}
+                          checked={filtros.tipoTransaccion === op.value}
+                          onChange={() => setFiltros(f => ({ ...f, tipoTransaccion: op.value }))}
+                          className="w-4 h-4 text-[#006AFF] focus:ring-blue-600 border-gray-300 rounded-full"
+                        />
+                        <span>{op.label}</span>
+                      </label>
+                    ))}
                   </div>
-                  <input
-                    type="range"
-                    min={40000}
-                    max={600000}
-                    step={5000}
-                    value={maxPrice}
-                    onChange={e => setMaxPrice(Number(e.target.value))}
-                    className="w-full h-1 bg-neutral-200 accent-[#006AFF] cursor-pointer rounded-none appearance-none"
-                  />
                   <button
                     onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2.5 text-xs rounded-lg transition-all"
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all mt-1 cursor-pointer"
                   >
-                    Aplicar Presupuesto
+                    Aplicar
                   </button>
                 </div>
               </>
             )}
           </div>
 
-          {/* Píldora: Habitaciones */}
+          {/* Píldora 2: Rango de Precios & Calculadora Financiera */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'rooms' ? null : 'rooms')}
+              onClick={() => setActiveDropdown(activeDropdown === 'price_range' ? null : 'price_range')}
               className={
-                activeRooms
+                filtros.precioMin !== null || filtros.precioMax !== null
                   ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
                   : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
               }
             >
-              <span>{activeRooms ? `${activeRooms}+ ${t("Dorms")}` : t("Habitaciones")}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'rooms' ? 'rotate-180' : ''} ${activeRooms ? 'text-[#006AFF]' : 'text-neutral-500'}`}><polyline points="6 9 12 15 18 9"/></svg>
+              <span>
+                {filtros.precioMin || filtros.precioMax
+                  ? `${filtros.precioMin ? `$${(filtros.precioMin / 1000)}k` : '$0'} - ${filtros.precioMax ? `$${(filtros.precioMax / 1000)}k` : 'Any'}`
+                  : t("Precio")}
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price_range' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
 
-            {activeDropdown === 'rooms' && (
+            {activeDropdown === 'price_range' && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-2 z-30 min-w-[200px] flex flex-col gap-1 shadow-lg animate-fadeIn">
-                  {roomsOptions.map(rOption => (
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-[340px] flex flex-col gap-4 shadow-lg animate-fadeIn">
+                  {/* Tabs */}
+                  <div className="flex border border-gray-200 rounded-lg overflow-hidden text-xs font-bold text-center">
                     <button
-                      key={rOption || 'all-rooms'}
-                      onClick={() => {
-                        setActiveRooms(rOption);
-                        setActiveDropdown(null);
-                      }}
-                      className={`w-full text-left text-xs font-semibold px-3 py-2 rounded-md transition-all ${
-                        activeRooms === rOption
-                          ? 'bg-[#e7f4ff] text-[#006AFF]'
-                          : 'hover:bg-neutral-50 text-neutral-800'
-                      }`}
+                      onClick={() => setFiltros(f => ({ ...f, modoPrecio: 'list_price' }))}
+                      className={`flex-1 py-2 cursor-pointer transition-all ${filtros.modoPrecio === 'list_price' ? 'bg-[#e7f4ff] text-[#006AFF] border-r border-[#006AFF] font-bold' : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'}`}
                     >
-                      {rOption ? `${rOption}+ Dormitorios` : 'Cualquier cantidad'}
+                      Precio de lista
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setFiltros(f => ({ ...f, modoPrecio: 'monthly_payment' }))}
+                      className={`flex-1 py-2 cursor-pointer transition-all ${filtros.modoPrecio === 'monthly_payment' ? 'bg-[#e7f4ff] text-[#006AFF] border-l border-[#006AFF] font-bold' : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'}`}
+                    >
+                      Pago mensual
+                    </button>
+                  </div>
+
+                  {/* Inputs Min/Max */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Mínimo</span>
+                      <input
+                        type="number"
+                        placeholder="No Min"
+                        value={filtros.precioMin || ''}
+                        onChange={(e) => setFiltros(f => ({ ...f, precioMin: e.target.value ? Number(e.target.value) : null }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                      />
+                    </div>
+                    <span className="text-gray-400 mt-4">-</span>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Máximo</span>
+                      <input
+                        type="number"
+                        placeholder="No Max"
+                        value={filtros.precioMax || ''}
+                        onChange={(e) => setFiltros(f => ({ ...f, precioMax: e.target.value ? Number(e.target.value) : null }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Parámetros Financieros Avanzados */}
+                  {filtros.modoPrecio === 'monthly_payment' && (
+                    <div className="border-t border-gray-150 pt-3 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-1 flex-1">
+                          <span className="text-[9px] font-bold text-neutral-400 uppercase">Cuota inicial</span>
+                          <input
+                            type="number"
+                            placeholder="Down Payment ($)"
+                            value={filtros.downPayment || ''}
+                            onChange={(e) => setFiltros(f => ({ ...f, downPayment: e.target.value ? Number(e.target.value) : null }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 flex-1">
+                          <span className="text-[9px] font-bold text-neutral-400 uppercase">Credit Score</span>
+                          <select
+                            value={filtros.creditScore || 700}
+                            onChange={(e) => setFiltros(f => ({ ...f, creditScore: Number(e.target.value) }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] bg-white cursor-pointer"
+                          >
+                            <option value={600}>600 (Bueno)</option>
+                            <option value={650}>650 (Muy bueno)</option>
+                            <option value={700}>700 (Excelente)</option>
+                            <option value={750}>750 (Premium)</option>
+                            <option value={800}>800 (Elite)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setActiveDropdown(null)}
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
+                  >
+                    Aplicar precio
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Píldora 3: Dormitorios & Baños */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'rooms_baths' ? null : 'rooms_baths')}
+              className={
+                filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
+            >
+              <span>
+                {filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
+                  ? `${filtros.dormitorios !== 'cualquiera' ? `${filtros.dormitorios}d` : ''} ${filtros.banos !== 'cualquiera' ? `${filtros.banos}b` : ''}`
+                  : t("Habitaciones & Baños")}
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'rooms_baths' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {activeDropdown === 'rooms_baths' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
+                  
+                  {/* Dormitorios */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Dormitorios</span>
+                    <div className="flex border border-gray-300 rounded-lg overflow-hidden text-xs font-bold text-center">
+                      {['cualquiera', 1, 2, 3, 4].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setFiltros(f => ({ ...f, dormitorios: d }))}
+                          className={`flex-1 py-2 border-r last:border-r-0 border-gray-300 cursor-pointer ${filtros.dormitorios === d ? 'bg-[#006AFF] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                        >
+                          {d === 'cualquiera' ? 'Any' : `${d}+`}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-[11px] text-neutral-600 select-none">
+                      <input
+                        type="checkbox"
+                        checked={filtros.coincidenciaExactaDorms}
+                        onChange={(e) => setFiltros(f => ({ ...f, coincidenciaExactaDorms: e.target.checked }))}
+                        className="rounded text-[#006AFF] focus:ring-[#006AFF] w-3.5 h-3.5"
+                      />
+                      <span>Utilice la coincidencia exacta</span>
+                    </label>
+                  </div>
+
+                  {/* Baños */}
+                  <div className="space-y-2 border-t border-gray-100 pt-3">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Baños</span>
+                    <div className="flex border border-gray-300 rounded-lg overflow-hidden text-xs font-bold text-center">
+                      {['cualquiera', 1, 2, 3, 4].map((b) => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => setFiltros(f => ({ ...f, banos: b }))}
+                          className={`flex-1 py-2 border-r last:border-r-0 border-gray-300 cursor-pointer ${filtros.banos === b ? 'bg-[#006AFF] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                        >
+                          {b === 'cualquiera' ? 'Any' : `${b}+`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveDropdown(null)}
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all mt-1 cursor-pointer"
+                  >
+                    Aplicar habitaciones
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Píldora 4: Tipo de casa */}
+          <div className="relative">
+            <button
+              onClick={() => setActiveDropdown(activeDropdown === 'home_type' ? null : 'home_type')}
+              className={
+                filtros.tiposCasa.length > 0
+                  ? "flex items-center gap-2 px-4 py-2.5 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer"
+                  : "flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+              }
+            >
+              <span>
+                {filtros.tiposCasa.length > 0
+                  ? `${filtros.tiposCasa.length} ${t("Tipos")}`
+                  : t("Tipo de casa")}
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'home_type' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {activeDropdown === 'home_type' && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
+                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tipo de casa</span>
+                    <button
+                      onClick={() => setFiltros(f => ({ ...f, tiposCasa: [] }))}
+                      className="text-[11px] font-semibold text-[#006AFF] hover:underline cursor-pointer bg-transparent border-none p-0"
+                    >
+                      Deseleccionar todo
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                    {[
+                      { id: 'casa', label: 'Casas' },
+                      { id: 'departamento', label: 'Apartamentos / Depas' },
+                      { id: 'terreno', label: 'Lotes / Terrenos' },
+                      { id: 'oficina', label: 'Oficinas / Comercial' }
+                    ].map((item) => {
+                      const isChecked = filtros.tiposCasa.includes(item.id);
+                      return (
+                        <label key={item.id} className="flex items-center gap-2.5 cursor-pointer py-1 select-none font-semibold text-xs text-neutral-800">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setFiltros(f => {
+                                const exist = f.tiposCasa.includes(item.id);
+                                const updated = exist
+                                  ? f.tiposCasa.filter(id => id !== item.id)
+                                  : [...f.tiposCasa, item.id];
+                                return { ...f, tiposCasa: updated };
+                              });
+                            }}
+                            className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setActiveDropdown(null)}
+                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
+                  >
+                    Aplicar tipos
+                  </button>
                 </div>
               </>
             )}
           </div>
 
           <div className="w-px h-6 bg-gray-200" />
+
+          {/* Píldora 5: Más Filtros (Modal Slide-over Trigger) */}
+          <button
+            onClick={() => setShowMoreFilters(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer"
+          >
+            <span>{t("Más filtros")}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neutral-500"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
 
           {/* Píldora: Solo Verificadas Sello Oro */}
           <button
@@ -1029,6 +1318,406 @@ function PropertiesContent() {
             >
               {t("Restablecer Filtros")}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL DE "MÁS FILTROS" INTEGRADO ZILLOW (image_e3347b.png / etc.) ─── */}
+      {showMoreFilters && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-fadeIn">
+          {/* Backdrop Click */}
+          <div className="absolute inset-0" onClick={() => setShowMoreFilters(false)} />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col justify-between overflow-hidden animate-slideLeft transform transition-transform duration-300 border-l border-neutral-200">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-100 bg-white">
+              <div>
+                <span className="text-[10px] font-black text-[#006AFF] uppercase tracking-widest block">Búsqueda Inteligente</span>
+                <h3 className="text-xl font-bold text-neutral-900 tracking-tight">Más filtros avanzados</h3>
+              </div>
+              <button 
+                onClick={() => setShowMoreFilters(false)} 
+                className="text-xl font-light text-neutral-400 hover:text-neutral-600 transition-colors p-2 cursor-pointer border border-neutral-200 rounded-lg hover:border-neutral-400"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 font-sans">
+              
+              {/* Sección 1: Asociación de Propietarios (HOA) */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Asociación de propietarios (HOA)</span>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-neutral-505">Cuota de HOA máxima ($ / mensual)</span>
+                  <input
+                    type="number"
+                    placeholder="E.g., $150"
+                    value={filtros.hoaMax || ''}
+                    onChange={(e) => setFiltros(f => ({ ...f, hoaMax: e.target.value ? Number(e.target.value) : null }))}
+                    className="w-full max-w-[200px] px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Sección 2: Tipo de listado */}
+              <div className="space-y-3">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Tipo de listado</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'owner', label: 'Publicado por dueño' },
+                    { id: 'agent', label: 'Listado por agente' },
+                    { id: 'new_construction', label: 'Nueva construcción' },
+                    { id: 'foreclosures', label: 'Ejecuciones hipotecarias' },
+                    { id: 'auctions', label: 'Subastas' }
+                  ].map((item) => {
+                    const isChecked = filtros.tipoListado.includes(item.id);
+                    return (
+                      <label key={item.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 select-none font-semibold text-xs text-neutral-800">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setFiltros(f => {
+                              const exist = f.tipoListado.includes(item.id);
+                              const updated = exist
+                                ? f.tipoListado.filter(id => id !== item.id)
+                                : [...f.tipoListado, item.id];
+                              return { ...f, tipoListado: updated };
+                            });
+                          }}
+                          className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                        />
+                        <span>{item.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sección 3: Estado de listado */}
+              <div className="space-y-3 border-t border-neutral-100 pt-5">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Estado del listado</span>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { id: 'coming_soon', label: 'Próximamente' },
+                    { id: 'backup_offers', label: 'Aceptando ofertas de respaldo' },
+                    { id: 'pending', label: 'Pendiente y bajo contrato' }
+                  ].map((item) => {
+                    const isChecked = filtros.estadoListado.includes(item.id);
+                    return (
+                      <label key={item.id} className="flex items-center gap-2.5 cursor-pointer py-1 select-none font-semibold text-xs text-neutral-800">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setFiltros(f => {
+                              const exist = f.estadoListado.includes(item.id);
+                              const updated = exist
+                                ? f.estadoListado.filter(id => id !== item.id)
+                                : [...f.estadoListado, item.id];
+                              return { ...f, estadoListado: updated };
+                            });
+                          }}
+                          className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                        />
+                        <span>{item.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sección 4: Tours */}
+              <div className="space-y-3 border-t border-neutral-100 pt-5">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Tours / Visitas</span>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { id: 'open_house', label: 'Debe tener Casa Abierta (Open House)' },
+                    { id: 'tour_3d', label: 'Debe tener Tour 3D / Realidad Virtual' },
+                    { id: 'showcase', label: 'Debe tener Vitrina (Showcase)' }
+                  ].map((item) => {
+                    const isChecked = filtros.tours.includes(item.id);
+                    return (
+                      <label key={item.id} className="flex items-center gap-2.5 cursor-pointer py-1 select-none font-semibold text-xs text-neutral-800">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setFiltros(f => {
+                              const exist = f.tours.includes(item.id);
+                              const updated = exist
+                                ? f.tours.filter(id => id !== item.id)
+                                : [...f.tours, item.id];
+                              return { ...f, tours: updated };
+                            });
+                          }}
+                          className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                        />
+                        <span>{item.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sección 5: Dimensiones Estructurales */}
+              <div className="space-y-4 border-t border-neutral-100 pt-5">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Dimensiones del Inmueble</span>
+                
+                {/* Pies Cuadrados */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Pies Cuadrados Mínimos</span>
+                    <input
+                      type="number"
+                      placeholder="Sin mínimo"
+                      value={filtros.piesCuadradosMin || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, piesCuadradosMin: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-gray-400 mt-4">-</span>
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Pies Cuadrados Máximos</span>
+                    <input
+                      type="number"
+                      placeholder="Sin máximo"
+                      value={filtros.piesCuadradosMax || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, piesCuadradosMax: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Tamaño de Lote */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Lote Mínimo (m²)</span>
+                    <input
+                      type="number"
+                      placeholder="No Min"
+                      value={filtros.loteMin || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, loteMin: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-gray-400 mt-4">-</span>
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Lote Máximo (m²)</span>
+                    <input
+                      type="number"
+                      placeholder="No Max"
+                      value={filtros.loteMax || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, loteMax: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Año de Construcción */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Año Mínimo</span>
+                    <input
+                      type="number"
+                      placeholder="No Min"
+                      value={filtros.anoConstruccionMin || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, anoConstruccionMin: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-gray-400 mt-4">-</span>
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase">Año Máximo</span>
+                    <input
+                      type="number"
+                      placeholder="No Max"
+                      value={filtros.anoConstruccionMax || ''}
+                      onChange={(e) => setFiltros(f => ({ ...f, anoConstruccionMax: e.target.value ? Number(e.target.value) : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 6: Amenidades y Vistas */}
+              <div className="space-y-4 border-t border-neutral-100 pt-5">
+                <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest block">Amenidades y Vistas</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'tieneSotano', label: 'Tiene sótano' },
+                    { key: 'unSoloPiso', label: 'Solo una planta' },
+                    { key: 'aireAcondicionado', label: 'Requiere aire acondicionado' },
+                    { key: 'piscina', label: 'Requiere piscina' },
+                    { key: 'frenteAlAgua', label: 'Frente al agua' }
+                  ].map((item) => (
+                    <label key={item.key} className="flex items-center gap-2.5 cursor-pointer py-1.5 select-none font-semibold text-xs text-neutral-800">
+                      <input
+                        type="checkbox"
+                        checked={(filtros as any)[item.key]}
+                        onChange={(e) => setFiltros(f => ({ ...f, [item.key]: e.target.checked }))}
+                        className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Vistas Específicas */}
+                <div className="space-y-2 border-t border-gray-50 pt-3">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase">Vistas Deseadas</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Ciudad', 'Montaña', 'Parque', 'Agua'].map((v) => {
+                      const isChecked = filtros.vista.includes(v);
+                      return (
+                        <label key={v} className="flex items-center gap-2.5 cursor-pointer py-1 select-none font-semibold text-xs text-neutral-800">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setFiltros(f => {
+                                const exist = f.vista.includes(v);
+                                const updated = exist
+                                  ? f.vista.filter(item => item !== v)
+                                  : [...f.vista, v];
+                                return { ...f, vista: updated };
+                              });
+                            }}
+                            className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
+                          />
+                          <span>{v}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 7: Tiempo de viaje (Travel Time) colapsable al final */}
+              <div className="border-t border-neutral-100 pt-5">
+                <details className="group">
+                  <summary className="flex items-center justify-between cursor-pointer py-1 select-none list-none">
+                    <span className="text-[11px] font-extrabold text-[#006AFF] uppercase tracking-widest">Filtros de tiempo de viaje</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform duration-200 text-neutral-500"><polyline points="6 9 12 15 18 9"/></svg>
+                  </summary>
+                  
+                  <div className="pt-4 space-y-4 animate-fadeIn">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-semibold text-neutral-505">Dirección de Destino</span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Introduce dirección, zona, ZIP..."
+                          value={filtros.tiempoViaje.direccion}
+                          onChange={(e) => setFiltros(f => ({ ...f, tiempoViaje: { ...f.tiempoViaje, direccion: e.target.value } }))}
+                          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
+                        />
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-450">📍</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <span className="text-[9px] font-bold text-neutral-400 uppercase">Modo de Viaje</span>
+                        <select
+                          value={filtros.tiempoViaje.modo}
+                          onChange={(e) => setFiltros(f => ({ ...f, tiempoViaje: { ...f.tiempoViaje, modo: e.target.value } }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] bg-white cursor-pointer"
+                        >
+                          <option value="Drive">Conducir 🚗</option>
+                          <option value="Walk">Caminar 🚶</option>
+                          <option value="Transit">Transporte público 🚌</option>
+                        </select>
+                      </div>
+
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <span className="text-[9px] font-bold text-neutral-400 uppercase">Hora del Día</span>
+                        <select
+                          value={filtros.tiempoViaje.hora}
+                          onChange={(e) => setFiltros(f => ({ ...f, tiempoViaje: { ...f.tiempoViaje, hora: e.target.value } }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] bg-white cursor-pointer"
+                        >
+                          <option value="Now">Ahora</option>
+                          <option value="Morning">Mañana (Hora pico)</option>
+                          <option value="Afternoon">Tarde (Retorno)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase block">Tiempo Máximo de Viaje</span>
+                      <div className="flex border border-gray-300 rounded-lg overflow-hidden text-[10px] font-bold text-center">
+                        {['Any', 60, 45, 30, 15].map((min) => (
+                          <button
+                            key={min}
+                            type="button"
+                            onClick={() => setFiltros(f => ({ ...f, tiempoViaje: { ...f.tiempoViaje, maxMinutos: String(min) } }))}
+                            className={`flex-1 py-2 border-r last:border-r-0 border-gray-300 cursor-pointer ${filtros.tiempoViaje.maxMinutos === String(min) ? 'bg-[#006AFF] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                          >
+                            {min === 'Any' ? 'Cualquiera' : `${min} min`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="px-6 py-5 border-t border-neutral-100 bg-neutral-50 flex items-center justify-between gap-4 font-sans">
+              <button
+                onClick={() => {
+                  setFiltros({
+                    tipoTransaccion: 'en_venta',
+                    precioMin: null,
+                    precioMax: null,
+                    modoPrecio: 'list_price',
+                    downPayment: null,
+                    creditScore: 700,
+                    dormitorios: 'cualquiera',
+                    coincidenciaExactaDorms: false,
+                    banos: 'cualquiera',
+                    tiposCasa: [],
+                    hoaMax: null,
+                    tipoListado: [],
+                    estadoListado: [],
+                    tours: [],
+                    parqueosMin: 'Any',
+                    piesCuadradosMin: null,
+                    piesCuadradosMax: null,
+                    loteMin: null,
+                    loteMax: null,
+                    anoConstruccionMin: null,
+                    anoConstruccionMax: null,
+                    tieneSotano: false,
+                    unSoloPiso: false,
+                    comunidad55Plus: 'include',
+                    aireAcondicionado: false,
+                    piscina: false,
+                    frenteAlAgua: false,
+                    vista: [],
+                    tiempoViaje: { direccion: '', modo: 'Drive', hora: 'Now', maxMinutos: 'Any' }
+                  });
+                  setShowMoreFilters(false);
+                }}
+                className="text-xs font-bold text-[#006AFF] hover:underline cursor-pointer bg-transparent border-none p-0"
+              >
+                Restablecer todos los filtros
+              </button>
+              <button
+                onClick={() => setShowMoreFilters(false)}
+                className="bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold text-xs px-6 py-3 rounded-lg shadow-md transition-all cursor-pointer"
+              >
+                Aplicar filtros
+              </button>
+            </div>
+
           </div>
         </div>
       )}

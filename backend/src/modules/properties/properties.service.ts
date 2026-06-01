@@ -65,6 +65,67 @@ export class PropertiesService {
       if (query.maxPrice !== undefined) where.price.lte = parseFloat(query.maxPrice);
     }
 
+    // ── Mapeos Dinámicos de Filtros Zillow Avanzados ─────────────────────────
+    if (query.tipoTransaccion) {
+      if (query.tipoTransaccion === 'en_venta') {
+        where.offerType = 'VENTA';
+        where.status = { not: 'VENDIDO' };
+      } else if (query.tipoTransaccion === 'en_alquiler') {
+        where.offerType = { in: ['ALQUILER', 'ANTICRETICO'] };
+        where.status = { not: 'VENDIDO' };
+      } else if (query.tipoTransaccion === 'vendido') {
+        where.status = 'VENDIDO';
+      }
+    }
+
+    if (query.precioMin !== undefined || query.precioMax !== undefined) {
+      where.price = where.price || {};
+      if (query.precioMin !== undefined && query.precioMin !== 'null' && query.precioMin !== '') {
+        where.price.gte = parseFloat(query.precioMin);
+      }
+      if (query.precioMax !== undefined && query.precioMax !== 'null' && query.precioMax !== '') {
+        where.price.lte = parseFloat(query.precioMax);
+      }
+    }
+
+    if (query.dormitorios && query.dormitorios !== 'cualquiera') {
+      const dormsCount = parseInt(query.dormitorios, 10);
+      if (!isNaN(dormsCount)) {
+        if (query.coincidenciaExactaDorms === 'true') {
+          where.rooms = dormsCount;
+        } else {
+          where.rooms = { gte: dormsCount };
+        }
+      }
+    }
+
+    if (query.banos && query.banos !== 'cualquiera') {
+      const bathsCount = parseInt(query.banos, 10);
+      if (!isNaN(bathsCount)) {
+        where.bathrooms = { gte: bathsCount };
+      }
+    }
+
+    if (query.tiposCasa) {
+      const typesList = query.tiposCasa.split(',')
+        .map(t => t.trim().toLowerCase())
+        .filter(Boolean);
+      if (typesList.length > 0) {
+        where.type = { in: typesList };
+      }
+    }
+
+    if (query.piesCuadradosMin !== undefined || query.piesCuadradosMax !== undefined) {
+      where.area = where.area || {};
+      if (query.piesCuadradosMin !== undefined && query.piesCuadradosMin !== 'null' && query.piesCuadradosMin !== '') {
+        // Convertir sqft a m² (1 sqft = 0.092903 m²)
+        where.area.gte = parseFloat(query.piesCuadradosMin) * 0.092903;
+      }
+      if (query.piesCuadradosMax !== undefined && query.piesCuadradosMax !== 'null' && query.piesCuadradosMax !== '') {
+        where.area.lte = parseFloat(query.piesCuadradosMax) * 0.092903;
+      }
+    }
+
     if (query.text) {
       where.OR = [
         { title:    { contains: query.text, mode: 'insensitive' } },

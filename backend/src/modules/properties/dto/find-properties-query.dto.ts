@@ -76,6 +76,84 @@ export class FindPropertiesQueryDto {
   @IsUUID()
   agentId?: string;
 
+  // ── Filtros Zillow Avanzados ──────────────────────────────────────────────
+
+  @IsOptional()
+  @IsString()
+  tipoTransaccion?: string;
+
+  @IsOptional()
+  @IsString()
+  precioMin?: string;
+
+  @IsOptional()
+  @IsString()
+  precioMax?: string;
+
+  @IsOptional()
+  @IsString()
+  modoPrecio?: string;
+
+  @IsOptional()
+  @IsString()
+  dormitorios?: string;
+
+  @IsOptional()
+  @IsString()
+  coincidenciaExactaDorms?: string;
+
+  @IsOptional()
+  @IsString()
+  banos?: string;
+
+  @IsOptional()
+  @IsString()
+  tiposCasa?: string;
+
+  @IsOptional()
+  @IsString()
+  piesCuadradosMin?: string;
+
+  @IsOptional()
+  @IsString()
+  piesCuadradosMax?: string;
+
+  @IsOptional()
+  @IsString()
+  loteMin?: string;
+
+  @IsOptional()
+  @IsString()
+  loteMax?: string;
+
+  @IsOptional()
+  @IsString()
+  anoConstruccionMin?: string;
+
+  @IsOptional()
+  @IsString()
+  anoConstruccionMax?: string;
+
+  @IsOptional()
+  @IsString()
+  tieneSotano?: string;
+
+  @IsOptional()
+  @IsString()
+  unSoloPiso?: string;
+
+  @IsOptional()
+  @IsString()
+  aireAcondicionado?: string;
+
+  @IsOptional()
+  @IsString()
+  piscina?: string;
+
+  @IsOptional()
+  @IsString()
+  frenteAlAgua?: string;
+
   // ── Ordenamiento ──────────────────────────────────────────────────────────
 
   /**
