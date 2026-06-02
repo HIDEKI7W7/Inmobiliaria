@@ -60,22 +60,29 @@ export class HistorialVistasService {
   async recordView(userId: string, propertyId: string) {
     await this.ensurePropertyExists(propertyId);
 
-    return await this.prisma.historialVista.upsert({
+    const existing = await this.prisma.historialVista.findFirst({
       where: {
-        userId_propertyId: {
-          userId,
-          propertyId,
-        },
-      },
-      update: {
-        vistoEn: new Date(),
-      },
-      create: {
         userId,
         propertyId,
-        vistoEn: new Date(),
       },
     });
+
+    if (existing) {
+      return this.prisma.historialVista.update({
+        where: { id: existing.id },
+        data: {
+          vistoEn: new Date(),
+        },
+      });
+    } else {
+      return this.prisma.historialVista.create({
+        data: {
+          userId,
+          propertyId,
+          vistoEn: new Date(),
+        },
+      });
+    }
   }
 
   async getHistory(userId: string) {
