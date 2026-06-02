@@ -22,7 +22,7 @@ export class FavoritosController {
   @Post('toggle/:propiedadId')
   @UseGuards(AuthGuard)
   async toggleFavorite(
-    @Param('propiedadId', ParseUUIDPipe) propertyId: string,
+    @Param('propiedadId') propertyId: string,
     @Request() req: any,
   ) {
     const userId = req.user.id;
@@ -49,7 +49,7 @@ export class FavoritosController {
   @Get('check/:propiedadId')
   @UseGuards(AuthGuard)
   async checkFavorite(
-    @Param('propiedadId', ParseUUIDPipe) propertyId: string,
+    @Param('propiedadId') propertyId: string,
     @Request() req: any,
   ) {
     const userId = req.user.id;

@@ -11,7 +11,7 @@ export class MarketAnalyticsController {
    * Retorna los días en el mercado y nivel de urgencia de un inmueble.
    */
   @Get('dom/:propertyId')
-  async getDaysOnMarket(@Param('propertyId', ParseUUIDPipe) propertyId: string) {
+  async getDaysOnMarket(@Param('propertyId') propertyId: string) {
     return this.marketAnalyticsService.getDaysOnMarket(propertyId);
   }
 

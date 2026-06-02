@@ -20,7 +20,7 @@ export class HistorialVistasController {
   @Post(':propiedadId')
   @UseGuards(AuthGuard)
   async recordView(
-    @Param('propiedadId', ParseUUIDPipe) propertyId: string,
+    @Param('propiedadId') propertyId: string,
     @Request() req: any,
   ) {
     const userId = req.user.id;
