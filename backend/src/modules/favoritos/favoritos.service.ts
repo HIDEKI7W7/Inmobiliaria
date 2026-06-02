@@ -33,7 +33,7 @@ export class FavoritosService {
           },
         },
       });
-      return { favorited: false, message: 'Propiedad removida de tus favoritos' };
+      return { favorited: false, isFavorited: false, message: 'Propiedad removida de tus favoritos' };
     } else {
       await this.prisma.favorito.create({
         data: {
@@ -41,7 +41,7 @@ export class FavoritosService {
           propertyId,
         },
       });
-      return { favorited: true, message: 'Propiedad guardada en tus favoritos' };
+      return { favorited: true, isFavorited: true, message: 'Propiedad guardada en tus favoritos' };
     }
   }
 
