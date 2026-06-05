@@ -79,6 +79,34 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     setIsFav(isFavorite);
   }, [isFavorite]);
 
+  useEffect(() => {
+    const checkFavStatus = async () => {
+      const token = getToken();
+      const user = getCurrentUser();
+      if (token && user && propertyId) {
+        try {
+          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+          const response = await fetch(`${apiBaseUrl}/favoritos/check/${propertyId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data && typeof data.isFavorited !== 'undefined') {
+              setIsFav(data.isFavorited);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking favorite status on mount:', error);
+        }
+      }
+    };
+    checkFavStatus();
+  }, [propertyId]);
+
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();

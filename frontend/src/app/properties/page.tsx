@@ -180,6 +180,7 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
         <button
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onFavoriteToggle(prop.id);
           }}
           className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white p-1.5 rounded-full shadow-md transition-all active:scale-95 flex items-center justify-center cursor-pointer border border-neutral-100"

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter, Outfit, Plus_Jakarta_Sans } from 'next/font/google';
 import { Navbar } from '../components/ui/Navbar';
 import { Footer } from '../components/ui/Footer';
+import HttpInterceptor from '../components/HttpInterceptor';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,6 +37,7 @@ export default function RootLayout({
     return (
       <html lang="es" className={`${inter.variable} ${outfit.variable} ${plusJakartaSans.variable}`}>
         <body className="font-sans antialiased min-h-screen flex flex-col bg-slate-50">
+          <HttpInterceptor />
           <Navbar />
           <main className="flex-grow flex flex-col">
             {children}
