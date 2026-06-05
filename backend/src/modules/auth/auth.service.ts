@@ -98,6 +98,31 @@ export class AuthService {
           propertyInterest: mockUser.propertyInterest || null,
           whatsappPhone: mockUser.whatsappPhone || null,
         };
+
+        // Garantizar existencia del usuario demo en la base de datos real si está conectada
+        if (this.prisma.isConnected) {
+          try {
+            const dbUser = await this.prisma.user.findUnique({
+              where: { email: normalizedEmail },
+            });
+            if (!dbUser) {
+              await this.prisma.user.create({
+                data: {
+                  id: mockUser.id,
+                  email: mockUser.email,
+                  password: mockUser.passwordHash,
+                  name: mockUser.name,
+                  role: mockUser.role,
+                  onboardingCompleted: mockUser.onboardingCompleted,
+                  authProvider: 'LOCAL',
+                },
+              });
+              this.logger.log(`Usuario demo ${normalizedEmail} creado en base de datos real.`);
+            }
+          } catch (e) {
+            this.logger.warn(`No se pudo asegurar la existencia del usuario demo en DB: ${e.message}`);
+          }
+        }
       }
     } else {
       try {

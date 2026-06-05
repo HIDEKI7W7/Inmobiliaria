@@ -70,6 +70,9 @@ export class MarketAnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async ensurePropertyExists(propertyId: string) {
+    if (!this.prisma.isConnected) {
+      throw new Error('Base de datos desconectada (fallback rápido)');
+    }
     const existing = await this.prisma.property.findFirst({
       where: { id: propertyId },
     });
@@ -123,10 +126,10 @@ export class MarketAnalyticsService {
 
   // ─── Cálculo de Days on Market ───────────────────────────────────────────
   async getDaysOnMarket(propertyId: string): Promise<DaysOnMarketResult> {
-    await this.ensurePropertyExists(propertyId);
     let approvedAt: Date | null = null;
 
     try {
+      await this.ensurePropertyExists(propertyId);
       const property = await this.prisma.property.findUnique({
         where: { id: propertyId },
         select: { approvedAt: true, createdAt: true },
@@ -135,7 +138,7 @@ export class MarketAnalyticsService {
       if (!property) throw new NotFoundException(`Propiedad ${propertyId} no encontrada`);
       approvedAt = property.approvedAt ?? property.createdAt;
     } catch (error) {
-      this.logger.warn(`DB offline — usando fallback temporal para DOM de ${propertyId}`);
+      this.logger.warn(`DB offline o error en ensurePropertyExists — usando fallback temporal para DOM de ${propertyId}`);
       // Fallback: simula una fecha de aprobación reciente para desarrollo
       approvedAt = new Date(Date.now() - Math.floor(Math.random() * 45) * 24 * 60 * 60 * 1000);
     }
@@ -162,6 +165,9 @@ export class MarketAnalyticsService {
   async getPriceTrendsByZona(zona: string): Promise<ZonePriceTrend> {
     // Intentar desde DB, fallback a mock
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
@@ -239,6 +245,9 @@ export class MarketAnalyticsService {
   // ─── Resumen de mercado por zona ──────────────────────────────────────────
   async getMarketSummary(zona: string): Promise<MarketSummary> {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -292,6 +301,9 @@ export class MarketAnalyticsService {
   // ─── Snapshot de precio (para registrar reducción de precio) ──────────────
   async recordPriceSnapshot(propertyId: string, price: number): Promise<void> {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       await this.prisma.priceHistory.create({
         data: { propertyId, price },
       });
