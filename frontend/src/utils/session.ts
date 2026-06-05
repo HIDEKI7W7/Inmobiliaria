@@ -93,15 +93,25 @@ export function getCurrentUser(): JWTPayload | null {
   const payload = decodeToken(token);
   if (!payload) return null;
 
-  if (payload.exp) {
+  // Garantizar que campos obligatorios tengan valores seguros por defecto para evitar crashes
+  const safePayload: JWTPayload = {
+    userId: payload.userId || '',
+    email: payload.email || '',
+    role: payload.role || 'PROPIETARIO',
+    objective: payload.objective || null,
+    onboardingCompleted: payload.onboardingCompleted ?? false,
+    exp: payload.exp,
+  };
+
+  if (safePayload.exp) {
     const currentTime = Math.floor(Date.now() / 1000);
-    if (payload.exp < currentTime) {
+    if (safePayload.exp < currentTime) {
       removeToken();
       return null;
     }
   }
 
-  return payload;
+  return safePayload;
 }
 
 export function isAuthenticated(): boolean {

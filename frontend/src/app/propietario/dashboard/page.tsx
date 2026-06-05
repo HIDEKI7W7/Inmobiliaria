@@ -68,8 +68,8 @@ export default function PropietarioDashboard() {
     }
   };
 
-  const pendingDocs = properties.filter((p) => !p.verified).length;
-  const verified = properties.filter((p) => p.verified).length;
+  const pendingDocs = (properties || []).filter((p) => p && !p.verified).length || 0;
+  const verified = (properties || []).filter((p) => p && p.verified).length || 0;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col font-sans antialiased">
@@ -124,7 +124,7 @@ export default function PropietarioDashboard() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Inmuebles</p>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-3xl font-black text-[#04045E]">{properties.length}</span>
+              <span className="text-3xl font-black text-[#04045E]">{(properties || []).length || 0}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border font-bold uppercase">Activos</span>
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function PropietarioDashboard() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leads Interesados</p>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-3xl font-black text-indigo-600">{properties.length * 3}</span>
+              <span className="text-3xl font-black text-indigo-600">{((properties || []).length || 0) * 3}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold uppercase">Potenciales</span>
             </div>
           </div>

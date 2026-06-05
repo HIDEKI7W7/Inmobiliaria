@@ -131,7 +131,7 @@ export default function ClienteDashboard() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mis Favoritos</p>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-3xl font-black text-[#04045E]">{favorites.length}</span>
+              <span className="text-3xl font-black text-[#04045E]">{(favorites || []).length || 0}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border font-bold uppercase">Guardados</span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function ClienteDashboard() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ofertas Activas</p>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-3xl font-black text-emerald-600">
-                {requests.filter(r => r.offerAmount).length}
+                {(requests || []).filter(r => r && r.offerAmount).length || 0}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold uppercase">Vigentes</span>
             </div>
@@ -149,7 +149,7 @@ export default function ClienteDashboard() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Consultas Enviadas</p>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-3xl font-black text-[#04045E]">{requests.length}</span>
+              <span className="text-3xl font-black text-[#04045E]">{(requests || []).length || 0}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold uppercase">Procesando</span>
             </div>
           </div>
@@ -173,12 +173,12 @@ export default function ClienteDashboard() {
                 Mis Solicitudes de Interés y Ofertas
               </h2>
               <span className="text-[10px] text-slate-400 font-mono">
-                {requests.length} en curso
+                {(requests || []).length || 0} en curso
               </span>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-              {requests.length === 0 ? (
+              {(requests || []).length === 0 ? (
                 <div className="p-12 text-center space-y-3">
                   <span className="text-3xl">✉️</span>
                   <p className="text-xs font-bold text-slate-400 uppercase">Sin solicitudes activas</p>
@@ -197,7 +197,7 @@ export default function ClienteDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
-                      {requests.map((req) => (
+                      {(requests || []).map((req) => (
                         <tr key={req.id} className="hover:bg-slate-50/30 transition-all">
                           <td className="p-4 font-bold text-[#04045E]">{req.propertyTitle}</td>
                           <td className="p-4">
@@ -250,14 +250,14 @@ export default function ClienteDashboard() {
               <div className="h-48 bg-white border border-slate-200 rounded-2xl flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04045E]" />
               </div>
-            ) : favorites.length === 0 ? (
+            ) : (favorites || []).length === 0 ? (
               <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl space-y-2">
                 <span className="text-2xl">⭐️</span>
                 <p className="text-[11px] text-slate-400">Guarda propiedades favoritas para verlas rápidamente aquí.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {favorites.map((prop) => (
+                {(favorites || []).map((prop) => (
                   <div
                     key={prop.id}
                     className="bg-white border border-slate-200 rounded-2xl p-4 flex gap-4 hover:shadow-md transition-all"

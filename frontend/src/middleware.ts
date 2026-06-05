@@ -9,7 +9,7 @@ interface SessionPayload {
 
 const JWT_SECRET =
   process.env.JWT_SECRET ||
-  'ea82a472bb58ffcdcf9e54a558b9f3d61b369c0d54020c68abef68dae178120d';
+  'desarrollo_local_secreto_para_jwt_propio_2026';
 
 function base64UrlToBytes(value: string): Uint8Array {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');

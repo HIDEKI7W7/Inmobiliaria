@@ -119,12 +119,12 @@ export default function PropietarioDashboard() {
           <div className="flex gap-4 p-2 bg-slate-50 border border-slate-200 rounded-xl">
             <div className="text-center px-4 border-r border-slate-200">
               <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Inmuebles</span>
-              <span className="text-sm font-black text-[#04045E]">{properties.length}</span>
+              <span className="text-sm font-black text-[#04045E]">{(properties || []).length || 0}</span>
             </div>
             <div className="text-center px-4">
               <span className="block text-[8px] font-black text-emerald-600 uppercase tracking-widest">Sello Oro</span>
               <span className="text-sm font-black text-emerald-600">
-                {properties.filter((p) => p.verified).length}
+                {(properties || []).filter((p) => p && p.verified).length || 0}
               </span>
             </div>
           </div>

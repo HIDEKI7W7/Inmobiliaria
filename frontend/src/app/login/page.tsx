@@ -136,14 +136,15 @@ export default function LoginPage() {
         const authResponse: AuthResponse = loginData;
         if (authResponse.backendToken) {
           saveToken(authResponse.backendToken);
+          setIsLoading(false); // Liberar el estado de carga inmediatamente
           const payload = decodeToken(authResponse.backendToken);
           
           const searchParams = new URLSearchParams(window.location.search);
           const customRedirect = searchParams.get('redirect');
           
           let redirectPath = payload
-            ? getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted)
-            : getRedirectPathByRole(authResponse.user.role);
+            ? getRedirectPathByRole(payload.role || 'PROPIETARIO', payload.objective || null, payload.onboardingCompleted ?? false)
+            : getRedirectPathByRole(authResponse?.user?.role || 'PROPIETARIO');
 
           if (payload && !payload.onboardingCompleted && payload.role?.toUpperCase() !== 'ADMIN' && payload.role?.toUpperCase() !== 'AGENTE') {
             redirectPath = '/onboarding';
@@ -188,14 +189,15 @@ export default function LoginPage() {
         const authResponse: AuthResponse = loginData;
         if (authResponse.backendToken) {
           saveToken(authResponse.backendToken);
+          setIsLoading(false); // Liberar el estado de carga inmediatamente
           const payload = decodeToken(authResponse.backendToken);
           
           const searchParams = new URLSearchParams(window.location.search);
           const customRedirect = searchParams.get('redirect');
           
           let redirectPath = payload
-            ? getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted)
-            : getRedirectPathByRole(authResponse.user.role);
+            ? getRedirectPathByRole(payload.role || 'PROPIETARIO', payload.objective || null, payload.onboardingCompleted ?? false)
+            : getRedirectPathByRole(authResponse?.user?.role || 'PROPIETARIO');
 
           if (payload && !payload.onboardingCompleted && payload.role?.toUpperCase() !== 'ADMIN' && payload.role?.toUpperCase() !== 'AGENTE') {
             redirectPath = '/onboarding';
