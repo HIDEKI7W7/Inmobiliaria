@@ -86,6 +86,9 @@ export class FavoritosService {
 
   async toggleFavorite(userId: string, propertyId: string) {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       await this.ensurePropertyExists(propertyId);
 
       // Buscar si ya está guardada en favoritos por este usuario
@@ -137,6 +140,9 @@ export class FavoritosService {
 
   async getFavorites(userId: string) {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       const list = await this.prisma.favorito.findMany({
         where: { userId },
         include: {
@@ -159,6 +165,9 @@ export class FavoritosService {
 
   async checkFavorite(userId: string, propertyId: string) {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       await this.ensurePropertyExists(propertyId);
       
       const existing = await this.prisma.favorito.findUnique({

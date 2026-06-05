@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
+  public isConnected = false;
 
   constructor() {
     super({
@@ -22,8 +23,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     try {
       this.logger.log('Iniciando conexión con la base de datos PostgreSQL...');
       await this.$connect();
+      this.isConnected = true;
       this.logger.log('Conexión con PostgreSQL establecida exitosamente.');
     } catch (error: unknown) {
+      this.isConnected = false;
       // IMPLEMENTACIÓN DE TYPE GUARDING ESTRICTO
       if (error instanceof Error) {
         this.logger.error(`Error al conectar a la base de datos: ${error.message}`);

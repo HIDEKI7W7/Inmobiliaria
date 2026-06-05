@@ -86,6 +86,9 @@ export class HistorialVistasService {
 
   async recordView(userId: string, propertyId: string) {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       await this.ensurePropertyExists(propertyId);
 
       const existing = await this.prisma.historialVista.findFirst({
@@ -132,6 +135,9 @@ export class HistorialVistasService {
 
   async getHistory(userId: string) {
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       const list = await this.prisma.historialVista.findMany({
         where: { userId },
         include: {

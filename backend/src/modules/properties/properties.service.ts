@@ -303,6 +303,9 @@ export class PropertiesService {
 
     let properties;
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       properties = await this.prisma.property.findMany(queryOptions);
     } catch (err) {
       this.logger.warn(`Error de conexión con la base de datos en findAll: ${err.message}. Usando catálogo mock en memoria.`);
@@ -400,6 +403,9 @@ export class PropertiesService {
   async findOne(id: string) {
     let property;
     try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
       property = await this.prisma.property.findFirst({
         where: { id, deletedAt: null }, // TSK-4.4: ignora soft-deleted
         include: {
