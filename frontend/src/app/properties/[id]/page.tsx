@@ -153,18 +153,27 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
 
   const router = useRouter();
   const [isFavorited, setIsFavorited] = useState<boolean>(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [authLoaded, setAuthLoaded] = useState<boolean>(false);
+
+  // Efecto de ciclo de vida para cargar de forma reactiva la sesión
+  useEffect(() => {
+    const activeToken = getToken();
+    setToken(activeToken);
+    setAuthLoaded(true);
+  }, []);
 
   useEffect(() => {
+    if (!authLoaded) return; // Esperar a que la autenticación se haya cargado del localStorage
+
     const recordPropertyViewAndCheckFavorite = async () => {
-      const token = getToken();
-      const user = getCurrentUser();
-      const isAuthenticated = !!(token && user);
+      const isAuthenticated = !!token;
 
       if (currentProperty.id) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
         if (isAuthenticated) {
-          // A. REGISTRO INMEDIATO EN HISTORIAL DE VISTAS (Al cargar la página)
+          // A. REGISTRO INMEDIATO EN HISTORIAL DE VISTAS (Al cargar la página y verificar sesión)
           fetch(`${apiBaseUrl}/historial-vistas/${currentProperty.id}`, {
             method: 'POST',
             headers: {
@@ -204,7 +213,7 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
     };
 
     recordPropertyViewAndCheckFavorite();
-  }, [currentProperty.id]);
+  }, [currentProperty.id, token, authLoaded]);
 
   const handleFavoriteToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
