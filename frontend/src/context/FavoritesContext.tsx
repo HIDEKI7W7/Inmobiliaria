@@ -15,12 +15,15 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favorites, setFavorites] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(
+    typeof window !== 'undefined' && !!localStorage.getItem('propio_token')
+  );
 
   const refreshFavorites = useCallback(async () => {
     const token = getToken();
     if (!token) {
       setFavorites([]);
+      setLoading(false);
       return;
     }
 
@@ -49,6 +52,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       refreshFavorites();
     } else {
       setFavorites([]);
+      setLoading(false);
     }
   }, [refreshFavorites]);
 

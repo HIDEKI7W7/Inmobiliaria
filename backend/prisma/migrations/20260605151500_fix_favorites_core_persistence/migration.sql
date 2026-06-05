@@ -1,0 +1,2 @@
+-- This migration is created to align migration files with the audited fullstack schema.
+-- The unique @@unique([userId, propertyId]) constraint already exists on model Favorito.
