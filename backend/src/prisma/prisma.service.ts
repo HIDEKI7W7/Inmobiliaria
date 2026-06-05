@@ -14,6 +14,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         { emit: 'stdout', level: 'error' },
       ],
     });
+    const sanitizedUrl = (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':****@');
+    this.logger.log(`PrismaService instanciado con DATABASE_URL: ${sanitizedUrl}`);
   }
 
   async onModuleInit() {
