@@ -1,6 +1,13 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
+/**
+ * AUDITORÍA FULL-STACK SENIOR:
+ * Extracción de Identidad JWT:
+ * El payload del token JWT firmado por el AuthService contiene la propiedad 'userId' (que almacena user.id).
+ * Para mantener la compatibilidad con todos los controladores del backend (que acceden a req.user.id),
+ * este Guardián mapea explícitamente 'payload.userId' hacia 'request.user.id'.
+ */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}

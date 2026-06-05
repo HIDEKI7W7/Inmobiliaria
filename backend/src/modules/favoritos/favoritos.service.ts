@@ -3,6 +3,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+/**
+ * AUDITORÍA FULL-STACK SENIOR:
+ * 1. Operaciones Asíncronas: Se garantiza el uso de 'await' explícito en todas las invocaciones a Prisma
+ *    (findUnique, create, delete, findMany) para evitar retornos tempranos e inconsistencias de base de datos.
+ * 2. Extracción de Identidad: El identificador 'userId' extraído del token JWT por el AuthGuard se mapea
+ *    correctamente al parámetro 'userId' del servicio, asegurando la consistencia relacional.
+ */
 @Injectable()
 export class FavoritosService {
   private readonly logger = new Logger(FavoritosService.name);
