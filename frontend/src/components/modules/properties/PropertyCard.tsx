@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken, getCurrentUser } from '@/utils/session';
+import { useFavorites } from '@/context/FavoritesContext';
 
 export interface Property {
   id: string;
@@ -73,39 +74,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   onFavoriteToggle,
 }) => {
   const router = useRouter();
-  const [isFav, setIsFav] = useState(isFavorite);
+  const { isFavorited, toggleFavorite } = useFavorites();
 
-  useEffect(() => {
-    setIsFav(isFavorite);
-  }, [isFavorite]);
-
-  useEffect(() => {
-    const checkFavStatus = async () => {
-      const token = getToken();
-      const user = getCurrentUser();
-      if (token && user && propertyId) {
-        try {
-          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-          const response = await fetch(`${apiBaseUrl}/favoritos/check/${propertyId}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data && typeof data.isFavorited !== 'undefined') {
-              setIsFav(data.isFavorited);
-            }
-          }
-        } catch (error) {
-          console.error('Error checking favorite status on mount:', error);
-        }
-      }
-    };
-    checkFavStatus();
-  }, [propertyId]);
+  const isFav = propertyId ? isFavorited(propertyId) : isFavorite;
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -122,25 +93,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
     if (!propertyId) return;
 
-    try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      const response = await fetch(`${apiBaseUrl}/favoritos/toggle/${propertyId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsFav(data.favorited);
-        if (onFavoriteToggle) {
-          onFavoriteToggle(propertyId, data.favorited);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
+    const newFavState = await toggleFavorite(propertyId);
+    if (onFavoriteToggle) {
+      onFavoriteToggle(propertyId, newFavState);
     }
   };
 

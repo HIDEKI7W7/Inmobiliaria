@@ -12,6 +12,7 @@ import { LogoIcon } from '../page';
 import { Footer } from '@/components/ui/Footer';
 import { apiClient } from '@/services/api.client';
 import { getToken, getCurrentUser } from '@/utils/session';
+import { useFavorites } from '@/context/FavoritesContext';
 
 const t = (key: string) => key;
 
@@ -257,7 +258,7 @@ function PropertiesContent() {
   const [sortBy, setSortBy] = useState<string>('default');
 
   const router = useRouter();
-  const [favoritosIds, setFavoritosIds] = useState<Set<string>>(new Set());
+  const { isFavorited, toggleFavorite } = useFavorites();
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -277,30 +278,6 @@ function PropertiesContent() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Cargar propiedades favoritas al cargar el componente
-  useEffect(() => {
-    const loadFavoritos = async () => {
-      const token = getToken();
-      if (!token) return;
-      try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiBaseUrl}/favoritos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const ids = new Set<string>(data.map((p: any) => p.id));
-          setFavoritosIds(ids);
-        }
-      } catch (err) {
-        console.error('Error al cargar favoritos:', err);
-      }
-    };
-    loadFavoritos();
-  }, []);
-
   const handleFavoriteToggle = async (propertyId: string) => {
     const token = getToken();
     const user = getCurrentUser();
@@ -311,31 +288,7 @@ function PropertiesContent() {
       return;
     }
 
-    try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      const res = await fetch(`${apiBaseUrl}/favoritos/toggle/${propertyId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setFavoritosIds((prev) => {
-          const next = new Set(prev);
-          if (data.favorited) {
-            next.add(propertyId);
-          } else {
-            next.delete(propertyId);
-          }
-          return next;
-        });
-      }
-    } catch (err) {
-      console.error('Error al alternar favorito:', err);
-    }
+    await toggleFavorite(propertyId);
   };
 
   const handleListingCardClick = async (propId: string) => {
@@ -1309,7 +1262,7 @@ function PropertiesContent() {
                      active={hoveredPin === p.id}
                      onClick={() => handleListingCardClick(p.id)}
                      onHover={setHoveredPin}
-                     isFavorite={favoritosIds.has(p.id)}
+                     isFavorite={isFavorited(p.id)}
                      onFavoriteToggle={handleFavoriteToggle}
                   />
                 ))}

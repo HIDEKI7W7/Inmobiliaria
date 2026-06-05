@@ -8,6 +8,7 @@ import { getToken, getCurrentUser } from '@/utils/session';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
 import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
+import { useFavorites } from '@/context/FavoritesContext';
 
 // Importación dinámica del Mini Mapa para evitar problemas de hidratación en Next.js
 const MiniMap = dynamic(() => import('@/components/modules/properties/MiniMap'), { 
@@ -162,6 +163,7 @@ export function PropertyDetailClient({
   const currentProperty = PROPERTIES_CATALOG[propertyId] || { ...DEFAULT_PROPERTY, id: propertyId };
 
   const router = useRouter();
+  const { isFavorited: isFavGlobal, toggleFavorite, favorites, loading } = useFavorites();
   const [isFavorited, setIsFavorited] = useState<boolean>(initialIsFavorited);
   const [token, setToken] = useState<string | null>(initialToken);
   const [authLoaded, setAuthLoaded] = useState<boolean>(!!initialToken);
@@ -209,35 +211,12 @@ export function PropertyDetailClient({
     recordPropertyView();
   }, [currentProperty.id, token, authLoaded]);
 
-  // Sincronizar el estado de favoritos en el cliente (como fallback y garantía de actualización)
+  // Sincronizar el estado de favoritos con el contexto global de favoritos
   useEffect(() => {
-    if (!authLoaded) return;
-
-    const checkFavoriteStatus = async () => {
-      const activeToken = token || getToken();
-      if (currentProperty.id && activeToken) {
-        try {
-          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-          const res = await fetch(`${apiBaseUrl}/favoritos/check/${currentProperty.id}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${activeToken}`,
-            },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && typeof data.isFavorited !== 'undefined') {
-              setIsFavorited(data.isFavorited);
-            }
-          }
-        } catch (err) {
-          console.error("Error al verificar favorito en cliente:", err);
-        }
-      }
-    };
-
-    checkFavoriteStatus();
-  }, [currentProperty.id, token, authLoaded]);
+    if (!loading) {
+      setIsFavorited(isFavGlobal(currentProperty.id));
+    }
+  }, [favorites, currentProperty.id, isFavGlobal, loading]);
 
   const handleFavoriteToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -250,23 +229,8 @@ export function PropertyDetailClient({
       return;
     }
 
-    try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      const response = await fetch(`${apiBaseUrl}/favoritos/toggle/${currentProperty.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsFavorited(data.favorited);
-      }
-    } catch (error) {
-      console.error("Falla en el guardado de favoritos:", error);
-    }
+    const newFavState = await toggleFavorite(currentProperty.id);
+    setIsFavorited(newFavState);
   };
 
   const [activeTab, setActiveTab] = useState<'fotos' | '3d' | 'plano' | 'mapa'>('fotos');

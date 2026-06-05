@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, getToken, getRedirectPathByRole } from '@/utils/session';
 import { PropertyCard } from '@/components/modules/properties/PropertyCard';
+import { useFavorites } from '@/context/FavoritesContext';
 
 interface BackendProperty {
   id: string;
@@ -22,8 +23,7 @@ interface BackendProperty {
 export default function FavoritosDashboardPage() {
   const router = useRouter();
   const [userName, setUserName] = useState('');
-  const [favorites, setFavorites] = useState<BackendProperty[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { favorites, loading } = useFavorites();
   const [redirectPath, setRedirectPath] = useState('/cliente');
 
   useEffect(() => {
@@ -37,36 +37,7 @@ export default function FavoritosDashboardPage() {
 
     setUserName((user as any).name || user.email?.split('@')[0] || 'Usuario');
     setRedirectPath(getRedirectPathByRole(user.role));
-
-    const fetchFavorites = async () => {
-      try {
-        setLoading(true);
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiBaseUrl}/favoritos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setFavorites(data);
-        }
-      } catch (err) {
-        console.error('Error al cargar propiedades favoritas:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFavorites();
   }, [router]);
-
-  const handleFavoriteToggle = (propertyId: string, isFav: boolean) => {
-    // Si se desmarcó de favoritos, lo removemos de la lista local inmediatamente
-    if (!isFav) {
-      setFavorites(prev => prev.filter(p => p.id !== propertyId));
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col font-sans antialiased">
@@ -135,7 +106,7 @@ export default function FavoritosDashboardPage() {
                   title={prop.title}
                   price={prop.price}
                   image={prop.imageUrl || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80'}
-                  isVerified={prop.isVerified}
+                  isVerified={prop.verified || prop.isVerified}
                   specs={{
                     rooms: prop.rooms,
                     bathrooms: prop.bathrooms,
@@ -143,7 +114,6 @@ export default function FavoritosDashboardPage() {
                   }}
                   location={prop.location}
                   isFavorite={true}
-                  onFavoriteToggle={handleFavoriteToggle}
                 />
               </div>
             ))}

@@ -4,6 +4,7 @@ import { Inter, Outfit, Plus_Jakarta_Sans } from 'next/font/google';
 import { Navbar } from '../components/ui/Navbar';
 import { Footer } from '../components/ui/Footer';
 import HttpInterceptor from '../components/HttpInterceptor';
+import { FavoritesProvider } from '../context/FavoritesContext';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,7 +26,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: 'Propio - Tu Hogar Digital Inteligentemente',
-  description: 'Descubre propiedades exclusivas con la plataforma inmobiliaria moderna de Propio. Compra, vende y gestiona de manera directa y transparente.',
+  description: 'Descubre propiedades exclusivas con la plataforma inmobiliaria moderna de Propio. Compra, vende and gestiona de manera directa y transparente.',
 };
 
 export default function RootLayout({
@@ -38,11 +39,13 @@ export default function RootLayout({
       <html lang="es" className={`${inter.variable} ${outfit.variable} ${plusJakartaSans.variable}`}>
         <body className="font-sans antialiased min-h-screen flex flex-col bg-slate-50">
           <HttpInterceptor />
-          <Navbar />
-          <main className="flex-grow flex flex-col">
-            {children}
-          </main>
-          <Footer />
+          <FavoritesProvider>
+            <Navbar />
+            <main className="flex-grow flex flex-col">
+              {children}
+            </main>
+            <Footer />
+          </FavoritesProvider>
         </body>
       </html>
     );
