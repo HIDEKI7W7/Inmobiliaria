@@ -12,7 +12,7 @@ export const test = base.extend<{
   page: Page;
 }>({
   // 1 y 3. Configuración de perfiles persistentes, supresión de alertas y auto-aprobación de permisos
-  context: async ({ browserName }, use) => {
+  context: async ({ browserName, browser }, use) => {
     if (browserName === 'chromium') {
       // Lanzamos un contexto de navegación persistente en disco
       const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
@@ -35,7 +35,7 @@ export const test = base.extend<{
       await context.close();
     } else {
       // Fallback para otros navegadores si se especifican
-      const context = await base.newContext();
+      const context = await browser.newContext();
       await use(context);
     }
   },

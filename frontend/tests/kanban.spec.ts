@@ -2,9 +2,20 @@ import { test, expect } from './fixtures';
 
 test.describe('Propio E2E - Kanban Leads CRM y Animaciones Táctiles', () => {
 
-  test.beforeEach(async ({ page }) => {
-    // 1. Iniciar sesión como Agente a través de la interfaz web
+  test.beforeEach(async ({ page, context }) => {
+    // Limpiar cookies de la sesión
+    await context.clearCookies();
+    // Navegar a la página de login
     await page.goto('/login');
+    // Limpiar local storage y session storage del navegador
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    // Recargar la página para iniciar en un estado completamente desautenticado
+    await page.goto('/login');
+
+    // 1. Iniciar sesión como Agente a través de la interfaz web
     await page.fill('#email', 'agent@propio.com.bo');
     await page.fill('#password', 'agent123');
     

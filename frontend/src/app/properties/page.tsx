@@ -203,18 +203,18 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
         </span>
       </div>
       
-      <div className="p-2.5 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
+      <div className="p-2 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
         <div className="space-y-1">
-          <div className="flex justify-between items-baseline gap-2">
-            <span className="font-serif text-sm sm:text-base md:text-xl lg:text-2xl font-black text-black block">
+          <div className="flex justify-between items-baseline gap-1.5 truncate">
+            <span className="font-serif text-xs sm:text-base md:text-xl lg:text-2xl font-black text-black block truncate">
               ${prop.price.toLocaleString()}
             </span>
           </div>
           <h3 className="font-sans text-[10px] sm:text-xs md:text-sm font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
             {prop.title}
           </h3>
-          <p className="text-neutral-400 text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-            <svg className="w-3 h-3 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <p className="text-neutral-400 text-[7px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 truncate">
+            <svg className="w-2.5 h-2.5 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
             </svg>
@@ -222,10 +222,12 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
           </p>
         </div>
 
-        <div className="flex justify-between gap-1.5 pt-2 border-t border-neutral-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-neutral-450">
-          {prop.rooms > 0 && <span>{prop.rooms} {t("D")}</span>}
-          {prop.bathrooms > 0 && <span>{prop.bathrooms} {t("B")}</span>}
-          <span>{prop.area} {t("m²")}</span>
+        <div className="flex items-center gap-1 pt-1.5 border-t border-neutral-100 text-[7px] sm:text-[9px] font-black uppercase tracking-wider text-neutral-450 truncate">
+          {prop.rooms > 0 && <span className="truncate">{prop.rooms} Hab</span>}
+          <span className="text-neutral-200 select-none">•</span>
+          {prop.bathrooms > 0 && <span className="truncate">{prop.bathrooms} Baños</span>}
+          <span className="text-neutral-200 select-none">•</span>
+          <span className="truncate">{prop.area} m²</span>
         </div>
         
         <div className="pt-0.5 flex items-center justify-between">
@@ -256,6 +258,24 @@ function PropertiesContent() {
 
   const router = useRouter();
   const [favoritosIds, setFavoritosIds] = useState<Set<string>>(new Set());
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, []);
+
+  const getInitials = () => {
+    if (!currentUser) return 'U';
+    const name = currentUser.name || currentUser.email?.split('@')[0] || 'Cliente';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   // Cargar propiedades favoritas al cargar el componente
   useEffect(() => {
@@ -681,19 +701,31 @@ function PropertiesContent() {
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-76px)] overflow-hidden bg-[#fbf9f9]">
+    <div className="flex flex-col h-[calc(100vh-76px)] pb-16 md:pb-0 overflow-hidden bg-[#fbf9f9]">
       {/* HEADER SUPERIOR CONSOLIDADO PARA MÓVIL (ESTILO ZILLOW - image_e2cb84.jpg) */}
-      <div className="flex md:hidden items-center justify-between gap-3 px-4 py-2 bg-white border-b border-gray-150 w-full z-20 shrink-0 font-sans">
-        {/* Buscador de Ancho Completo */}
+      <div className="flex md:hidden items-center justify-between gap-2.5 px-3 py-2.5 bg-white border-b border-neutral-200 w-full z-20 shrink-0 font-sans">
+        {/* Logo / Isotipo simplificado a la izquierda */}
+        <Link href="/" className="flex-shrink-0 active:scale-95 transition-transform">
+          <svg viewBox="0 0 100 100" className="w-6.5 h-6.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M10 32C10 19.8497 19.8497 10 32 10H68C80.1503 10 90 19.8497 90 32V68C90 80.1503 80.1503 90 68 90H62V60C62 53.3726 56.6274 48 50 48C43.3726 48 38 53.3726 38 60V90H32C19.8497 90 10 80.1503 10 68V32Z"
+              fill="#b9fa3c"
+            />
+          </svg>
+        </Link>
+
+        {/* Caja de Búsqueda Centrada y Expandida */}
         <div className="relative flex-grow">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Dirección, zona, ciudad..."
-            className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-full text-sm font-normal text-neutral-800 focus:outline-none focus:border-[#006AFF] bg-white shadow-sm transition-all focus:ring-0"
+            className="w-full px-4 py-2 pr-9 border border-neutral-200 rounded-full text-xs font-semibold text-neutral-800 focus:outline-none focus:border-[#04045E] bg-neutral-50 shadow-inner transition-all focus:ring-0"
           />
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-neutral-400">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-neutral-400">
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')} 
@@ -702,58 +734,78 @@ function PropertiesContent() {
                 <span className="text-[10px] font-bold">✕</span>
               </button>
             )}
-            <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
         </div>
 
-        {/* Badge de Perfil Circular */}
-        <div className="bg-[#004b49] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-xs cursor-pointer shrink-0">
-          P
-        </div>
+        {/* Avatar circular del usuario a la derecha */}
+        <Link href="/dashboard/perfil" className="shrink-0 active:scale-95 transition-transform">
+          <div className="bg-[#0A4D54] text-white rounded-full w-7.5 h-7.5 flex items-center justify-center font-black text-[10px] border border-white shadow-sm uppercase">
+            {getInitials()}
+          </div>
+        </Link>
       </div>
 
       {/* FILA DE FILTROS EN FORMATO HORIZONTAL SCROLL (MÓVIL - image_e2cb84.jpg) */}
       <div className="flex md:hidden items-center gap-2 overflow-x-auto px-3 py-2 scrollbar-none whitespace-nowrap border-b border-gray-100 bg-white w-full z-10 shrink-0 font-sans">
+        {/* Tipo Transacción */}
         <button
-          onClick={() => setShowMoreFilters(true)}
-          className="border border-[#006AFF] rounded-full px-4 py-1.5 text-xs font-semibold bg-[#e7f4ff] text-[#006AFF] cursor-pointer"
+          onClick={() => setShowMobileFilters(true)}
+          className="border border-[#04045E]/40 rounded-full px-3.5 py-1.5 text-xs font-bold bg-slate-50 text-[#04045E] cursor-pointer active:scale-95 transition-all"
         >
-          {filtros.tipoTransaccion === 'en_venta' ? 'En venta' : filtros.tipoTransaccion === 'en_alquiler' ? 'En alquiler' : 'Vendido'}
+          {filtros.tipoTransaccion === 'en_venta' ? 'En Venta' : filtros.tipoTransaccion === 'en_alquiler' ? 'En Alquiler' : 'Vendido'}
         </button>
 
+        {/* Precio */}
         <button
-          onClick={() => setShowMoreFilters(true)}
-          className={`border rounded-full px-4 py-1.5 text-xs font-semibold cursor-pointer transition-all ${
+          onClick={() => setShowMobileFilters(true)}
+          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
             filtros.precioMin || filtros.precioMax
               ? 'border-blue-600 bg-blue-50 text-blue-600'
-              : 'border-gray-300 text-neutral-800 bg-white'
+              : 'border-neutral-200 text-neutral-800 bg-white'
           }`}
         >
-          Precio
+          {filtros.precioMax ? `Max $${Number(filtros.precioMax).toLocaleString()}` : 'Precio'}
         </button>
 
+        {/* Camas y Baños */}
         <button
-          onClick={() => setShowMoreFilters(true)}
-          className="border border-gray-300 rounded-full px-4 py-1.5 text-xs font-semibold text-neutral-800 bg-white cursor-pointer"
+          onClick={() => setShowMobileFilters(true)}
+          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
+            filtros.dormitorios || filtros.banos
+              ? 'border-blue-600 bg-blue-50 text-blue-600'
+              : 'border-neutral-200 text-neutral-800 bg-white'
+          }`}
+        >
+          {filtros.dormitorios ? `${filtros.dormitorios}+ Hab` : 'Camas y Baños'}
+        </button>
+
+        {/* Tipo de propiedad */}
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
+            filtros.tiposCasa.length > 0
+              ? 'border-blue-600 bg-blue-50 text-blue-600'
+              : 'border-neutral-200 text-neutral-800 bg-white'
+          }`}
+        >
+          {filtros.tiposCasa.length > 0 ? filtros.tiposCasa.join(', ') : 'Tipo de propiedad'}
+        </button>
+
+        {/* Filtros */}
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="border border-neutral-200 rounded-full px-3.5 py-1.5 text-xs font-bold text-neutral-850 bg-white cursor-pointer active:scale-95 transition-all"
         >
           Filtros
         </button>
 
+        {/* Guardar búsqueda */}
         <button
-          onClick={() => setIsSortOpen(true)}
-          className="border border-gray-300 rounded-full px-4 py-1.5 text-xs font-semibold text-neutral-800 bg-white cursor-pointer"
-        >
-          Ordenar
-        </button>
-
-        <button
-          onClick={() => {
-            setShowAnalytics(true);
-            alert(t("Búsqueda guardada con éxito en tu panel de alertas."));
-          }}
-          className="bg-[#006AFF] text-white font-bold rounded-full px-4 py-1.5 text-xs cursor-pointer hover:bg-blue-700"
+          onClick={handleSaveSearch}
+          className="bg-[#006AFF] hover:bg-blue-700 text-white font-black rounded-full px-4 py-1.5 text-xs cursor-pointer active:scale-95 transition-all shadow-sm"
         >
           Guardar búsqueda
         </button>
@@ -1363,51 +1415,77 @@ function PropertiesContent() {
       </div>
 
       {/* ─── CÁPSULA FLOTANTE DE ALTERNANCIA (ESTILO ZILLOW CLON DE image_ee2142.png) ─── */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none">
-        <div 
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none hover:scale-105 active:scale-95 transition-all duration-300">
+        <button 
           onClick={() => setIsMapView(!isMapView)}
-          className="flex items-center gap-2 text-sm font-semibold text-neutral-900 cursor-pointer hover:opacity-80 transition-opacity pr-2"
+          className="flex items-center gap-2 text-sm font-bold text-[#04045E] cursor-pointer bg-transparent border-none"
         >
           {isMapView ? (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
-              <span>List</span>
+              {/* Icono de lista */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="text-[#04045E]" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+              </svg>
+              <span>Ver Lista</span>
             </>
           ) : (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M15.817.113A.5.5 0 0 0 15.5 0H14.5a.5.5 0 0 0-.402.201L10.2 5.333 5.8.201A.5.5 0 0 0 5.4 0H4.5a.5.5 0 0 0-.402.201L.183 5.513A.5.5 0 0 0 0 5.817v9.5a.5.5 0 0 0 .5.5h.9a.5.5 0 0 0 .402-.201l3.998-5.132 4.4 5.132a.5.5 0 0 0 .402.201h.9a.5.5 0 0 0 .5-.5v-9.5a.5.5 0 0 0-.183-.304L15.817.113zM1 6.133l3-3.857v7.592l-3 3.857V6.133zm4 3.735l4 4.667v-7.592L5 3.076v6.792zm5 4.667l3-3.857V3.076l-3 3.857v7.592z"/></svg>
-              <span>Map</span>
+              {/* Icono de mapa */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="text-[#04045E]" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M15.817.113A.5.5 0 0 0 15.5 0H14.5a.5.5 0 0 0-.402.201L10.2 5.333 5.8.201A.5.5 0 0 0 5.4 0H4.5a.5.5 0 0 0-.402.201L.183 5.513A.5.5 0 0 0 0 5.817v9.5a.5.5 0 0 0 .5.5h.9a.5.5 0 0 0 .402-.201l3.998-5.132 4.4 5.132a.5.5 0 0 0 .402.201h.9a.5.5 0 0 0 .5-.5v-9.5a.5.5 0 0 0-.183-.304L15.817.113zM1 6.133l3-3.857v7.592l-3 3.857V6.133zm4 3.735l4 4.667v-7.592L5 3.076v6.792zm5 4.667l3-3.857V3.076l-3 3.857v7.592z"/>
+              </svg>
+              <span>Ver Mapa</span>
             </>
           )}
-        </div>
+        </button>
 
-        <div className="w-[1px] h-5 bg-neutral-300 mx-2"></div>
+        <div className="w-[1px] h-5 bg-neutral-200 mx-3"></div>
 
-        <div 
+        <button 
           onClick={() => setIsSortOpen(true)}
-          className="flex items-center gap-2 text-sm font-semibold text-neutral-900 cursor-pointer hover:opacity-80 transition-opacity pl-2"
+          className="flex items-center gap-2 text-sm font-bold text-slate-500 cursor-pointer bg-transparent border-none"
         >
-          <svg xmlns="http://www.w3.org/2050/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a.5.5 0 0 1 .5.5v4H14a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zM13 1.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V3.707L9.354 6.854a.5.5 0 1 1-.708-.708L11.793 3H10.5a.5.5 0 0 1 0-1h2.5a.5.5 0 0 1 .5.5zm-11 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
-          <span>Sort</span>
-        </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708-.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
+          <span>Ordenar</span>
+        </button>
       </div>
 
-      {/* ─── BARRA DE NAVEGACIÓN INFERIOR FIJA (MÓVIL - image_e2cb84.jpg) ─── */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 flex justify-around py-2 md:hidden z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] font-sans">
-        <button className="flex flex-col items-center gap-0.5 text-blue-600 font-semibold text-[11px] bg-transparent border-none cursor-pointer">
-          <span className="text-lg">🔍</span> Buscar
+      {/* ─── BARRA DE NAVEGACIÓN INFERIOR FIJA (MÓVIL - ZILLOW STYLE) ─── */}
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 flex justify-around py-2.5 md:hidden z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] font-sans h-16 items-center">
+        <button 
+          onClick={() => setIsMapView(false)}
+          className={`flex flex-col items-center justify-center gap-0.5 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 transition-colors ${!isMapView ? 'text-[#04045E]' : 'text-neutral-450'}`}
+        >
+          <span className="text-base leading-none">🔍</span>
+          <span>Buscar</span>
         </button>
-        <button className="flex flex-col items-center gap-0.5 text-neutral-500 text-[11px] bg-transparent border-none cursor-pointer">
-          <span className="text-lg">🔔</span> Alertas
+        <button 
+          onClick={() => setShowSavedSearchModal(true)}
+          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
+        >
+          <span className="text-base leading-none">🔔</span>
+          <span>Alertas</span>
         </button>
-        <button className="flex flex-col items-center gap-0.5 text-neutral-500 text-[11px] bg-transparent border-none cursor-pointer">
-          <span className="text-lg">❤️</span> Favoritos
+        <button 
+          onClick={() => router.push('/dashboard/favoritos')}
+          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
+        >
+          <span className="text-base leading-none">❤️</span>
+          <span>Favoritos</span>
         </button>
-        <button className="flex flex-col items-center gap-0.5 text-neutral-500 text-[11px] bg-transparent border-none cursor-pointer">
-          <span className="text-lg">💼</span> Créditos
+        <button 
+          onClick={() => alert(t("Propio Créditos: Simula tu crédito hipotecario en tiempo real dentro de la ficha de detalle de cualquier inmueble."))}
+          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
+        >
+          <span className="text-base leading-none">💼</span>
+          <span>Créditos</span>
         </button>
-        <button className="flex flex-col items-center gap-0.5 text-neutral-500 text-[11px] bg-transparent border-none cursor-pointer">
-          <span className="text-lg">📥</span> Mensajes
+        <button 
+          onClick={() => alert(t("Mensajería Premium: Comunícate de forma directa y privada con los asesores asignados a través del botón WhatsApp en la ficha de detalle."))}
+          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
+        >
+          <span className="text-base leading-none">📥</span>
+          <span>Mensajes</span>
         </button>
       </div>
 

@@ -2,8 +2,17 @@ import { test, expect } from './fixtures';
 
 test.describe('Propio E2E - Autenticación y Proxy BFF', () => {
   
-  test.beforeEach(async ({ page }) => {
-    // Navegar a la página de login del sistema antes de cada prueba
+  test.beforeEach(async ({ page, context }) => {
+    // Limpiar cookies de la sesión
+    await context.clearCookies();
+    // Navegar a la página de login
+    await page.goto('/login');
+    // Limpiar local storage y session storage del navegador
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    // Recargar la página para iniciar en un estado completamente desautenticado
     await page.goto('/login');
   });
 

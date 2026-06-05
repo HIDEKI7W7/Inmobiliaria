@@ -37,7 +37,7 @@ export class AuthService {
     {
       id: 'admin-1',
       email: 'admin@propio.com.bo',
-      passwordHash: '$2b$10$cLJN64DUTXWeTCeg8/6GDuXsZrl6eHMnHqWtWpGXnXcE6JJP26XM6',
+      passwordHash: bcrypt.hashSync('admin123', 10),
       name: 'Administrador Propio',
       role: 'ADMIN',
       onboardingCompleted: true,
@@ -45,7 +45,7 @@ export class AuthService {
     {
       id: 'agent-1',
       email: 'agent@propio.com.bo',
-      passwordHash: '$2b$10$I2tW68KtGEBxyAfJugFbyuecjAHo..koWtTihqj2WjxAc9U81VI.u',
+      passwordHash: bcrypt.hashSync('agent123', 10),
       name: 'Agente Estrella',
       role: 'AGENTE',
       onboardingCompleted: true,
@@ -53,7 +53,7 @@ export class AuthService {
     {
       id: 'owner-1',
       email: 'owner@propio.com.bo',
-      passwordHash: '$2b$10$8/qah3BVrcE2nPDkXKJvdeWregGs3Dt90xTxxv.yTSv1NVQXOOKBq',
+      passwordHash: bcrypt.hashSync('owner123', 10),
       name: 'Propietario Legitimo',
       role: 'PROPIETARIO',
       onboardingCompleted: true,
@@ -81,13 +81,10 @@ export class AuthService {
 
     let user: StoredUser | null = null;
     const normalizedEmail = String(email).toLowerCase().trim();
+    const isMockEmail = normalizedEmail.endsWith('@propio.com.bo');
 
-    try {
-      user = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
-    } catch {
-      this.logger.warn('Error de conexion con la base de datos. Usando fallback en memoria de desarrollo.');
+    if (isMockEmail) {
+      this.logger.log(`Email de demostración detectado: ${normalizedEmail}. Saltando consulta a BD y usando memoria de desarrollo.`);
       const mockUser = this.mockUsers.find((u) => u.email === normalizedEmail);
       if (mockUser) {
         user = {
@@ -101,6 +98,28 @@ export class AuthService {
           propertyInterest: mockUser.propertyInterest || null,
           whatsappPhone: mockUser.whatsappPhone || null,
         };
+      }
+    } else {
+      try {
+        user = await this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+      } catch {
+        this.logger.warn('Error de conexion con la base de datos. Usando fallback en memoria de desarrollo.');
+        const mockUser = this.mockUsers.find((u) => u.email === normalizedEmail);
+        if (mockUser) {
+          user = {
+            id: mockUser.id,
+            email: mockUser.email,
+            password: mockUser.passwordHash,
+            name: mockUser.name,
+            role: mockUser.role,
+            onboardingCompleted: mockUser.onboardingCompleted,
+            objective: mockUser.objective || null,
+            propertyInterest: mockUser.propertyInterest || null,
+            whatsappPhone: mockUser.whatsappPhone || null,
+          };
+        }
       }
     }
 

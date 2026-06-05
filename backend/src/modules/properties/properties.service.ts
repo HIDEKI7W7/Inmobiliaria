@@ -17,6 +17,123 @@ export interface PaginatedPropertiesResult {
   };
 }
 
+const MOCK_PROPERTIES = [
+  {
+    id: 'prop-1-cala-cala',
+    title: 'Casa Familiar en Cala Cala',
+    description: 'Espléndida residencia de dos plantas ubicada en una de las zonas más exclusivas de Cochabamba. Cuenta con jardín interior privado, churrasquera cubierta y acabados de primera calidad.',
+    price: 320000,
+    area: 350,
+    rooms: 5,
+    bathrooms: 4,
+    location: 'Cala Cala, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3680,
+    longitude: -66.1590,
+    type: 'CASA',
+    isVerified: true,
+    offerType: 'VENTA',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-01'),
+    deletedAt: null
+  },
+  {
+    id: 'prop-2-queru-queru',
+    title: 'Penthouse de Lujo en Queru Queru',
+    description: 'Espectacular penthouse de estreno ubicado en el último piso del Edificio Skyview. Terraza panorámica con jacuzzi, acabados europeos y domótica integrada.',
+    price: 185000,
+    area: 195,
+    rooms: 4,
+    bathrooms: 3,
+    location: 'Queru Queru, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3695,
+    longitude: -66.1480,
+    type: 'DEPARTAMENTO',
+    isVerified: true,
+    offerType: 'VENTA',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-02'),
+    deletedAt: null
+  },
+  {
+    id: 'prop-3-el-prado',
+    title: 'Departamento Moderno en El Prado',
+    description: 'Departamento de 2 habitaciones recién remodelado en pleno Prado. Cocina americana integrada, balcón privado y portería 24h. Ideal para profesionales y ejecutivos.',
+    price: 95000,
+    area: 85,
+    rooms: 2,
+    bathrooms: 2,
+    location: 'El Prado, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3820,
+    longitude: -66.1560,
+    type: 'DEPARTAMENTO',
+    isVerified: false,
+    offerType: 'ALQUILER',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-03'),
+    deletedAt: null
+  },
+  {
+    id: 'prop-4-sarco',
+    title: 'Terreno Comercial en Sarco',
+    description: 'Excelente terreno comercial de alta plusvalía en zona de alto tráfico en Sarco. Ideal para proyectos corporativos o inmobiliarios multifamiliares.',
+    price: 48000,
+    area: 400,
+    rooms: 0,
+    bathrooms: 0,
+    location: 'Sarco, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3800,
+    longitude: -66.1750,
+    type: 'TERRENO',
+    isVerified: true,
+    offerType: 'VENTA',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-04'),
+    deletedAt: null
+  },
+  {
+    id: 'prop-5-mayorazgo',
+    title: 'Oficina Premium en Mayorazgo',
+    description: 'Oficina moderna corporativa con divisiones de vidrio templado, aire acondicionado y dos parqueos subterráneos. Seguridad 24 horas y sala de reuniones común.',
+    price: 135000,
+    area: 120,
+    rooms: 0,
+    bathrooms: 2,
+    location: 'Mayorazgo, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3650,
+    longitude: -66.1700,
+    type: 'OFICINA',
+    isVerified: true,
+    offerType: 'VENTA',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-05'),
+    deletedAt: null
+  },
+  {
+    id: 'prop-6-muyurina',
+    title: 'Casa de Campo en Muyurina',
+    description: 'Hermosa finca campestre con amplias áreas verdes, árboles frutales y piscina privada. Ideal para escapar de la rutina urbana o desarrollo turístico.',
+    price: 220000,
+    area: 480,
+    rooms: 6,
+    bathrooms: 4,
+    location: 'Muyurina, Cochabamba',
+    imageUrl: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80',
+    latitude: -17.3780,
+    longitude: -66.1380,
+    type: 'CASA',
+    isVerified: false,
+    offerType: 'VENTA',
+    status: 'APROBADO',
+    createdAt: new Date('2026-01-06'),
+    deletedAt: null
+  }
+];
+
 @Injectable()
 export class PropertiesService {
   private readonly logger = new Logger(PropertiesService.name);
@@ -184,7 +301,75 @@ export class PropertiesService {
       `[findAll] limit=${limit} cursor=${query.cursor ?? 'INICIO'} sortBy=${sortBy}:${sortDir}`,
     );
 
-    const properties = await this.prisma.property.findMany(queryOptions);
+    let properties;
+    try {
+      properties = await this.prisma.property.findMany(queryOptions);
+    } catch (err) {
+      this.logger.warn(`Error de conexión con la base de datos en findAll: ${err.message}. Usando catálogo mock en memoria.`);
+      // Filtrar y ordenar en memoria local
+      const filtered = MOCK_PROPERTIES.filter(p => {
+        const pAny = p as any;
+        if (query.ownerId && pAny.ownerId !== query.ownerId) return false;
+        if (query.agentId && pAny.agentId !== query.agentId) return false;
+        if (query.status && pAny.status !== query.status.toUpperCase()) return false;
+        if (query.offerType && pAny.offerType !== query.offerType.toUpperCase()) return false;
+        if (query.type && pAny.type !== query.type.toUpperCase()) return false;
+        if ((query.verifiedOnly === 'true' || query.verifiedOnly === '1') && !pAny.isVerified) return false;
+        
+        if (query.minPrice !== undefined && pAny.price < parseFloat(query.minPrice)) return false;
+        if (query.maxPrice !== undefined && pAny.price > parseFloat(query.maxPrice)) return false;
+        
+        if (query.tipoTransaccion) {
+          if (query.tipoTransaccion === 'en_venta' && (p.offerType !== 'VENTA' || p.status === 'VENDIDO')) return false;
+          if (query.tipoTransaccion === 'en_alquiler' && (!['ALQUILER', 'ANTICRETICO'].includes(p.offerType) || p.status === 'VENDIDO')) return false;
+          if (query.tipoTransaccion === 'vendido' && p.status !== 'VENDIDO') return false;
+        }
+        
+        if (query.precioMin !== undefined && query.precioMin !== 'null' && query.precioMin !== '' && p.price < parseFloat(query.precioMin)) return false;
+        if (query.precioMax !== undefined && query.precioMax !== 'null' && query.precioMax !== '' && p.price > parseFloat(query.precioMax)) return false;
+        
+        if (query.dormitorios && query.dormitorios !== 'cualquiera') {
+          const dormsCount = parseInt(query.dormitorios, 10);
+          if (!isNaN(dormsCount)) {
+            if (query.coincidenciaExactaDorms === 'true') {
+              if (p.rooms !== dormsCount) return false;
+            } else {
+              if (p.rooms < dormsCount) return false;
+            }
+          }
+        }
+        if (query.banos && query.banos !== 'cualquiera') {
+          const bathsCount = parseInt(query.banos, 10);
+          if (!isNaN(bathsCount) && p.bathrooms < bathsCount) return false;
+        }
+        if (query.tiposCasa) {
+          const typesList = query.tiposCasa.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+          if (typesList.length > 0 && !typesList.includes(p.type.toLowerCase())) return false;
+        }
+        if (query.text) {
+          const text = query.text.toLowerCase();
+          const match = p.title.toLowerCase().includes(text) || p.location.toLowerCase().includes(text);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      // Ordenar en memoria
+      const sorted = [...filtered].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        if (sortBy === 'price') return (a.price - b.price) * dir;
+        if (sortBy === 'area') return (a.area - b.area) * dir;
+        return (a.createdAt.getTime() - b.createdAt.getTime()) * dir;
+      });
+
+      // Paginación simple en memoria
+      let startIndex = 0;
+      if (query.cursor) {
+        const idx = sorted.findIndex(p => p.id === query.cursor);
+        if (idx !== -1) startIndex = idx + 1;
+      }
+      properties = sorted.slice(startIndex, startIndex + take);
+    }
 
     // ── Determinación de página siguiente ─────────────────────────────────
     const hasNextPage = properties.length > limit;
@@ -213,21 +398,27 @@ export class PropertiesService {
   // ─────────────────────────────────────────────────────────────────────────────
 
   async findOne(id: string) {
-    const property = await this.prisma.property.findFirst({
-      where: { id, deletedAt: null }, // TSK-4.4: ignora soft-deleted
-      include: {
-        priceHistory: {
-          orderBy: { recordedAt: 'desc' },
-          take: 10,
+    let property;
+    try {
+      property = await this.prisma.property.findFirst({
+        where: { id, deletedAt: null }, // TSK-4.4: ignora soft-deleted
+        include: {
+          priceHistory: {
+            orderBy: { recordedAt: 'desc' },
+            take: 10,
+          },
         },
-      },
-    });
+      });
+    } catch (err) {
+      this.logger.warn(`Error de conexión con la base de datos en findOne: ${err.message}. Buscando en catálogo mock.`);
+      property = MOCK_PROPERTIES.find(p => p.id === id);
+    }
 
     if (!property) {
       throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
     }
 
-    return { ...property, verified: property.isVerified };
+    return { ...property, verified: (property as any).isVerified, priceHistory: (property as any).priceHistory || [] };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
