@@ -1,14 +1,45 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 @Injectable()
 export class FavoritosService {
   private readonly logger = new Logger(FavoritosService.name);
   
-  // Base de datos temporal en memoria para desarrollo local sin conexión a base de datos
-  private static mockFavoritesMap: Map<string, Set<string>> = new Map(); // userId -> Set of propertyIds
+  // Archivo JSON persistente para desarrollo local sin conexión a base de datos
+  private readonly fallbackFilePath = path.resolve(process.cwd(), 'favoritos_fallback.json');
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private async loadFallbackFavorites(): Promise<Map<string, Set<string>>> {
+    const map = new Map<string, Set<string>>();
+    try {
+      const content = await fs.readFile(this.fallbackFilePath, 'utf-8');
+      const data = JSON.parse(content);
+      for (const userId of Object.keys(data)) {
+        if (Array.isArray(data[userId])) {
+          map.set(userId, new Set(data[userId]));
+        }
+      }
+    } catch (error) {
+      // Si el archivo no existe, simplemente retornamos un mapa vacío
+      this.logger.log('No se pudo leer el archivo de favoritos fallback (puede que no exista todavía).');
+    }
+    return map;
+  }
+
+  private async saveFallbackFavorites(map: Map<string, Set<string>>): Promise<void> {
+    try {
+      const data: Record<string, string[]> = {};
+      for (const [userId, propertyIds] of map.entries()) {
+        data[userId] = Array.from(propertyIds);
+      }
+      await fs.writeFile(this.fallbackFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+      this.logger.error(`Error al escribir el archivo de favoritos fallback: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   getMockProperty(propertyId: string) {
     let title = 'Propiedad de Catálogo';
@@ -121,20 +152,29 @@ export class FavoritosService {
         return { favorited: true, isFavorited: true, message: 'Propiedad guardada en tus favoritos' };
       }
     } catch (error) {
-      this.logger.warn('Error de conexion con la base de datos al alternar favorito. Usando fallback en memoria de desarrollo.');
+      this.logger.warn('Error de conexion con la base de datos al alternar favorito. Usando fallback en archivo JSON persistente.');
       
-      if (!FavoritosService.mockFavoritesMap.has(userId)) {
-        FavoritosService.mockFavoritesMap.set(userId, new Set());
+      const map = await this.loadFallbackFavorites();
+      if (!map.has(userId)) {
+        map.set(userId, new Set());
       }
       
-      const userFavs = FavoritosService.mockFavoritesMap.get(userId)!;
+      const userFavs = map.get(userId)!;
+      let favorited = false;
+      let message = '';
+      
       if (userFavs.has(propertyId)) {
         userFavs.delete(propertyId);
-        return { favorited: false, isFavorited: false, message: 'Propiedad removida de tus favoritos (memoria local)' };
+        favorited = false;
+        message = 'Propiedad removida de tus favoritos (fallback persistente)';
       } else {
         userFavs.add(propertyId);
-        return { favorited: true, isFavorited: true, message: 'Propiedad guardada en tus favoritos (memoria local)' };
+        favorited = true;
+        message = 'Propiedad guardada en tus favoritos (fallback persistente)';
       }
+      
+      await this.saveFallbackFavorites(map);
+      return { favorited, isFavorited: favorited, message };
     }
   }
 
@@ -155,8 +195,9 @@ export class FavoritosService {
       // Retornamos únicamente el array con los datos completos de las propiedades guardadas
       return list.map(f => f.property);
     } catch (error) {
-      this.logger.warn('Error de conexion con la base de datos al obtener favoritos. Usando fallback en memoria de desarrollo.');
-      const userFavs = FavoritosService.mockFavoritesMap.get(userId);
+      this.logger.warn('Error de conexion con la base de datos al obtener favoritos. Usando fallback en archivo JSON persistente.');
+      const map = await this.loadFallbackFavorites();
+      const userFavs = map.get(userId);
       if (!userFavs) return [];
       
       return Array.from(userFavs).map(propertyId => this.getMockProperty(propertyId));
@@ -180,8 +221,9 @@ export class FavoritosService {
       });
       return { isFavorited: !!existing };
     } catch (error) {
-      this.logger.warn('Error de conexion con la base de datos al verificar favorito. Usando fallback en memoria de desarrollo.');
-      const userFavs = FavoritosService.mockFavoritesMap.get(userId);
+      this.logger.warn('Error de conexion con la base de datos al verificar favorito. Usando fallback en archivo JSON persistente.');
+      const map = await this.loadFallbackFavorites();
+      const userFavs = map.get(userId);
       return { isFavorited: userFavs ? userFavs.has(propertyId) : false };
     }
   }
