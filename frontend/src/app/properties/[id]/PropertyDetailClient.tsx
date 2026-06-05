@@ -182,12 +182,16 @@ export function PropertyDetailClient({
 
     const recordPropertyView = async () => {
       const activeToken = token || getToken();
+      
+      // AUDITORÍA DE ID REAL: Extraemos explícitamente el identificador interno de base de datos
+      // del objeto de propiedad (currentProperty.id) para evitar inconsistencias con slugs de URL.
+      const propertyDbId = currentProperty.id;
 
-      if (currentProperty.id && activeToken) {
+      if (propertyDbId && activeToken) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
         // REGISTRO INMEDIATO EN HISTORIAL DE VISTAS (Al cargar la página y verificar sesión)
-        fetch(`${apiBaseUrl}/historial-vistas/${currentProperty.id}`, {
+        fetch(`${apiBaseUrl}/historial-vistas/${propertyDbId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -200,8 +204,8 @@ export function PropertyDetailClient({
       try {
         const localViews = localStorage.getItem('propio_recent_views');
         let viewsArray: string[] = localViews ? JSON.parse(localViews) : [];
-        viewsArray = viewsArray.filter(id => id !== currentProperty.id);
-        viewsArray.unshift(currentProperty.id);
+        viewsArray = viewsArray.filter(id => id !== propertyDbId);
+        viewsArray.unshift(propertyDbId);
         localStorage.setItem('propio_recent_views', JSON.stringify(viewsArray.slice(0, 10)));
       } catch (err) {
         console.error('Error writing to local recent views:', err);
@@ -229,7 +233,15 @@ export function PropertyDetailClient({
       return;
     }
 
-    const newFavState = await toggleFavorite(currentProperty.id);
+    // AUDITORÍA DE ID REAL: Extraemos y usamos el ID interno de la base de datos (currentProperty.id)
+    // para realizar el toggle de favoritos de forma 100% persistente y evitar el cruce de slugs.
+    const propertyDbId = currentProperty.id;
+    if (!propertyDbId) {
+      console.error('Error: Identificador interno de base de datos no definido.');
+      return;
+    }
+
+    const newFavState = await toggleFavorite(propertyDbId);
     setIsFavorited(newFavState);
   };
 

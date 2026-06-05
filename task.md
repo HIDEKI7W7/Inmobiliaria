@@ -184,7 +184,14 @@ gantt
 | **TSK-9.2** | Envolver la aplicación en `RootLayout` (`layout.tsx`) con el `<FavoritesProvider>`. | Alta | Frontend | `[ ] Pendiente` |
 | **TSK-9.3** | Refactorizar `PropertyCard.tsx` para consumir el contexto de favoritos global y eliminar las peticiones N+1 individuales al montar. | Alta | Frontend | `[ ] Pendiente` |
 | **TSK-9.4** | Refactorizar `PropertyDetailClient.tsx` para consumir el contexto global de favoritos y mantener el pre-cargado SSR con 0ms flicker. | Alta | Frontend | `[ ] Pendiente` |
+| **TSK-23** | **Persistencia Física Local de Favoritos (Fallback de base de datos)**
+  - [x] Reemplazar el `mockFavoritesMap` estático en memoria por un archivo JSON persistente (`favoritos_fallback.json`) en la raíz del backend.
+  - [x] Implementar métodos seguros de lectura/escritura asíncronos (`loadFallbackFavorites` y `saveFallbackFavorites`).
+  - [x] Integrar la persistencia del archivo local en los endpoints de toggle, check y get favoritos.
+  - [x] Homologar el color del corazón de favoritos activo en `PropertyDetailClient.tsx` para usar el verde lima corporativo (#b9fa3c).
+  - [x] Resolver el cruce de identificadores entre el slug de la URL y el ID interno de la propiedad utilizando explícitamente `currentProperty.id`.
+  - [x] Validar que no existan errores de tipos con `npx tsc --noEmit`.
+  - [x] Comprobar el correcto funcionamiento con la suite de pruebas E2E de Playwright. | Alta | Backend | `[x] Completado` |
 | **TSK-9.5** | Refactorizar el buscador catálogo (`properties/page.tsx`) para consumir el contexto de favoritos. | Alta | Frontend | `[ ] Pendiente` |
 | **TSK-9.6** | Refactorizar el panel privado de favoritos (`dashboard/favoritos/page.tsx`) para usar el estado global. | Alta | Frontend | `[ ] Pendiente` |
 | **TSK-9.7** | Ejecutar pruebas E2E y realizar despliegue final en Vercel con el protocolo solicitado. | Alta | General | `[ ] Pendiente` |
-
