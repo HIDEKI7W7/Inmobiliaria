@@ -32,9 +32,9 @@ test.describe('Propio E2E - Persistencia de Favoritos al Refrescar', () => {
 
     const heartSvg = heartBtn.locator('svg');
     
-    // Verificamos el fill inicial. Si es rojo, hacemos un toggle para quitarlo, luego otro para ponerlo.
+    // Verificamos el fill inicial. Si es lime-green, hacemos un toggle para quitarlo, luego otro para ponerlo.
     let fill = await heartSvg.getAttribute('fill');
-    if (fill === '#ef4444') {
+    if (fill === '#b9fa3c') {
       await heartBtn.click();
       await page.waitForTimeout(500);
     }
@@ -43,16 +43,16 @@ test.describe('Propio E2E - Persistencia de Favoritos al Refrescar', () => {
     await heartBtn.click();
     await page.waitForTimeout(500);
 
-    // Debería tener el fill rojo (#ef4444)
-    await expect(heartSvg).toHaveAttribute('fill', '#ef4444');
+    // Debería tener el fill lime-green (#b9fa3c)
+    await expect(heartSvg).toHaveAttribute('fill', '#b9fa3c');
 
     // 4. Refrescar la página (F5)
     await page.reload();
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000); // Dar un momento para la hidratación y carga
 
-    // 5. Verificar si el corazón sigue rojo
+    // 5. Verificar si el corazón sigue lime-green
     const refreshedHeartSvg = page.locator('button.absolute.top-4.right-4 svg');
-    await expect(refreshedHeartSvg).toHaveAttribute('fill', '#ef4444');
+    await expect(refreshedHeartSvg).toHaveAttribute('fill', '#b9fa3c');
   });
 });
