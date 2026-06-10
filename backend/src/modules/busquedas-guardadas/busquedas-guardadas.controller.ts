@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
 import { BusquedasGuardadasService } from './busquedas-guardadas.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { CreateSavedSearchDto } from './dto/create-saved-search.dto';
 
 @Controller('busquedas-guardadas')
 export class BusquedasGuardadasController {
@@ -8,9 +9,9 @@ export class BusquedasGuardadasController {
 
   @Post()
   @UseGuards(AuthGuard)
-  async saveSearch(@Request() req: any, @Body() body: any) {
+  async saveSearch(@Request() req: any, @Body() dto: CreateSavedSearchDto) {
     const userId = req.user.id;
-    const queryStr = typeof body.query === 'object' ? JSON.stringify(body.query) : String(body.query);
+    const queryStr = typeof dto.query === 'object' ? JSON.stringify(dto.query) : String(dto.query);
     return this.service.create(userId, queryStr);
   }
 

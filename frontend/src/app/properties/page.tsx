@@ -184,6 +184,12 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
             e.preventDefault();
             onFavoriteToggle(prop.id);
           }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+          }}
           className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white p-1.5 rounded-full shadow-md transition-all active:scale-95 flex items-center justify-center cursor-pointer border border-neutral-100"
         >
           <svg

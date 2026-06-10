@@ -6,13 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
-
-export interface CreateAlertDto {
-  userId: string;
-  zona: string;
-  precioMax: number;
-  tipoInmueble: 'CASA' | 'DEPARTAMENTO' | 'TERRENO' | 'OFICINA';
-}
+import { CreateAlertDto } from './dto/create-alert.dto';
 
 export interface MatchResult {
   alertId: string;
@@ -51,6 +45,10 @@ export class AlertsService {
   // ─── Crear alerta ──────────────────────────────────────────────────────────
   async createAlert(dto: CreateAlertDto) {
     const { userId, zona, precioMax, tipoInmueble } = dto;
+
+    if (!userId) {
+      throw new BadRequestException('El id de usuario es requerido');
+    }
 
     if (!zona || !precioMax || !tipoInmueble) {
       throw new BadRequestException('zona, precioMax y tipoInmueble son requeridos');

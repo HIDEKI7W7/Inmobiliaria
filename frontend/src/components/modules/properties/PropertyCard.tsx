@@ -159,6 +159,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Botón de favoritos interactivo en verde lima */}
         <button
           onClick={handleFavoriteClick}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+          }}
           className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white p-2 rounded-full shadow-md transition-all active:scale-95 cursor-pointer border border-neutral-100 flex items-center justify-center"
         >
           <svg

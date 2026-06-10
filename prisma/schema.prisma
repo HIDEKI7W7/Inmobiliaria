@@ -246,6 +246,7 @@ model Favorito {
   property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
+  @@index([propertyId])
   @@map("favoritos")
 }
 
@@ -257,6 +258,7 @@ model BusquedaGuardada {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("busquedas_guardadas")
 }
 
@@ -270,6 +272,7 @@ model HistorialVista {
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
+  @@index([propertyId])
   @@map("historial_vistas")
 }
 

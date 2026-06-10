@@ -9,7 +9,8 @@ import {
   Request,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { AlertsService, CreateAlertDto } from './alerts.service';
+import { AlertsService } from './alerts.service';
+import { CreateAlertDto } from './dto/create-alert.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -24,7 +25,7 @@ export class AlertsController {
    */
   @Post()
   @UseGuards(AuthGuard)
-  async createAlert(@Body() body: Omit<CreateAlertDto, 'userId'>, @Request() req: any) {
+  async createAlert(@Body() body: CreateAlertDto, @Request() req: any) {
     return this.alertsService.createAlert({
       ...body,
       userId: req.user.id,

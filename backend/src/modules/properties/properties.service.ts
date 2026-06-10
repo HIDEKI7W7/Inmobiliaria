@@ -433,9 +433,47 @@ export class PropertiesService {
 
   async create(dto: CreatePropertyDto) {
     this.logger.log(`[create] Nueva propiedad: ${dto.title}`);
+    try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
+      const dbProperty = await this.prisma.property.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          price: parseFloat(String(dto.price)),
+          minPrice: dto.minPrice ? parseFloat(String(dto.minPrice)) : null,
+          area: parseFloat(String(dto.area)),
+          rooms: parseInt(String(dto.rooms ?? 0)),
+          bathrooms: parseInt(String(dto.bathrooms ?? 0)),
+          location: dto.location,
+          address: dto.address ?? null,
+          offerType: dto.offerType ? (dto.offerType.toUpperCase() as any) : 'VENTA',
+          imageUrl:
+            dto.imageUrl ??
+            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
+          latitude: dto.latitude ?? -17.3895,
+          longitude: dto.longitude ?? -66.1568,
+          isVerified: false,
+          status: 'NUEVA_PUBLICACION',
+          ownerId: dto.ownerId ?? null,
+          hasFolioReal: dto.hasFolioReal ?? false,
+          hasCatastro: dto.hasCatastro ?? false,
+          hasTestimonio: dto.hasTestimonio ?? false,
+          hasImpuestosAlDia: dto.hasImpuestosAlDia ?? false,
+          hasPlanoUsoSuelo: dto.hasPlanoUsoSuelo ?? false,
+          hasCI: dto.hasCI ?? false,
+        },
+      });
 
-    const dbProperty = await this.prisma.property.create({
-      data: {
+      return {
+        message: 'Propiedad registrada exitosamente en Propio.',
+        data: dbProperty,
+      };
+    } catch (error) {
+      this.logger.error(`Error al registrar propiedad: ${error instanceof Error ? error.message : String(error)}`);
+      const mockProperty = {
+        id: `prop-mock-${Date.now()}`,
         title: dto.title,
         description: dto.description,
         price: parseFloat(String(dto.price)),
@@ -445,10 +483,9 @@ export class PropertiesService {
         bathrooms: parseInt(String(dto.bathrooms ?? 0)),
         location: dto.location,
         address: dto.address ?? null,
-        offerType: dto.offerType ? (dto.offerType.toUpperCase() as any) : 'VENTA',
-        imageUrl:
-          dto.imageUrl ??
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
+        offerType: dto.offerType ? dto.offerType.toUpperCase() : 'VENTA',
+        type: 'DEPARTAMENTO',
+        imageUrl: dto.imageUrl ?? 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
         latitude: dto.latitude ?? -17.3895,
         longitude: dto.longitude ?? -66.1568,
         isVerified: false,
@@ -460,13 +497,16 @@ export class PropertiesService {
         hasImpuestosAlDia: dto.hasImpuestosAlDia ?? false,
         hasPlanoUsoSuelo: dto.hasPlanoUsoSuelo ?? false,
         hasCI: dto.hasCI ?? false,
-      },
-    });
-
-    return {
-      message: 'Propiedad registrada exitosamente en Propio.',
-      data: dbProperty,
-    };
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+      MOCK_PROPERTIES.push(mockProperty);
+      return {
+        message: 'Propiedad registrada exitosamente en Propio (resiliencia local).',
+        data: mockProperty,
+      };
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -476,23 +516,39 @@ export class PropertiesService {
 
   async remove(id: string) {
     this.logger.warn(`[remove] Soft-delete de propiedad ID: ${id}`);
+    try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
+      const existing = await this.prisma.property.findFirst({
+        where: { id, deletedAt: null },
+      });
 
-    const existing = await this.prisma.property.findFirst({
-      where: { id, deletedAt: null },
-    });
+      if (!existing) {
+        throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
+      }
 
-    if (!existing) {
+      await this.prisma.property.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      return {
+        message: `Propiedad con ID "${id}" eliminada lógicamente del sistema. Los datos históricos se preservan.`,
+      };
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(`Error al eliminar propiedad ${id}: ${err.message}`);
+      
+      const idx = MOCK_PROPERTIES.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        (MOCK_PROPERTIES[idx] as any).deletedAt = new Date();
+        return {
+          message: `Propiedad con ID "${id}" eliminada lógicamente del sistema (resiliencia local).`,
+        };
+      }
       throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
     }
-
-    await this.prisma.property.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-
-    return {
-      message: `Propiedad con ID "${id}" eliminada lógicamente del sistema. Los datos históricos se preservan.`,
-    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -502,28 +558,47 @@ export class PropertiesService {
   async updateStatus(id: string, status: string, observationNotes?: string) {
     const uppercaseStatus = status.toUpperCase();
     this.logger.log(`[updateStatus] Propiedad ${id} → ${uppercaseStatus}`);
+    try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
+      const existing = await this.prisma.property.findFirst({
+        where: { id, deletedAt: null },
+      });
 
-    const existing = await this.prisma.property.findFirst({
-      where: { id, deletedAt: null },
-    });
+      if (!existing) {
+        throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
+      }
 
-    if (!existing) {
+      const updated = await this.prisma.property.update({
+        where: { id },
+        data: {
+          status: uppercaseStatus as any,
+          observationNotes: observationNotes ?? null,
+          isVerified: uppercaseStatus === 'APROBADO',
+          approvedAt: uppercaseStatus === 'APROBADO' ? new Date() : existing.approvedAt,
+        },
+      });
+
+      return {
+        message: `Estado de propiedad actualizado a "${uppercaseStatus}".`,
+        data: updated,
+      };
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(`Error al actualizar estado de propiedad ${id}: ${err.message}`);
+      
+      const idx = MOCK_PROPERTIES.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        const mockP = MOCK_PROPERTIES[idx];
+        (mockP as any).status = uppercaseStatus;
+        (mockP as any).isVerified = uppercaseStatus === 'APROBADO';
+        return {
+          message: `Estado de propiedad actualizado a "${uppercaseStatus}" (resiliencia local).`,
+          data: mockP,
+        };
+      }
       throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
     }
-
-    const updated = await this.prisma.property.update({
-      where: { id },
-      data: {
-        status: uppercaseStatus as any,
-        observationNotes: observationNotes ?? null,
-        isVerified: uppercaseStatus === 'APROBADO',
-        approvedAt: uppercaseStatus === 'APROBADO' ? new Date() : existing.approvedAt,
-      },
-    });
-
-    return {
-      message: `Estado de propiedad actualizado a "${uppercaseStatus}".`,
-      data: updated,
-    };
   }
 }
