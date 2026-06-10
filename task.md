@@ -192,6 +192,22 @@ gantt
   - [x] Resolver el cruce de identificadores entre el slug de la URL y el ID interno de la propiedad utilizando explícitamente `currentProperty.id`.
   - [x] Validar que no existan errores de tipos con `npx tsc --noEmit`.
   - [x] Comprobar el correcto funcionamiento con la suite de pruebas E2E de Playwright. | Alta | Backend | `[x] Completado` |
-| **TSK-9.5** | Refactorizar el buscador catálogo (`properties/page.tsx`) para consumir el contexto de favoritos. | Alta | Frontend | `[ ] Pendiente` |
-| **TSK-9.6** | Refactorizar el panel privado de favoritos (`dashboard/favoritos/page.tsx`) para usar el estado global. | Alta | Frontend | `[ ] Pendiente` |
-| **TSK-9.7** | Ejecutar pruebas E2E y realizar despliegue final en Vercel con el protocolo solicitado. | Alta | General | `[ ] Pendiente` |
+| **TSK-9.5** | Refactorizar el buscador catálogo (`properties/page.tsx`) para consumir el contexto de favoritos. | Alta | Frontend | `[x] Completado` |
+| **TSK-9.6** | Refactorizar el panel privado de favoritos (`dashboard/favoritos/page.tsx`) para usar el estado global. | Alta | Frontend | `[x] Completado` |
+| **TSK-9.7** | Ejecutar pruebas E2E y realizar despliegue final en Vercel con el protocolo solicitado. | Alta | General | `[x] Completado` |
+
+---
+
+## 🎭 Fase 9: Auditoría Global Integral y Optimización Estructural (Completado)
+
+| ID | Tarea / Acción | Prioridad | Capa | Estado |
+| :--- | :--- | :---: | :---: | :---: |
+| **TSK-24.1** | Alinear versiones de TypeScript y `@types/node` en los package.json de la raíz, backend y frontend. | Alta | Raíz | `[x] Completado` |
+| **TSK-24.2** | Optimizar el esquema de Prisma (`schema.prisma`) agregando índices explícitos sobre claves foráneas secundarias. | Alta | Prisma | `[x] Completado` |
+| **TSK-24.3** | Auditar y asegurar el uso estricto de validaciones con `class-validator` en los DTOs de todas las capas del backend (e.g. `CreateSavedSearchDto`). | Alta | Backend | `[x] Completado` |
+| **TSK-24.4** | Verificar el uso homogéneo de la identidad `req.user.id` en todos los controladores de NestJS. | Alta | Backend | `[x] Completado` |
+| **TSK-24.5** | Revisar asincronismo ORM en todos los servicios y añadir aserciones defensivas/excepciones semánticas sin fugas de base de datos. | Alta | Backend | `[x] Completado` |
+| **TSK-24.6** | Detener propagación de eventos táctiles en componentes de tarjetas (`PropertyCard` y `ListingCard` favorite hearts) en el frontend. | Alta | Frontend | `[x] Completado` |
+| **TSK-24.7** | Aplicar programación defensiva con encadenamiento opcional en interfaces de usuario móvil y dashboards de nuevos perfiles. | Alta | Frontend | `[x] Completado` |
+| **TSK-24.8** | Ejecutar la suite de pruebas de compilación y despliegue final a producción. | Alta | DevOps | `[x] Completado` |
+
