@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -26,5 +26,27 @@ export class AgentLeadsController {
   ) {
     const agentId = req.user.id;
     return this.leadsService.updateLeadStatus(id, body.status, agentId);
+  }
+
+  @Get('deals')
+  @HttpCode(HttpStatus.OK)
+  async getAgentDeals(@Request() req: any) {
+    const agentId = req.user.id;
+    return this.leadsService.findAgentDeals(agentId);
+  }
+
+  @Post('deals')
+  @HttpCode(HttpStatus.CREATED)
+  async registerDeal(
+    @Body() body: { propertyId: string; clientName: string; amount: number },
+    @Request() req: any,
+  ) {
+    const agentId = req.user.id;
+    return this.leadsService.registerAgentDeal(
+      agentId,
+      body.propertyId,
+      body.clientName,
+      body.amount,
+    );
   }
 }

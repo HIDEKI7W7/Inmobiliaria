@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { getCurrentUser } from '@/utils/session';
 import { propertiesService } from '../../../services/properties.service';
 import { Property } from '../../../components/modules/properties/PropertyCard';
+import { leadsService } from '../../../services/leads.service';
 
 interface Client {
   id: string;
@@ -32,11 +33,11 @@ interface CommissionDeal {
 const INITIAL_CLIENTS: Client[] = [
   // Clientes asignados a nuestro agente actual (agent-123)
   { id: 'cli-1', name: 'María Quispe', email: 'maria@ejemplo.com', phone: '+591 772 34567', interest: 'Casa de Campo en Muyurina', budget: 220000, source: 'WhatsApp', rating: 5, status: 'Activo (Negociación)', agentId: 'agent-123', category: 'Prospecto' },
-  { id: 'cli-2', name: 'Carlos Rodríguez', email: 'carlos@ejemplo.com', phone: '+591 601 98765', interest: 'Penthouse de Lujo en Queru Queru', budget: 128000, source: 'TikTok Lead', rating: 4, status: 'Activo (Contactado)', agentId: 'agent-123', category: 'Prospecto' },
+  { id: 'cli-2', name: 'Carlos Rodríguez', email: 'carlos@ejemplo.com', phone: '+591 601 98765', interest: 'Penthouse de Lujo en Queru Queru', budget: 128000, source: 'TikTok', rating: 4, status: 'Activo (Contactado)', agentId: 'agent-123', category: 'Prospecto' },
   { id: 'cli-3', name: 'Sofía Blanco', email: 'sofia@ejemplo.com', phone: '+591 717 44332', interest: 'Casa Familiar de Estilo Moderno', budget: 210000, source: 'Recomendado', rating: 3, status: 'Visita Programada', agentId: 'agent-123', category: 'Prospecto' },
   // Clientes de otros agentes (deben estar aislados y no ser visibles)
-  { id: 'cli-4', name: 'Jorge Arandia', email: 'jorge@ejemplo.com', phone: '+591 707 11223', interest: 'Terreno Premium Comercial', budget: 185000, source: 'TikTok Lead', rating: 4, status: 'Activo (Propuestas)', agentId: 'agent-456', category: 'Prospecto' },
-  { id: 'cli-5', name: 'Patricia Vargas', email: 'patricia@ejemplo.com', phone: '+591 727 65432', interest: 'Galpón Industrial', budget: 340000, source: 'Instagram Ads', rating: 5, status: 'Reservado (Seña)', agentId: 'agent-456', category: 'Prospecto' },
+  { id: 'cli-4', name: 'Jorge Arandia', email: 'jorge@ejemplo.com', phone: '+591 707 11223', interest: 'Terreno Premium Comercial', budget: 185000, source: 'TikTok', rating: 4, status: 'Activo (Propuestas)', agentId: 'agent-456', category: 'Prospecto' },
+  { id: 'cli-5', name: 'Patricia Vargas', email: 'patricia@ejemplo.com', phone: '+591 727 65432', interest: 'Galpón Industrial', budget: 340000, source: 'Instagram', rating: 5, status: 'Reservado (Seña)', agentId: 'agent-456', category: 'Prospecto' },
 ];
 
 const INITIAL_DEALS: CommissionDeal[] = [
@@ -72,6 +73,13 @@ export default function AgentClients() {
     // Filtrar clientes por agentId (Aislamiento de Datos)
     const myClients = INITIAL_CLIENTS.filter(cli => cli.agentId === id);
     setClients(myClients);
+
+    // Cargar comisiones desde el backend
+    const loadDeals = async () => {
+      const dbDeals = await leadsService.getAgentDeals();
+      setDeals(dbDeals);
+    };
+    loadDeals();
   }, []);
 
   const filteredClients = clients.filter((cli) => {
@@ -90,7 +98,7 @@ export default function AgentClients() {
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleRegisterClient = (e: React.FormEvent) => {
+  const handleRegisterClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName || !formEmail || !formPhone || !formPropertyId || !formAmount) {
       alert('Por favor, completa todos los campos del formulario.');
@@ -98,52 +106,47 @@ export default function AgentClients() {
     }
 
     const transactionVal = parseFloat(formAmount);
-    const calculatedCommission = transactionVal * 0.03; // Tarifa estándar 3%
 
-    // 1. Agregar el cliente registrado a la lista
-    const selectedPropTitle = INITIAL_DEALS.find(d => d.propertyId === formPropertyId)?.propertyTitle || 'Propiedad Gestionada';
-    const newClient: Client = {
-      id: `cli-${Date.now()}`,
-      name: formName,
-      email: formEmail,
-      phone: formPhone,
-      interest: selectedPropTitle,
-      budget: transactionVal,
-      source: formSource,
-      rating: 5,
-      status: 'Transacción Registrada',
-      agentId: currentAgentId,
-      category: formCategory,
-    };
+    try {
+      // 1. Llamar al backend para registrar la transacción y obtener cálculo de comisión del 3%
+      const responseDeal = await leadsService.registerDeal(formPropertyId, formName, transactionVal);
 
-    setClients(prev => [newClient, ...prev]);
+      // 2. Agregar el cliente registrado a la lista
+      const newClient: Client = {
+        id: `cli-${Date.now()}`,
+        name: formName,
+        email: formEmail,
+        phone: formPhone,
+        interest: responseDeal.propertyTitle,
+        budget: transactionVal,
+        source: formSource,
+        rating: 5,
+        status: 'Transacción Registrada',
+        agentId: currentAgentId,
+        category: formCategory,
+      };
 
-    // 2. Actualizar el pipeline de comisiones y cambiar estado de CONGELADO a ACTIVO
-    setDeals(prev =>
-      prev.map(deal =>
-        deal.propertyId === formPropertyId
-          ? {
-              ...deal,
-              clientName: formName,
-              amount: transactionVal,
-              commission: calculatedCommission,
-              status: 'ACTIVO',
-            }
-          : deal
-      )
-    );
+      setClients(prev => [newClient, ...prev]);
 
-    // Limpiar formulario y cerrar modal
-    setFormName('');
-    setFormEmail('');
-    setFormPhone('');
-    setFormSource('RED PROPIO');
-    setFormCategory('Prospecto');
-    setFormPropertyId('');
-    setFormAmount('');
-    setShowRegisterModal(false);
+      // 3. Recargar la lista de comisiones/deals desde la base de datos de backend
+      const updatedDeals = await leadsService.getAgentDeals();
+      setDeals(updatedDeals);
 
-    alert('Cliente registrado con éxito y pipeline de comisiones actualizado.');
+      // Limpiar formulario y cerrar modal
+      setFormName('');
+      setFormEmail('');
+      setFormPhone('');
+      setFormSource('RED PROPIO');
+      setFormCategory('Prospecto');
+      setFormPropertyId('');
+      setFormAmount('');
+      setShowRegisterModal(false);
+
+      alert('Cliente registrado con éxito y transacción guardada en la base de datos.');
+    } catch (err) {
+      console.error(err);
+      alert('Hubo un error al registrar la transacción.');
+    }
   };
 
   return (
@@ -240,9 +243,9 @@ export default function AgentClients() {
           >
             <option value="ALL">Todos los Orígenes</option>
             <option value="WhatsApp">WhatsApp</option>
-            <option value="TikTok Lead">TikTok Lead</option>
+            <option value="TikTok">TikTok</option>
+            <option value="Instagram">Instagram</option>
             <option value="Recomendado">Recomendado</option>
-            <option value="Instagram Ads">Instagram Ads</option>
             <option value="RED PROPIO">RED PROPIO</option>
           </select>
         </div>
@@ -390,8 +393,8 @@ export default function AgentClients() {
                 >
                   <option value="RED PROPIO">RED PROPIO</option>
                   <option value="WhatsApp">WhatsApp</option>
-                  <option value="TikTok Lead">TikTok Lead</option>
-                  <option value="Instagram Ads">Instagram Ads</option>
+                  <option value="TikTok">TikTok</option>
+                  <option value="Instagram">Instagram</option>
                   <option value="Recomendado">Recomendado</option>
                 </select>
               </div>

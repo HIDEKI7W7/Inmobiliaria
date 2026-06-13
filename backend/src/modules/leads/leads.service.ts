@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class LeadsService {
@@ -146,5 +148,100 @@ export class LeadsService {
       }
       throw new BadRequestException(`No se pudo crear el prospecto en base de datos: ${message}`);
     }
+  }
+
+  private getDealsFilePath(): string {
+    return path.join(process.cwd(), 'deals.json');
+  }
+
+  private readDealsFromFile(): any[] {
+    const filePath = this.getDealsFilePath();
+    if (!fs.existsSync(filePath)) {
+      const defaultDeals = [
+        { id: 'deal-1', agentId: 'agent-123', propertyId: 'prop-1-muyurina', propertyTitle: 'Casa de Campo en Muyurina', clientName: 'María Quispe', amount: null, commission: null, status: 'CONGELADO' },
+        { id: 'deal-2', agentId: 'agent-123', propertyId: 'prop-3-queru-queru', propertyTitle: 'Penthouse de Lujo en Queru Queru', clientName: 'Carlos Rodríguez', amount: null, commission: null, status: 'CONGELADO' }
+      ];
+      fs.writeFileSync(filePath, JSON.stringify(defaultDeals, null, 2), 'utf-8');
+      return defaultDeals;
+    }
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch (error) {
+      this.logger.error(`Error al leer deals.json: ${error}`);
+      return [];
+    }
+  }
+
+  private writeDealsToFile(deals: any[]): void {
+    const filePath = this.getDealsFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(deals, null, 2), 'utf-8');
+  }
+
+  async findAgentDeals(agentId: string) {
+    this.logger.log(`Consultando deals del agente ${agentId} desde archivo persistente...`);
+    const allDeals = this.readDealsFromFile();
+    
+    const agentDeals = allDeals.filter(d => d.agentId === agentId);
+    if (agentDeals.length === 0) {
+      const newAgentDeals = [
+        { id: `deal-${Date.now()}-1`, agentId, propertyId: 'prop-1-muyurina', propertyTitle: 'Casa de Campo en Muyurina', clientName: 'María Quispe', amount: null, commission: null, status: 'CONGELADO' },
+        { id: `deal-${Date.now()}-2`, agentId, propertyId: 'prop-3-queru-queru', propertyTitle: 'Penthouse de Lujo en Queru Queru', clientName: 'Carlos Rodríguez', amount: null, commission: null, status: 'CONGELADO' }
+      ];
+      const updatedAllDeals = [...allDeals, ...newAgentDeals];
+      this.writeDealsToFile(updatedAllDeals);
+      return newAgentDeals;
+    }
+    return agentDeals;
+  }
+
+  async registerAgentDeal(agentId: string, propertyId: string, clientName: string, amount: number) {
+    this.logger.log(`Registrando transacción del agente ${agentId} para propiedad ${propertyId}`);
+    
+    if (!propertyId || !clientName || !amount || amount <= 0) {
+      throw new BadRequestException('Propiedad, cliente y monto de transacción válido son obligatorios.');
+    }
+
+    const allDeals = this.readDealsFromFile();
+    let dealIndex = allDeals.findIndex(d => d.agentId === agentId && d.propertyId === propertyId);
+
+    const calculatedCommission = amount * 0.03;
+
+    if (dealIndex === -1) {
+      let propertyTitle = 'Propiedad de Cartera';
+      try {
+        const prop = await this.prisma.property.findUnique({ where: { id: propertyId } });
+        if (prop) {
+          propertyTitle = prop.title;
+        }
+      } catch (err) {
+        // Fallback robusto
+      }
+
+      const newDeal = {
+        id: `deal-${Date.now()}`,
+        agentId,
+        propertyId,
+        propertyTitle,
+        clientName,
+        amount,
+        commission: calculatedCommission,
+        status: 'ACTIVO'
+      };
+      allDeals.push(newDeal);
+      this.writeDealsToFile(allDeals);
+      return newDeal;
+    }
+
+    allDeals[dealIndex] = {
+      ...allDeals[dealIndex],
+      clientName,
+      amount,
+      commission: calculatedCommission,
+      status: 'ACTIVO'
+    };
+
+    this.writeDealsToFile(allDeals);
+    return allDeals[dealIndex];
   }
 }

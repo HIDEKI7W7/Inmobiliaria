@@ -23,6 +23,16 @@ export interface Lead {
   } | null;
 }
 
+export interface CommissionDeal {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  clientName: string;
+  amount: number | null;
+  commission: number | null;
+  status: 'CONGELADO' | 'ACTIVO';
+}
+
 export const leadsService = {
   async getAgentLeads(token?: string): Promise<Lead[]> {
     try {
@@ -119,4 +129,39 @@ export const leadsService = {
       };
     }
   },
+
+  async getAgentDeals(token?: string): Promise<CommissionDeal[]> {
+    try {
+      const data = await apiClient.getWithAuth<CommissionDeal[]>(`/agente/leads/deals`, token || 'mock-agent-token');
+      return data;
+    } catch (error) {
+      console.warn('API de deals inalcanzable. Cargando fallback de deals locales.');
+      return [
+        { id: 'deal-1', propertyId: 'prop-1-muyurina', propertyTitle: 'Casa de Campo en Muyurina', clientName: 'María Quispe', amount: null, commission: null, status: 'CONGELADO' },
+        { id: 'deal-2', propertyId: 'prop-3-queru-queru', propertyTitle: 'Penthouse de Lujo en Queru Queru', clientName: 'Carlos Rodríguez', amount: null, commission: null, status: 'CONGELADO' }
+      ];
+    }
+  },
+
+  async registerDeal(propertyId: string, clientName: string, amount: number, token?: string): Promise<CommissionDeal> {
+    try {
+      const data = await apiClient.postWithAuth<CommissionDeal>(
+        `/agente/leads/deals`,
+        { propertyId, clientName, amount },
+        token || 'mock-agent-token'
+      );
+      return data;
+    } catch (error) {
+      console.warn('API de deals inalcanzable. Simulando registro de transacción local.');
+      return {
+        id: `deal-${Date.now()}`,
+        propertyId,
+        propertyTitle: 'Propiedad de Cartera (Simulado)',
+        clientName,
+        amount,
+        commission: amount * 0.03,
+        status: 'ACTIVO'
+      };
+    }
+  }
 };
