@@ -32,6 +32,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    if (response.headersSent) {
+      this.logger.warn(
+        `[${request.method}] ${request.url} → Excepción interceptada pero los encabezados ya fueron enviados al cliente.`
+      );
+      return;
+    }
+
     const { statusCode, message } = this.resolveException(exception, request);
 
     // Log detallado únicamente en el servidor — nunca en el cliente
