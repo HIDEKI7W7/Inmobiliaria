@@ -104,6 +104,17 @@ export const apiClient = {
     });
   },
 
+  async putWithAuth<T>(path: string, body: any, token: string): Promise<T> {
+    return request<T>(path, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  },
+
   async deleteWithAuth<T>(path: string, token: string): Promise<T> {
     return request<T>(path, {
       method: 'DELETE',

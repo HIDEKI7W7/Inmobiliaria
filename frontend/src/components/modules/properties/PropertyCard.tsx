@@ -14,6 +14,7 @@ export interface Property {
   bathrooms: number;
   location: string;
   imageUrl: string;
+  image?: string;
   featured?: boolean;
   lat: number;
   lng: number;

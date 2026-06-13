@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { FindPropertiesQueryDto } from './dto/find-properties-query.dto';
@@ -442,10 +442,22 @@ const MOCK_PROPERTIES: any[] = [
 
 
 @Injectable()
-export class PropertiesService {
+export class PropertiesService implements OnModuleInit {
   private readonly logger = new Logger(PropertiesService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    // Disparar cada 1 hora la limpieza de expirados
+    setInterval(() => {
+      this.checkAndCleanExpiredProperties();
+    }, 60 * 60 * 1000);
+    
+    // Y una ejecución inicial inmediata con delay
+    setTimeout(() => {
+      this.checkAndCleanExpiredProperties();
+    }, 5000);
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // TSK-3.2 — Catálogo con Paginación por Cursor (Cursor-based Pagination)
@@ -906,6 +918,97 @@ export class PropertiesService {
         };
       }
       throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
+    }
+  }
+
+  async update(id: string, dto: any) {
+    this.logger.log(`[update] Actualizando propiedad ID: ${id}`);
+    try {
+      if (!this.prisma.isConnected) {
+        throw new Error('Base de datos desconectada (fallback rápido)');
+      }
+      const existing = await this.prisma.property.findFirst({
+        where: { id, deletedAt: null },
+      });
+      if (!existing) {
+        throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
+      }
+      const updated = await this.prisma.property.update({
+        where: { id },
+        data: {
+          title: dto.title ?? existing.title,
+          description: dto.description ?? existing.description,
+          price: dto.price !== undefined ? parseFloat(dto.price) : existing.price,
+          currency: dto.currency ?? existing.currency,
+          area: dto.area !== undefined ? parseFloat(dto.area) : existing.area,
+          imageUrl: dto.imageUrl ?? existing.imageUrl,
+        },
+      });
+      return {
+        message: 'Propiedad actualizada exitosamente en base de datos.',
+        data: updated,
+      };
+    } catch (err) {
+      this.logger.warn(`Error al actualizar propiedad en DB: ${err.message}. Actualizando en catálogo mock.`);
+      const idx = MOCK_PROPERTIES.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        MOCK_PROPERTIES[idx] = {
+          ...MOCK_PROPERTIES[idx],
+          title: dto.title ?? MOCK_PROPERTIES[idx].title,
+          description: dto.description ?? MOCK_PROPERTIES[idx].description,
+          price: dto.price !== undefined ? parseFloat(dto.price) : MOCK_PROPERTIES[idx].price,
+          priceBob: dto.priceBob !== undefined ? parseFloat(dto.priceBob) : MOCK_PROPERTIES[idx].priceBob,
+          currency: dto.currency ?? MOCK_PROPERTIES[idx].currency,
+          area: dto.area !== undefined ? parseFloat(dto.area) : MOCK_PROPERTIES[idx].area,
+          imageUrl: dto.imageUrl ?? MOCK_PROPERTIES[idx].imageUrl,
+        };
+        return {
+          message: 'Propiedad actualizada exitosamente (resiliencia local).',
+          data: MOCK_PROPERTIES[idx],
+        };
+      }
+      throw new NotFoundException(`La propiedad con ID "${id}" no fue encontrada.`);
+    }
+  }
+
+  checkAndCleanExpiredProperties() {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    this.logger.log('Cron/Disparador: Iniciando verificación de vigencia temporal de anuncios (90 días)...');
+
+    // Clean mock properties
+    let expiredMockCount = 0;
+    for (let i = MOCK_PROPERTIES.length - 1; i >= 0; i--) {
+      const p = MOCK_PROPERTIES[i];
+      const createdDate = new Date(p.createdAt || new Date());
+      if (createdDate < ninetyDaysAgo && p.deletedAt === null) {
+        this.logger.warn(`Cron/Disparador: Expirando propiedad mock "${p.title}" (ID: ${p.id}) por superar 90 días.`);
+        p.deletedAt = new Date(); // soft delete
+        expiredMockCount++;
+      }
+    }
+    if (expiredMockCount > 0) {
+      this.logger.log(`Cron/Disparador: Expirados ${expiredMockCount} anuncios mock.`);
+    }
+    
+    // Also try cleaning database if connected
+    if (this.prisma.isConnected) {
+      this.prisma.property.updateMany({
+        where: {
+          createdAt: { lt: ninetyDaysAgo },
+          deletedAt: null
+        },
+        data: {
+          deletedAt: new Date()
+        }
+      }).then(res => {
+        if (res.count > 0) {
+          this.logger.warn(`Cron/Disparador: Expirados ${res.count} anuncios en base de datos por superar 90 días.`);
+        }
+      }).catch(err => {
+        this.logger.error(`Error en expiración automática de DB: ${err.message}`);
+      });
     }
   }
 }

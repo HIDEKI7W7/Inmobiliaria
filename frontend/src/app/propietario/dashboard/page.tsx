@@ -21,6 +21,67 @@ const ATTRIBUTES_BY_CATEGORY = {
   Sostenibilidad: ['Calefón Solar', 'Paneles Solares', 'Iluminación LED', 'Sistema de Reciclaje de Agua']
 };
 
+const PLANS = [
+  {
+    id: 'basico',
+    name: 'Plan Básico',
+    price: 0,
+    period: 'gratis',
+    highlight: false,
+    features: [
+      { text: '1 publicación activa', included: true },
+      { text: 'Fotos básicas (hasta 5)', included: true },
+      { text: 'Contacto directo por WhatsApp', included: true },
+      { text: 'Verificación legal documental', included: false },
+      { text: 'Posicionamiento destacado', included: false },
+    ],
+  },
+  {
+    id: 'estandar',
+    name: 'Plan Estándar',
+    price: 250,
+    period: 'mes',
+    highlight: false,
+    features: [
+      { text: '3 publicaciones activas', included: true },
+      { text: 'Fotos y video estándar', included: true },
+      { text: 'Contacto directo por WhatsApp', included: true },
+      { text: 'Sello de verificación documental', included: true },
+      { text: 'Posicionamiento destacado', included: false },
+    ],
+  },
+  {
+    id: 'profesional',
+    name: 'Plan Profesional',
+    price: 490,
+    period: 'mes',
+    highlight: true,
+    badge: 'Recomendado',
+    features: [
+      { text: '10 publicaciones activas', included: true },
+      { text: 'Fotos HD + video premium', included: true },
+      { text: 'Contacto directo por WhatsApp', included: true },
+      { text: 'Sello de verificación Sello Oro', included: true },
+      { text: 'Posicionamiento destacado en mapa', included: true },
+    ],
+  },
+  {
+    id: 'elite',
+    name: 'Plan Elite',
+    price: 990,
+    period: 'mes',
+    highlight: false,
+    badge: 'Todo incluido',
+    features: [
+      { text: 'Publicaciones ilimitadas', included: true },
+      { text: 'Fotos, video + tour virtual 360°', included: true },
+      { text: 'Contacto prioritario directo', included: true },
+      { text: 'Sello de verificación Sello Oro', included: true },
+      { text: 'Campañas de Marketing dedicadas', included: true },
+    ],
+  },
+];
+
 export default function PropietarioDashboard() {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -76,12 +137,30 @@ export default function PropietarioDashboard() {
 
   const handleLogout = async () => {
     try {
-      document.cookie = 'propio_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax;';
+      await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem('propio_token');
       localStorage.removeItem('propio_user');
-      router.replace('/login');
+      router.replace('/');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      localStorage.removeItem('propio_token');
+      localStorage.removeItem('propio_user');
+      router.replace('/');
+    }
+  };
+
+  const handleStopPublishing = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas retirar y dejar de publicar este anuncio? Se ocultará del catálogo público de inmediato.')) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('propio_token') || '';
+      await propertiesService.deleteProperty(id, token);
+      setProperties(prev => prev.filter(p => p.id !== id));
+      alert('Anuncio retirado del catálogo público con éxito.');
+    } catch (error) {
+      console.error('Error al dejar de publicar:', error);
+      alert('Ocurrió un error al retirar el anuncio.');
     }
   };
 
@@ -189,6 +268,9 @@ export default function PropietarioDashboard() {
         imageUrl: editImages[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
       };
 
+      const token = localStorage.getItem('propio_token') || '';
+      await propertiesService.updateProperty(editingProperty.id, updatedFields, token);
+
       // Modificar en la lista local para reflejar el cambio de inmediato
       setProperties(prev =>
         prev.map(p =>
@@ -219,43 +301,31 @@ export default function PropietarioDashboard() {
         {/* ENCABEZADO BIENVENIDA */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
           <div className="space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Panel de Propietario
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#000033]/60">
+              Portal del Propietario
             </p>
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#000033] tracking-tight">
-                Bienvenido, {userName} 👋
-              </h1>
-              
-              <button 
-                onClick={handleLogout}
-                className="border border-slate-200 text-slate-400 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all flex items-center gap-2"
-                aria-label="Cerrar sesión"
-              >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth={2.5} 
-                  stroke="currentColor" 
-                  className="w-4 h-4"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-                </svg>
-                <span>Salir</span>
-              </button>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-[#000033] tracking-tight">
+              Bienvenido, {userName} 👋
+            </h1>
             <p className="text-sm text-slate-500 font-medium">
               Gestiona tus propiedades, actualiza fotografías, modifica atributos y publica nuevos inmuebles directos en Bolivia.
             </p>
           </div>
 
-          <Link
-            href="/propietario/nuevo"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#ccff00] hover:bg-opacity-90 text-[#000033] font-black text-xs uppercase tracking-wider rounded-xl shadow-sm border border-[#000033]/10 active:scale-[0.98] transition-all"
-          >
-            <span>+</span> Publicar Inmueble
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/propietario/nuevo"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#000033] hover:bg-[#000033]/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm"
+            >
+              + Publicar Inmueble
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+            >
+              Salir
+            </button>
+          </div>
         </div>
 
         {/* KPI CARDS */}
@@ -381,12 +451,18 @@ export default function PropietarioDashboard() {
                           </span>
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           className="px-3 py-1.5 bg-[#ccff00] text-[#000033] hover:bg-opacity-95 text-[11px] font-bold rounded-xl transition-all"
                           onClick={() => handleStartEdit(property)}
                         >
                           Editar Anuncio ✏️
+                        </button>
+                        <button
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-[11px] font-bold text-red-650 rounded-xl transition-all"
+                          onClick={() => handleStopPublishing(property.id)}
+                        >
+                          Dejar de publicar ✕
                         </button>
                         <button
                           className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-650 rounded-xl transition-all"
@@ -402,6 +478,85 @@ export default function PropietarioDashboard() {
             </div>
           )}
         </div>
+
+        {/* SECCIÓN DE MONETIZACIÓN: PLANES DE SUSCRIPCIÓN */}
+        <section className="pt-16 border-t border-slate-200 mt-16 space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-black text-[#000033] uppercase tracking-wide">
+              Maximiza la visibilidad de tus publicaciones
+            </h2>
+            <p className="text-xs text-slate-500 font-medium max-w-lg mx-auto">
+              Contrata un plan de difusión para obtener el Sello Oro, posicionamiento destacado en el mapa y mayor número de publicaciones activas.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+            {PLANS.map((plan) => (
+              <div 
+                key={plan.id}
+                className={`relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 bg-white border ${
+                  plan.highlight
+                    ? 'border-2 border-[#ccff00] shadow-xl scale-[1.02] z-10'
+                    : 'border-slate-200 shadow-sm hover:shadow-md'
+                }`}
+              >
+                {plan.badge && (
+                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest ${
+                    plan.highlight ? 'bg-[#ccff00] text-[#000033]' : 'bg-[#000033] text-white'
+                  }`}>
+                    {plan.badge}
+                  </div>
+                )}
+                
+                <div className="flex-1 flex flex-col justify-between space-y-6">
+                  <div>
+                    <h3 className="font-bold text-sm text-[#000033] uppercase tracking-wide mb-2">
+                      {plan.name}
+                    </h3>
+                    
+                    <div className="flex items-baseline gap-1 mb-4">
+                      <span className="text-2xl font-black text-[#000033]">
+                        {plan.price === 0 ? 'Gratis' : `Bs. ${plan.price}`}
+                      </span>
+                      {plan.price > 0 && <span className="text-[10px] text-slate-400">/{plan.period}</span>}
+                    </div>
+
+                    <ul className="space-y-2 pt-3 border-t border-slate-100">
+                      {plan.features.map((f, i) => (
+                        <li key={i} className={`flex items-center gap-2 text-[10px] ${
+                          f.included ? 'text-slate-800 font-semibold' : 'text-slate-350 line-through'
+                        }`}>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 text-[8px] ${
+                            f.included ? 'bg-emerald-50 text-emerald-600 font-bold' : 'bg-slate-50 text-slate-300'
+                          }`}>
+                            {f.included ? '✓' : '–'}
+                          </span>
+                          {f.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      onClick={() => {
+                        const text = encodeURIComponent(`Hola Propio, me interesa contratar el ${plan.name} de la plataforma.`);
+                        window.open(`https://wa.me/59171234567?text=${text}`, '_blank');
+                      }}
+                      className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-sm ${
+                        plan.highlight
+                          ? 'bg-[#ccff00] text-[#000033] hover:bg-[#b5e600]'
+                          : 'bg-[#000033] text-white hover:bg-[#000044]'
+                      }`}
+                    >
+                      {plan.price === 0 ? 'Comenzar Gratis' : 'Contratar Plan'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
       </main>
 

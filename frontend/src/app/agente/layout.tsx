@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoutAction from '@/components/LogoutAction';
@@ -14,6 +14,7 @@ interface NavItem {
 
 export default function AgenteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navItems: NavItem[] = [
     {
@@ -57,12 +58,22 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans antialiased">
       
-      {/* SIDEBAR FIJA A LA IZQUIERDA - NO SCROLLABLE */}
-      <aside className="w-64 h-full flex-shrink-0 bg-[#04045E] text-white flex flex-col justify-between border-r border-[#04045E]/15 z-30 select-none">
+      {/* OVERLAY BACKDROP EN MOBILE AL ABRIR LA SIDEBAR */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 bg-black/45 z-40 md:hidden transition-opacity duration-300"
+        />
+      )}
+
+      {/* SIDEBAR - MOBILE RESPONSIVE */}
+      <aside className={`fixed inset-y-0 left-0 w-64 h-full flex-shrink-0 bg-[#04045E] text-white flex flex-col justify-between border-r border-[#04045E]/15 z-50 select-none transform transition-transform duration-300 md:relative md:translate-x-0 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         
         <div>
           {/* Logo Brand Header */}
-          <div className="p-6 border-b border-white/5">
+          <div className="p-6 border-b border-white/5 flex justify-between items-center">
             <Link href="/" className="flex items-center gap-2 select-none group">
               <svg viewBox="0 0 100 100" className="w-8 h-8 group-hover:scale-105 transition-transform" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -77,6 +88,14 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
                 <span className="block text-[8px] font-bold tracking-widest text-[#b9fa3c] uppercase mt-0.5">Panel del Agente</span>
               </div>
             </Link>
+
+            {/* Cerrar Sidebar en Mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden p-1 text-slate-300 hover:text-white rounded-lg"
+            >
+              ✕
+            </button>
           </div>
 
           {/* Menú de Navegación */}
@@ -89,6 +108,7 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`flex items-center gap-3.5 px-4 py-3 text-xs uppercase tracking-wider font-bold rounded-xl transition-all duration-200 ${
                     isActive
                       ? 'border-l-4 border-l-[#b9fa3c] bg-white/10 text-white'
@@ -131,22 +151,45 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         
         {/* Cabecera superior fija - flex-shrink-0 */}
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex justify-between items-center z-20 flex-shrink-0 select-none">
-          <div className="flex items-center gap-4">
-            <h1 className="text-sm font-black text-[#04045E] uppercase tracking-wider">
+        <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex justify-between items-center z-20 flex-shrink-0 select-none">
+          <div className="flex items-center gap-3">
+            {/* Botón Hamburguesa en Mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 text-[#04045E] hover:bg-slate-100 rounded-lg"
+              title="Abrir menú"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="text-xs md:text-sm font-black text-[#04045E] uppercase tracking-wider hidden sm:block">
               {pathname === '/agente' || pathname === '/agente/dashboard' 
                 ? 'Resumen General' 
                 : pathname.split('/').pop()?.replace('-', ' ')}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Servidor Activo</span>
+
+          {/* Calificación de Estrellas e ID del Asesor */}
+          <div className="flex items-center gap-3 md:gap-4 text-[10px] md:text-xs select-none">
+            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/50 text-amber-700 px-2.5 py-1 rounded-xl font-black">
+              <span>⭐ 4.9</span>
+              <span className="opacity-60 hidden md:inline">Score</span>
+            </div>
+            
+            <div className="bg-[#04045E]/5 border border-[#04045E]/10 text-[#04045E] px-2.5 py-1 rounded-xl font-black uppercase tracking-wider">
+              ID: <span className="text-emerald-600">AGT-2026-007</span>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activo</span>
+            </div>
           </div>
         </header>
 
         {/* LIENZO DE TRABAJO INYECTABLE - TOTALMENTE AISLADO */}
-        <main className="flex-1 overflow-y-auto relative">
+        <main className="flex-1 overflow-y-auto relative p-6 md:p-8">
           {children}
         </main>
         

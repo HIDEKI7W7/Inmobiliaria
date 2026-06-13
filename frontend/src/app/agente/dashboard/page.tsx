@@ -1,9 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export default function AgentDashboard() {
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  useEffect(() => {
+    const hasSeen = sessionStorage.getItem('seenAgentNotification');
+    if (!hasSeen) {
+      setShowUpdateModal(true);
+    }
+  }, []);
+
+  const handleCloseModal = () => {
+    sessionStorage.setItem('seenAgentNotification', 'true');
+    setShowUpdateModal(false);
+  };
+
   const metrics = [
     { title: 'Mis ventas del mes', value: '$452,000 USD', change: '+12.4%', color: 'text-emerald-600', icon: '💰' },
     { title: 'Comisiones estimadas', value: '$13,560 USD', change: '+3% tarifa', color: 'text-indigo-600', icon: '📈' },
@@ -25,7 +39,7 @@ export default function AgentDashboard() {
       <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-[#04045E] uppercase tracking-tight">
-            ¡Hola, Asesor!
+            ¡Hola, Asesor! 👋
           </h2>
           <p className="text-slate-500 text-sm font-medium mt-1">
             Aquí tienes un resumen en tiempo real de tus propiedades y prospectos para hoy.
@@ -140,6 +154,47 @@ export default function AgentDashboard() {
         </div>
 
       </div>
+
+      {/* SISTEMA DE NOTIFICACIONES GLOBALES: OVERLAY MODAL */}
+      {showUpdateModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#04045E]/75 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 md:p-8 space-y-6 relative overflow-hidden">
+            {/* Accent line */}
+            <div className="absolute top-0 left-0 right-0 h-2 bg-[#b9fa3c]" />
+            
+            <div className="text-center space-y-3">
+              <div className="h-12 w-12 rounded-full bg-[#b9fa3c]/10 border border-[#b9fa3c]/35 flex items-center justify-center mx-auto text-xl animate-pulse">
+                📢
+              </div>
+              <h2 className="text-lg font-black text-[#04045E] uppercase tracking-wide">
+                Actualizaciones Corporativas
+              </h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Mensaje Mandatorio para Asesores
+              </p>
+            </div>
+
+            <div className="text-xs text-slate-650 leading-relaxed font-semibold space-y-3 bg-slate-50 border p-4 rounded-2xl">
+              <p>
+                🚀 <strong>Nuevas Comisiones Desbloqueadas:</strong> Ahora debes registrar el cliente y asociar la propiedad para calcular la comisión de cada cierre en tiempo real.
+              </p>
+              <p>
+                🏷️ <strong>Captación Red Propio:</strong> Se ha integrado el canal de captación de leads &quot;RED PROPIO&quot; en los formularios de registro.
+              </p>
+              <p>
+                📱 <strong>Enfoque en calle:</strong> La plataforma ahora es 100% responsiva para que realices tus gestiones directamente desde tu celular.
+              </p>
+            </div>
+
+            <button
+              onClick={handleCloseModal}
+              className="w-full py-3 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Entendido, Continuar al Panel 🚀
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
