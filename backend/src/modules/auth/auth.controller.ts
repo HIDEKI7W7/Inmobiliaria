@@ -6,7 +6,6 @@ import { GoogleAuthGuard, FacebookAuthGuard, AppleAuthGuard } from './social-aut
 import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { SocialMockDto } from './dto/social-mock.dto';
 import { OAuthProfile } from './strategies/oauth-profile';
 
 @Controller('auth')
@@ -90,28 +89,6 @@ export class AuthController {
   @UseGuards(AppleAuthGuard)
   async appleCallback(@Req() req: Request & { user: OAuthProfile }, @Res() res: Response) {
     return this.finishSocialLogin(req.user, res);
-  }
-
-  @Post('social-mock')
-  @HttpCode(HttpStatus.OK)
-  async socialMock(@Body() body: SocialMockDto, @Res() res: Response) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    if (isProduction) {
-      throw new ForbiddenException('El simulador de inicio social sólo está disponible en modo de desarrollo.');
-    }
-
-    if (!body.email || !body.provider) {
-      throw new ForbiddenException('Faltan campos obligatorios para la simulación de inicio social.');
-    }
-
-    const profile: OAuthProfile = {
-      provider: body.provider,
-      providerId: body.providerId || `mock-${Date.now()}`,
-      email: body.email,
-      name: body.name || `Usuario ${body.provider.toLowerCase()}`,
-    };
-
-    return this.finishSocialLogin(profile, res);
   }
 
   @Patch('onboarding')

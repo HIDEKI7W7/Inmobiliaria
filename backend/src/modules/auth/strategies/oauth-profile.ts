@@ -10,7 +10,6 @@ export interface OAuthProfile {
 export function requireEnv(name: string): string {
   const value = process.env[name];
   
-  // 1. Validación de existencia y placeholders por defecto
   const isPlaceholder = 
     !value ||
     value.trim() === '' ||
@@ -22,21 +21,11 @@ export function requireEnv(name: string): string {
     value.startsWith('development-placeholder-');
 
   if (isPlaceholder) {
-    console.warn(
-      `\n========================================================================\n` +
-      `⚠️ [ADVERTENCIA DE DESARROLLO]: ${name} NO ESTÁ CONFIGURADO O TIENE EL VALOR POR DEFECTO!\n` +
-      `========================================================================\n` +
-      `La variable de entorno ${name} mantiene un marcador de posición o no existe ("${value || ''}").\n` +
-      `El inicio de sesión social a través de este proveedor fallará en tiempo de ejecución,\n` +
-      `pero el arranque del servidor continuará para permitir el desarrollo local y login por correo.\n` +
-      `Para activarlo formalmente:\n` +
-      `  1. Configura el ID y el Secreto válidos en 'backend/.env'.\n` +
-      `========================================================================\n`
+    throw new Error(
+      `[FATAL STARTUP ERROR] La variable de entorno de autenticación crítica ${name} no está configurada o mantiene un valor placeholder ("${value || ''}"). La aplicación no puede iniciar en un estado incompleto o inseguro.`
     );
-    return `development-placeholder-${name.toLowerCase()}`;
   }
 
-  // 2. Validación de espacios en blanco ocultos (Típico error de copy-paste en Windows)
   if (value !== value.trim()) {
     throw new Error(
       `[ERROR DE CONFIGURACIÓN] La variable ${name} contiene espacios en blanco al inicio o al final.\n` +
