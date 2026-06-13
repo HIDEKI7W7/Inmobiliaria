@@ -33,6 +33,7 @@ export interface Property {
   createdAt?: string | Date;
   ownerName?: string;
   offerType?: string;
+  lotSize?: number;
 }
 
 export interface PropertySpecs {
