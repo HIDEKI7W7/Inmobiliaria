@@ -52,8 +52,18 @@ export const test = base.extend<{
       await dialog.accept();
     });
 
+    // Registrar logs de consola del navegador y excepciones no controladas
+    page.on('console', (msg) => {
+      console.log(`[BROWSER CONSOLE] [${msg.type()}] ${msg.text()}`);
+    });
+
+    page.on('pageerror', (err) => {
+      console.error(`[BROWSER ERROR] ${err.stack || err.message}`);
+    });
+
     await use(page);
   },
 });
 
 export { expect };
+

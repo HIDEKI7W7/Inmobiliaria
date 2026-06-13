@@ -91,4 +91,36 @@ test.describe('Propio E2E - Autenticación y Proxy BFF', () => {
     // 3. Verificar redirección a su panel
     expect(page.url()).toContain('/propietario/dashboard');
   });
+
+  test('Debería registrar un nuevo usuario con WhatsApp obligatorio y redirigir a Onboarding', async ({ page }) => {
+    // 1. Ir a la pestaña Registrarse
+    await page.click('button:has-text("Registrarse")');
+
+    // 2. Intentar registrarse sin WhatsApp y verificar validación local
+    await page.fill('#name', 'Nuevo Propietario Test');
+    await page.fill('#email', `test_register_${Date.now()}@test.com`);
+    await page.fill('#password', 'register123');
+    await page.click('button[type="submit"]');
+
+    // Debería mostrar error de WhatsApp
+    await expect(page.locator('text=El número de WhatsApp es requerido')).toBeVisible();
+
+    // 3. Completar el número de WhatsApp con menos de 7 dígitos y comprobar validación
+    await page.fill('#whatsappPhone', '123456');
+    await page.click('button[type="submit"]');
+    await expect(page.locator('text=Ingresa un número válido de al menos 7 dígitos')).toBeVisible();
+
+    // 4. Completar número válido de WhatsApp y registrarse
+    await page.fill('#whatsappPhone', '76543210');
+    
+    // Hacemos submit y esperamos navegación
+    await Promise.all([
+      page.waitForNavigation(),
+      page.click('button[type="submit"]')
+    ]);
+
+    // 5. El nuevo usuario debe ser redirigido a /onboarding porque onboardingCompleted es falso por defecto
+    expect(page.url()).toContain('/onboarding');
+  });
 });
+
