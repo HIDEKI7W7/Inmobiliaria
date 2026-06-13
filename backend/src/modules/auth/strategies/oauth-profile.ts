@@ -7,33 +7,46 @@ export interface OAuthProfile {
   name?: string;
 }
 
+/**
+ * Checks whether a credential string looks like a real OAuth credential.
+ * Real Google Client IDs are 70+ chars; real FB App IDs are 15+ digits.
+ * This is checked at request-time inside each Guard, NOT at startup,
+ * so the server can start even without social credentials configured
+ * (useful when running with email/password only or local dev).
+ */
+export function hasRealCredential(value: string | undefined): boolean {
+  if (!value || value.trim() === '') return false;
+  const v = value.trim();
+  if (v.length <= 20) return false;
+  const FORBIDDEN_FRAGMENTS = [
+    'mock-',
+    'tu_google',
+    'tu_facebook',
+    'tu_apple',
+    'placeholder',
+    'development-',
+    'your_',
+    'change_me',
+    'xxxxxxx',
+    'test-credential',
+  ];
+  return !FORBIDDEN_FRAGMENTS.some((f) => v.toLowerCase().includes(f));
+}
+
+/**
+ * @deprecated Use hasRealCredential() inside Guards instead.
+ * requireEnv was previously called at module-load time and would crash
+ * the server if OAuth credentials were absent. Guards now check lazily
+ * at request time and throw ServiceUnavailableException gracefully.
+ */
 export function requireEnv(name: string): string {
   const value = process.env[name];
-  
-  const isPlaceholder = 
-    !value ||
-    value.trim() === '' ||
-    value.includes('tu_google_client_id_real') ||
-    value.includes('tu_google_client_secret_real') ||
-    value.includes('tu_facebook_app_id_real') ||
-    value.includes('tu_facebook_app_secret_real') ||
-    value.includes('tu_apple_') ||
-    value.startsWith('development-placeholder-');
-
-  if (isPlaceholder) {
+  if (!value || value.trim() === '') {
     throw new Error(
-      `[FATAL STARTUP ERROR] La variable de entorno de autenticación crítica ${name} no está configurada o mantiene un valor placeholder ("${value || ''}"). La aplicación no puede iniciar en un estado incompleto o inseguro.`
+      `[CONFIG ERROR] Variable de entorno requerida "${name}" no está definida.`,
     );
   }
-
-  if (value !== value.trim()) {
-    throw new Error(
-      `[ERROR DE CONFIGURACIÓN] La variable ${name} contiene espacios en blanco al inicio o al final.\n` +
-      `Por favor, limpia el valor en 'backend/.env' para evitar errores de firma OAuth.`
-    );
-  }
-
-  return value;
+  return value.trim();
 }
 
 export function getBackendUrl(): string {

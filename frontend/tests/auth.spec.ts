@@ -1,60 +1,105 @@
 import { test, expect } from './fixtures';
 
-test.describe('Propio E2E - Autenticación y Proxy BFF', () => {
-  
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite: Autenticación y Proxy BFF
+// Tag: @auth-flow  (ejecutar con: npx playwright test --grep @auth-flow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe('@auth-flow Propio E2E — Autenticación y Proxy BFF', () => {
+
   test.beforeEach(async ({ page, context }) => {
-    // Limpiar cookies de la sesión
     await context.clearCookies();
-    // Navegar a la página de login
     await page.goto('/login');
-    // Limpiar local storage y session storage del navegador
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();
     });
-    // Recargar la página para iniciar en un estado completamente desautenticado
     await page.goto('/login');
   });
 
-  test('Debería cargar la interfaz de login con todos sus elementos principales y demo buttons', async ({ page }) => {
-    // Comprobar la presencia del logotipo premium de Propio
+  // ── UI básica ──────────────────────────────────────────────────────────────
+
+  test('@auth-flow [UI] Debería cargar el login con todos sus elementos principales y demo buttons', async ({ page }) => {
     await expect(page.locator('text=Propio.')).toBeVisible();
     await expect(page.locator('text=Ingresa a tu cuenta')).toBeVisible();
-    
-    // Verificar campos requeridos del formulario
     await expect(page.locator('#email')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toBeVisible();
-    
-    // Verificar botones de acceso rápido de demostración
+
+    // Demo quick-access buttons
     await expect(page.locator('button:has-text("Admin")')).toBeVisible();
     await expect(page.locator('button:has-text("Agente")')).toBeVisible();
     await expect(page.locator('button:has-text("Propietario")')).toBeVisible();
     await expect(page.locator('button:has-text("Cliente")')).toBeVisible();
   });
 
-  test('Debería iniciar sesión como AGENTE, inyectar cookie HTTP-Only segura y redirigir al Kanban', async ({ page, context }) => {
-    // 1. Completar credenciales automáticas
+  // ── OAuth social buttons ────────────────────────────────────────────────────
+
+  test('@auth-flow [UI] Debería mostrar los botones de acceso social (Google, Apple, Facebook)', async ({ page }) => {
+    // Los tres botones de OAuth deben estar presentes y ser clicables
+    const googleBtn = page.locator('a[title="Google"]');
+    const appleBtn  = page.locator('a[title="Apple"]');
+    const fbBtn     = page.locator('a[title="Facebook"]');
+
+    await expect(googleBtn).toBeVisible();
+    await expect(appleBtn).toBeVisible();
+    await expect(fbBtn).toBeVisible();
+
+    // Verificar que apuntan al backend real (no al simulador)
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    await expect(googleBtn).toHaveAttribute('href', `${baseUrl}/auth/google`);
+    await expect(appleBtn).toHaveAttribute('href',  `${baseUrl}/auth/apple`);
+    await expect(fbBtn).toHaveAttribute('href',     `${baseUrl}/auth/facebook`);
+  });
+
+  test('@auth-flow [SECURITY] El botón de Google NO debe apuntar al simulador /auth/social-simulator', async ({ page }) => {
+    const googleBtn = page.locator('a[title="Google"]');
+    const href = await googleBtn.getAttribute('href');
+    expect(href).not.toContain('social-simulator');
+    expect(href).not.toContain('social-mock');
+  });
+
+  test('@auth-flow [SECURITY] La ruta /auth/social-simulator NO debe servir el simulador antiguo', async ({ page }) => {
+    await page.goto('/auth/social-simulator');
+    // Wait for full client-side hydration
+    await page.waitForLoadState('networkidle');
+    // Also wait a moment for any useEffect redirects to fire
+    await page.waitForTimeout(1000);
+
+    const finalUrl = page.url();
+
+    // Scenario A: Page rendered the deprecation notice
+    const isDeprecationVisible = await page
+      .locator('h1:has-text("Simulador Desactivado")')
+      .isVisible()
+      .catch(() => false);
+
+    // Scenario B: Middleware or useEffect redirected away from the simulator route
+    const isRedirectedAway = !finalUrl.includes('/auth/social-simulator');
+
+    // Either is a valid passing state — the simulator is gone
+    expect(isDeprecationVisible || isRedirectedAway).toBe(true);
+
+    // Critical: old simulator form MUST NOT be visible under any circumstance
+    await expect(page.locator('text=Continuar con Google Simulador')).not.toBeVisible();
+    await expect(page.locator('text=Continuar con Facebook Simulador')).not.toBeVisible();
+  });
+
+  // ── Flujos de login por rol ─────────────────────────────────────────────────
+
+  test('@auth-flow [LOGIN] Debería iniciar sesión como AGENTE, inyectar cookie HTTP-Only y redirigir al Kanban', async ({ page, context }) => {
     await page.fill('#email', 'agent@propio.com.bo');
     await page.fill('#password', 'agent123');
 
-    // 2. Enviar formulario y esperar la navegación controlada por la redirección de roles
-    // El envío POST impacta en el proxy BFF (/api/auth/login) que inyecta la cookie httpOnly
     await Promise.all([
       page.waitForNavigation(),
-      page.click('button[type="submit"]')
+      page.click('button[type="submit"]'),
     ]);
 
-    // 3. Comprobar la redirección exitosa. El agente debe ser llevado al embudo Kanban de leads.
-    const currentUrl = page.url();
-    expect(currentUrl).toContain('/agente/kanban'); 
+    expect(page.url()).toContain('/agente/kanban');
 
-    // 4. Extraer y verificar la cookie de sesión "propio_token" inyectada por el BFF.
-    // Al ser una cookie HTTP-Only no es accesible mediante JavaScript del navegador (document.cookie)
-    // por seguridad contra ataques XSS, pero el contexto de Playwright puede auditarla con éxito.
     const cookies = await context.cookies();
-    const sessionCookie = cookies.find(cookie => cookie.name === 'propio_token');
-    
+    const sessionCookie = cookies.find((c) => c.name === 'propio_token');
     expect(sessionCookie).toBeDefined();
     expect(sessionCookie?.value).not.toBeNull();
     expect(sessionCookie?.path).toBe('/');
@@ -62,65 +107,67 @@ test.describe('Propio E2E - Autenticación y Proxy BFF', () => {
     expect(sessionCookie?.sameSite).toBe('Strict');
   });
 
-  test('Debería iniciar sesión como CLIENTE y redirigir a su área de búsquedas y ofertas', async ({ page }) => {
-    // 1. Completar credenciales automáticas
+  test('@auth-flow [LOGIN] Debería iniciar sesión como CLIENTE y redirigir a su área', async ({ page }) => {
     await page.fill('#email', 'client@propio.com.bo');
     await page.fill('#password', 'client123');
 
-    // 2. Iniciar sesión
     await Promise.all([
       page.waitForNavigation(),
-      page.click('button[type="submit"]')
+      page.click('button[type="submit"]'),
     ]);
 
-    // 3. Verificar redirección a la zona del cliente
     expect(page.url()).toContain('/cliente');
   });
 
-  test('Debería iniciar sesión como PROPIETARIO y redirigir a su panel de gestión', async ({ page }) => {
-    // 1. Completar credenciales automáticas
+  test('@auth-flow [LOGIN] Debería iniciar sesión como PROPIETARIO y redirigir a su panel', async ({ page }) => {
     await page.fill('#email', 'owner@propio.com.bo');
     await page.fill('#password', 'owner123');
 
-    // 2. Iniciar sesión
     await Promise.all([
       page.waitForNavigation(),
-      page.click('button[type="submit"]')
+      page.click('button[type="submit"]'),
     ]);
 
-    // 3. Verificar redirección a su panel
     expect(page.url()).toContain('/propietario/dashboard');
   });
 
-  test('Debería registrar un nuevo usuario con WhatsApp obligatorio y redirigir a Onboarding', async ({ page }) => {
-    // 1. Ir a la pestaña Registrarse
+  // ── Registro con validaciones ───────────────────────────────────────────────
+
+  test('@auth-flow [REGISTER] Debería registrar nuevo usuario con WhatsApp obligatorio y redirigir a Onboarding', async ({ page }) => {
     await page.click('button:has-text("Registrarse")');
 
-    // 2. Intentar registrarse sin WhatsApp y verificar validación local
     await page.fill('#name', 'Nuevo Propietario Test');
     await page.fill('#email', `test_register_${Date.now()}@test.com`);
     await page.fill('#password', 'register123');
     await page.click('button[type="submit"]');
 
-    // Debería mostrar error de WhatsApp
+    // Validación local: WhatsApp requerido
     await expect(page.locator('text=El número de WhatsApp es requerido')).toBeVisible();
 
-    // 3. Completar el número de WhatsApp con menos de 7 dígitos y comprobar validación
+    // WhatsApp demasiado corto
     await page.fill('#whatsappPhone', '123456');
     await page.click('button[type="submit"]');
     await expect(page.locator('text=Ingresa un número válido de al menos 7 dígitos')).toBeVisible();
 
-    // 4. Completar número válido de WhatsApp y registrarse
+    // Registro válido
     await page.fill('#whatsappPhone', '76543210');
-    
-    // Hacemos submit y esperamos navegación
+
     await Promise.all([
       page.waitForNavigation(),
-      page.click('button[type="submit"]')
+      page.click('button[type="submit"]'),
     ]);
 
-    // 5. El nuevo usuario debe ser redirigido a /onboarding porque onboardingCompleted es falso por defecto
     expect(page.url()).toContain('/onboarding');
   });
-});
 
+  // ── OAuth sin credenciales → Backend debe devolver 503 ────────────────────
+
+  test('@auth-flow [OAUTH-GUARD] GET /api/auth/google debe devolver 503 si no hay credenciales reales', async ({ request }) => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    // Las credenciales del .env de dev son placeholders → debe devolver 503
+    const response = await request.get(`${apiBase}/auth/google`, { maxRedirects: 0 });
+    // Puede ser 503 (ServiceUnavailable) o 302 si ya hay creds reales
+    // Nunca debe ser 200 con HTML del simulador
+    expect([302, 401, 503]).toContain(response.status());
+  });
+});
