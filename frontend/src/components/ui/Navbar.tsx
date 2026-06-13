@@ -6,30 +6,38 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentUser, removeToken, getRedirectPathByRole, getToken } from '@/utils/session';
 
 const NAV_LINKS = [
-  { href: '/properties', label: 'Comprar' },
-  { href: '/properties?type=DEPARTAMENTO', label: 'Alquilar' },
-  { href: '/servicios', label: 'Soy Propietario' },
+  { href: '/properties?category=VENTA', label: 'COMPRAR' },
+  { href: '/properties?category=ALQUILER', label: 'ALQUILAR' },
+  { href: '/properties?category=ANTICRETICO', label: 'ANTICRETICO' },
+  { href: '/properties?category=PROYECTOS', label: 'PROYECTOS' },
+  { href: '/servicios', label: 'SOY PROPIETARIO' },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
 // Logo SVG Component (reutilizable)
 // ────────────────────────────────────────────────────────────────────────────
 const PropioLogo = () => (
-  <Link href="/" className="flex items-center gap-2 select-none active:scale-98 transition-transform">
-    {/* Isotipo verde lima */}
-    <svg viewBox="0 0 100 100" className="w-8 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M10 32C10 19.8497 19.8497 10 32 10H68C80.1503 10 90 19.8497 90 32V68C90 80.1503 80.1503 90 68 90H62V60C62 53.3726 56.6274 48 50 48C43.3726 48 38 53.3726 38 60V90H32C19.8497 90 10 80.1503 10 68V32Z"
-        fill="#b9fa3c"
-      />
-    </svg>
-    {/* Wordmark en azul marino */}
-    <span className="font-heading font-black text-2xl tracking-tight text-[#04045E] flex items-center gap-0.5">
-      Propio<span className="text-[#b9fa3c] text-3xl leading-none font-bold">.</span>
+  <div className="flex flex-col items-start leading-none select-none active:scale-98 transition-transform">
+    <Link href="/" className="flex items-center gap-1.5">
+      {/* Isotipo verde lima */}
+      <svg viewBox="0 0 100 100" className="w-6.5 h-6.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M10 32C10 19.8497 19.8497 10 32 10H68C80.1503 10 90 19.8497 90 32V68C90 80.1503 80.1503 90 68 90H62V60C62 53.3726 56.6274 48 50 48C43.3726 48 38 53.3726 38 60V90H32C19.8497 90 10 80.1503 10 68V32Z"
+          fill="#ccff00"
+        />
+      </svg>
+      {/* Wordmark en blanco */}
+      <span className="font-heading font-black text-xl tracking-tight text-white flex items-center gap-0.5">
+        Propio<span className="text-[#ccff00] text-2xl leading-none font-bold">.</span>
+      </span>
+    </Link>
+    {/* Eslogan oficial */}
+    <span className="text-[7.5px] font-medium text-slate-350 tracking-wide leading-none select-none pl-0.5 mt-[-1px]">
+      Hazlo seguro. Hazlo tuyo. Hazlo propio.
     </span>
-  </Link>
+  </div>
 );
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -149,7 +157,7 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="w-full bg-white shadow-sm border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-white/95">
+    <nav className="w-full bg-[#000033] shadow-md border-b border-white/10 px-6 py-2.5 flex items-center justify-between sticky top-0 z-50">
 
       {/* ── LOGO ── */}
       <PropioLogo />
@@ -162,8 +170,8 @@ export const Navbar = () => {
             href={link.href}
             className={`transition-colors duration-200 ${
               isActive(link.href)
-                ? 'text-[#04045E] font-black'
-                : 'text-slate-600 hover:text-[#04045E]'
+                ? 'text-[#ccff00] font-black'
+                : 'text-white/85 hover:text-[#ccff00]'
             }`}
           >
             {link.label}
@@ -177,7 +185,7 @@ export const Navbar = () => {
         <Link
           href="/ayuda"
           className={`text-[11px] font-bold uppercase tracking-widest transition-colors duration-200 ${
-            isActive('/ayuda') ? 'text-[#04045E] font-black' : 'text-slate-400 hover:text-[#04045E]'
+            isActive('/ayuda') ? 'text-[#ccff00] font-black' : 'text-white/60 hover:text-[#ccff00]'
           }`}
         >
           Ayuda
@@ -186,7 +194,7 @@ export const Navbar = () => {
         {/* [PUBLICAR GRATIS] — Punto de mayor conversión, verde lima */}
         <button
           onClick={handlePublicar}
-          className="px-5 py-2.5 bg-[#b9fa3c] hover:bg-[#adf02c] text-[#04045E] font-heading font-black rounded-xl text-[11px] tracking-wider uppercase border border-[#04045E]/10 shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center gap-1.5"
+          className="px-5 py-2.5 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-heading font-black rounded-xl text-[11px] tracking-wider uppercase border border-[#ccff00]/10 shadow-sm active:scale-[0.98] transition-all duration-200 flex items-center gap-1.5"
         >
           Publicar Gratis <span className="text-xs">→</span>
         </button>
@@ -255,7 +263,7 @@ export const Navbar = () => {
         ) : (
           <Link
             href="/login"
-            className="px-5 py-2.5 rounded-xl border border-[#04045E]/40 font-bold text-[11px] tracking-wide text-[#04045E] hover:bg-[#04045E]/5 active:scale-[0.98] transition-all duration-200"
+            className="px-5 py-2.5 rounded-xl border border-white/40 font-bold text-[11px] tracking-wide text-white hover:bg-white/5 active:scale-[0.98] transition-all duration-200"
           >
             Ingresar / Registrarse
           </Link>
@@ -266,7 +274,7 @@ export const Navbar = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-[#04045E] transition-all"
+        className="md:hidden p-2 rounded-xl text-white/80 hover:bg-white/5 hover:text-white transition-all"
         aria-label="Menú principal"
       >
         {isOpen ? (
@@ -281,7 +289,7 @@ export const Navbar = () => {
       </button>
 
       {/* ── CAJÓN MÓVIL ── */}
-      <div className={`md:hidden absolute top-full left-0 w-full bg-white border-b border-slate-100 shadow-lg transition-all duration-300 ${
+      <div className={`md:hidden absolute top-full left-0 w-full bg-[#000033] border-b border-white/10 shadow-lg transition-all duration-300 ${
         isOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-3 invisible pointer-events-none'
       }`}>
         <div className="px-6 py-8 flex flex-col gap-5">
@@ -292,8 +300,8 @@ export const Navbar = () => {
               key={link.href}
               href={link.href}
               onClick={() => setIsOpen(false)}
-              className={`text-[11px] font-bold uppercase tracking-wider pb-2.5 border-b border-slate-100 ${
-                isActive(link.href) ? 'text-[#04045E] border-[#b9fa3c]' : 'text-slate-600'
+              className={`text-[11px] font-bold uppercase tracking-wider pb-2.5 border-b border-white/10 ${
+                isActive(link.href) ? 'text-[#ccff00] border-[#ccff00]' : 'text-white/80'
               }`}
             >
               {link.label}
@@ -304,8 +312,8 @@ export const Navbar = () => {
           <Link
             href="/ayuda"
             onClick={() => setIsOpen(false)}
-            className={`text-[11px] font-bold uppercase tracking-wider pb-2.5 border-b border-slate-100 ${
-              isActive('/ayuda') ? 'text-[#04045E] border-[#b9fa3c]' : 'text-slate-400'
+            className={`text-[11px] font-bold uppercase tracking-wider pb-2.5 border-b border-white/10 ${
+              isActive('/ayuda') ? 'text-[#ccff00] border-[#ccff00]' : 'text-white/60'
             }`}
           >
             Ayuda
@@ -328,7 +336,7 @@ export const Navbar = () => {
                 </Link>
                 <button
                   onClick={() => { setIsOpen(false); handleLogout(); }}
-                  className="text-center py-3 border border-[#04045E]/40 text-[#04045E] font-bold rounded-xl text-[11px] hover:bg-[#04045E]/5 transition-all cursor-pointer border-none bg-transparent"
+                  className="text-center py-3 border border-white/40 text-white font-bold rounded-xl text-[11px] hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
                 >
                   Cerrar sesión
                 </button>
@@ -337,7 +345,7 @@ export const Navbar = () => {
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="text-center py-3.5 border border-[#04045E]/40 text-[#04045E] font-bold rounded-xl text-[11px] hover:bg-[#04045E]/5 transition-all"
+                className="text-center py-3.5 border border-white/40 text-white font-bold rounded-xl text-[11px] hover:bg-white/5 transition-all"
               >
                 Ingresar / Registrarse
               </Link>
@@ -346,7 +354,7 @@ export const Navbar = () => {
             {/* Publicar Gratis → validación de sesión */}
             <button
               onClick={(e) => { setIsOpen(false); handlePublicar(e); }}
-              className="text-center py-3.5 bg-[#b9fa3c] hover:bg-[#adf02c] text-[#04045E] font-black uppercase tracking-wider rounded-xl text-[11px] shadow-md shadow-[#b9fa3c]/15 hover:brightness-105 transition-all border border-[#04045E]/10 flex items-center justify-center gap-1.5"
+              className="text-center py-3.5 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-black uppercase tracking-wider rounded-xl text-[11px] shadow-md transition-all border border-white/10 flex items-center justify-center gap-1.5"
             >
               Publicar Gratis <span className="text-xs">→</span>
             </button>

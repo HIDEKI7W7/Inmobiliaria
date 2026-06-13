@@ -6,14 +6,36 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { propertiesService } from '../../../services/properties.service';
 
-// Carga dinámica del mapa interactivo de Leaflet para evitar errores de Hydration en servidor
+const DEPARTAMENTOS_COORDS: Record<string, { lat: number; lng: number }> = {
+  'La Paz': { lat: -16.5000, lng: -68.1500 },
+  'Cochabamba': { lat: -17.3895, lng: -66.1568 },
+  'Santa Cruz': { lat: -17.7833, lng: -63.1833 },
+  'Oruro': { lat: -17.9833, lng: -67.1500 },
+  'Potosí': { lat: -19.5833, lng: -65.7500 },
+  'Chuquisaca': { lat: -19.0333, lng: -65.2627 },
+  'Tarija': { lat: -21.5355, lng: -64.7299 },
+  'Beni': { lat: -14.8333, lng: -64.9000 },
+  'Pando': { lat: -11.0267, lng: -68.7697 }
+};
+
+const DEPARTAMENTOS = Object.keys(DEPARTAMENTOS_COORDS);
+
+const ATTRIBUTES_BY_CATEGORY = {
+  Interiores: ['Aire Acondicionado', 'Calefacción', 'Cocina Equipada', 'Roperos Empotrados', 'Amoblado', 'Termotanque', 'Suite Master', 'Dependencias de Servicio'],
+  Exteriores: ['Jardín', 'Churrasquera/Parrillero', 'Terraza', 'Balcón', 'Patio', 'Piscina Privada'],
+  Parqueos: ['Parqueo Techado', 'Parqueo de Visitas', 'Garaje con Portón Eléctrico', 'Baulera'],
+  Seguridad: ['Seguridad 24/7', 'Cerco Eléctrico', 'Cámaras de Vigilancia', 'Alarma', 'Conserjería'],
+  'Áreas Comunes': ['Salón de Eventos', 'Gimnasio', 'Piscina Común', 'Canchas Deportivas', 'Parque Infantil', 'Sauna'],
+  Sostenibilidad: ['Calefón Solar', 'Paneles Solares', 'Iluminación LED', 'Sistema de Reciclaje de Agua']
+};
+
 const LeafletMap = dynamic(
   () => import('../nuevo/LeafletMap'),
   {
     ssr: false,
     loading: () => (
       <div className="w-full h-[280px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#04045E]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#000033]"></div>
         <p className="text-[10px] text-slate-400 font-sans uppercase tracking-widest animate-pulse font-bold">
           Inicializando Mapa Táctil...
         </p>
@@ -28,21 +50,29 @@ export default function PublicarPropiedadPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState<{ name: string; size: string; progress: number }[]>([]);
+  
+  // Selección de atributos de alto valor
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, boolean>>({});
 
   // Estados del Formulario (Smart-Capture Data Model)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    price: '',
-    minPrice: '', // Precio Tope Mínimo (invisible para clientes)
-    offerType: 'VENTA', // Select: Venta, Alquiler, Anticrético, Proyecto
-    type: 'DEPARTAMENTO', // CASA, DEPARTAMENTO, TERRENO, OFICINA
-    area: '',
+    currency: 'BOB', // BOB o USD
+    priceBOB: '',
+    priceUSD: '',
+    exchangeRate: '6.96',
+    minPrice: '', // Precio mínimo sugerido por el propietario
+    offerType: 'VENTA', // VENTA, ALQUILER, ANTICRETICO, PROYECTO
+    type: 'DEPARTAMENTO', // DEPARTAMENTO, CASA, TERRENO, OFICINA, etc.
+    landArea: '',
+    builtArea: '',
     rooms: '3',
     bathrooms: '2',
     location: 'Cochabamba',
-    address: '', // Dirección manual
-    latitude: -17.3895, // Ubicación inicial Cochabamba
+    zona: '',
+    address: '',
+    latitude: -17.3895,
     longitude: -66.1568,
     imageUrl: '',
     ownerName: 'Propietario Legítimo',
@@ -50,17 +80,17 @@ export default function PublicarPropiedadPage() {
     ownerEmail: 'owner@propio.com.bo',
   });
 
-  // Estados del Paso 3: Checklist Documental dinámico
+  // Estados del Paso 3: Checklist Documental
   const [documents, setDocuments] = useState({
-    hasFolioReal: false,       // Folio Real (Todos)
-    hasCI: false,              // CI (Solo Alquiler)
-    hasCatastro: false,        // Certificado Catastral (Venta, Anticrético, Proyecto)
-    hasTestimonio: false,      // Testimonio de Propiedad (Venta, Anticrético, Proyecto)
-    hasImpuestosAlDia: false,  // Impuestos al día (Venta, Anticrético, Proyecto)
-    hasPlanoUsoSuelo: false,   // Plano de Uso de Suelo (Venta, Anticrético, Proyecto)
+    hasFolioReal: false,
+    hasCI: false,
+    hasCatastro: false,
+    hasTestimonio: false,
+    hasImpuestosAlDia: false,
+    hasPlanoUsoSuelo: false,
   });
 
-  // Carga del borrador guardado en localStorage en el montaje
+  // Cargar borrador de localStorage
   useEffect(() => {
     const savedDraft = localStorage.getItem('propio_smart_capture_draft');
     if (savedDraft) {
@@ -72,6 +102,9 @@ export default function PublicarPropiedadPage() {
         if (draft.documents) {
           setDocuments((prev) => ({ ...prev, ...draft.documents }));
         }
+        if (draft.selectedAttributes) {
+          setSelectedAttributes(draft.selectedAttributes);
+        }
         if (draft.step) {
           setStep(draft.step);
         }
@@ -81,13 +114,19 @@ export default function PublicarPropiedadPage() {
     }
   }, []);
 
-  // Función para persistir el borrador en localStorage
-  const handlePersistDraft = (updatedFormData: typeof formData, updatedDocs: typeof documents, currentStep: number) => {
+  // Persistir borrador
+  const handlePersistDraft = (
+    updatedFormData: typeof formData,
+    updatedDocs: typeof documents,
+    updatedAttrs: typeof selectedAttributes,
+    currentStep: number
+  ) => {
     localStorage.setItem(
       'propio_smart_capture_draft',
       JSON.stringify({
         formData: updatedFormData,
         documents: updatedDocs,
+        selectedAttributes: updatedAttrs,
         step: currentStep,
       })
     );
@@ -96,22 +135,60 @@ export default function PublicarPropiedadPage() {
   const updateFormData = (fields: Partial<typeof formData>) => {
     const updated = { ...formData, ...fields };
     setFormData(updated);
-    handlePersistDraft(updated, documents, step);
+    handlePersistDraft(updated, documents, selectedAttributes, step);
   };
 
   const updateDocuments = (fields: Partial<typeof documents>) => {
     const updated = { ...documents, ...fields };
     setDocuments(updated);
-    handlePersistDraft(formData, updated, step);
+    handlePersistDraft(formData, updated, selectedAttributes, step);
   };
 
-  // Lógica Dinámica: ¿Tiene el propietario todos los documentos obligatorios según su tipo de oferta?
+  const toggleAttribute = (attr: string) => {
+    const updated = { ...selectedAttributes, [attr]: !selectedAttributes[attr] };
+    setSelectedAttributes(updated);
+    handlePersistDraft(formData, documents, updated, step);
+  };
+
+  const handleLocationChange = (loc: string) => {
+    const coords = DEPARTAMENTOS_COORDS[loc] || { lat: -17.3895, lng: -66.1568 };
+    const updated = {
+      ...formData,
+      location: loc,
+      latitude: coords.lat,
+      longitude: coords.lng
+    };
+    setFormData(updated);
+    handlePersistDraft(updated, documents, selectedAttributes, step);
+  };
+
+  const handlePriceChange = (val: string, type: 'BOB' | 'USD' | 'RATE' | 'CURRENCY') => {
+    const rate = parseFloat(formData.exchangeRate) || 6.96;
+    if (type === 'BOB') {
+      const bob = val;
+      const usd = val ? (parseFloat(val) / rate).toFixed(2) : '';
+      updateFormData({ priceBOB: bob, priceUSD: usd });
+    } else if (type === 'USD') {
+      const usd = val;
+      const bob = val ? (parseFloat(val) * rate).toFixed(2) : '';
+      updateFormData({ priceUSD: usd, priceBOB: bob });
+    } else if (type === 'RATE') {
+      const newRate = val;
+      const rateNum = parseFloat(val) || 6.96;
+      let bob = formData.priceBOB;
+      if (formData.currency === 'USD' && formData.priceUSD) {
+        bob = (parseFloat(formData.priceUSD) * rateNum).toFixed(2);
+      }
+      updateFormData({ exchangeRate: newRate, priceBOB: bob });
+    } else if (type === 'CURRENCY') {
+      updateFormData({ currency: val });
+    }
+  };
+
   const isChecklistComplete = () => {
     if (formData.offerType === 'ALQUILER') {
-      // Obligatorios Alquiler: Folio Real y Cédula de Identidad (CI)
       return documents.hasFolioReal && documents.hasCI;
     } else {
-      // Obligatorios Venta / Anticrético / Proyecto: Folio Real, Catastro, Testimonio, Impuestos, Plano Uso de Suelo
       return (
         documents.hasFolioReal &&
         documents.hasCatastro &&
@@ -122,13 +199,12 @@ export default function PublicarPropiedadPage() {
     }
   };
 
-  // Manejo de pasos
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (step < 4) {
       const nextStep = step + 1;
       setStep(nextStep);
-      handlePersistDraft(formData, documents, nextStep);
+      handlePersistDraft(formData, documents, selectedAttributes, nextStep);
       window.scrollTo(0, 0);
     }
   };
@@ -137,22 +213,26 @@ export default function PublicarPropiedadPage() {
     if (step > 1) {
       const prevStep = step - 1;
       setStep(prevStep);
-      handlePersistDraft(formData, documents, prevStep);
+      handlePersistDraft(formData, documents, selectedAttributes, prevStep);
       window.scrollTo(0, 0);
     }
   };
 
-  // Publicación / Envío POST al Backend
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const activeAttrs = Object.keys(selectedAttributes).filter(k => selectedAttributes[k]);
+      const attrsText = activeAttrs.length > 0 ? `\n\nAtributos: ${activeAttrs.join(', ')}` : '';
+      const areaText = `\nSuperficie Terreno: ${formData.landArea || 0} m²\nSuperficie Construida: ${formData.builtArea || 0} m²`;
+      const zonaText = formData.zona ? `\nZona: ${formData.zona}` : '';
+
       const payload = {
         title: formData.title,
-        description: formData.description || `Propiedad tipo ${formData.type.toLowerCase()} en ${formData.location} ofertada bajo modalidad de ${formData.offerType.toLowerCase()}.`,
-        price: parseFloat(formData.price),
+        description: formData.description + attrsText + areaText + zonaText,
+        price: parseFloat(formData.priceBOB) || 0,
         minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
-        area: parseFloat(formData.area),
+        area: parseFloat(formData.builtArea) || parseFloat(formData.landArea) || 0,
         rooms: parseInt(formData.rooms),
         bathrooms: parseInt(formData.bathrooms),
         location: formData.location,
@@ -183,14 +263,28 @@ export default function PublicarPropiedadPage() {
     }
   };
 
-  // Simulación interactiva de carga de archivos
   const handleFileUploadSimulate = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map((f) => ({
+      const allowedFiles = Array.from(e.target.files).filter((file) => {
+        if (!file.type.startsWith('image/')) {
+          alert(`El archivo ${file.name} no es una imagen permitida. Solo se aceptan fotografías.`);
+          return false;
+        }
+        if (file.size > 150 * 1024 * 1024) {
+          alert(`El archivo ${file.name} supera el tamaño máximo de 150 MB.`);
+          return false;
+        }
+        return true;
+      });
+
+      const newFiles = allowedFiles.map((f) => ({
         name: f.name,
         size: (f.size / (1024 * 1024)).toFixed(2) + ' MB',
         progress: 0,
       }));
+
+      if (newFiles.length === 0) return;
+
       setFiles((prev) => [...prev, ...newFiles]);
 
       newFiles.forEach((file) => {
@@ -208,31 +302,30 @@ export default function PublicarPropiedadPage() {
     }
   };
 
-  const progressPercent = step === 1 ? 25 : step === 2 ? 50 : step === 3 ? 75 : 100;
   const checklistOk = isChecklistComplete();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#04045E] font-sans antialiased flex flex-col selection:bg-[#b9fa3c]/30">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#000033] font-sans antialiased flex flex-col selection:bg-[#ccff00]/30">
       
-      {/* Navbar Superior de Contexto */}
+      {/* Navbar Superior */}
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center select-none flex-shrink-0">
-        <Link href="/" className="text-xl font-bold text-[#04045E]">
-          Propio<span className="text-[#b9fa3c] font-black">.</span>
+        <Link href="/" className="text-xl font-serif font-bold text-[#000033]">
+          Propio<span className="text-[#ccff00] font-black">.</span>
         </Link>
         <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Paso {step} de 4</span>
       </header>
 
-      {/* Contenedor Central Espacioso */}
-      <main className="flex-grow flex items-center justify-center p-6 md:p-12">
+      {/* Contenedor Central */}
+      <main className="flex-grow flex items-center justify-center p-4 sm:p-6 md:p-12">
         
         {isSuccess ? (
           /* PANTALLA DE ÉXITO */
-          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl p-8 md:p-10 text-center space-y-6 animate-fade-in">
+          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl p-8 md:p-10 text-center space-y-6 animate-fadeIn">
             <div className="space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-full bg-[#b9fa3c]/20 text-[#04045E] flex items-center justify-center text-3xl shadow-sm border border-[#b9fa3c]/30 animate-bounce">
+              <div className="w-16 h-16 mx-auto rounded-full bg-[#ccff00]/20 text-[#000033] flex items-center justify-center text-3xl border border-[#ccff00]/30 animate-bounce">
                 👑
               </div>
-              <h1 className="text-2xl font-black tracking-tight uppercase text-[#04045E]">
+              <h1 className="text-2xl font-serif font-black tracking-tight uppercase text-[#000033]">
                 ¡Propiedad Recibida con Éxito!
               </h1>
               <span className={`inline-block text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${
@@ -251,15 +344,15 @@ export default function PublicarPropiedadPage() {
             </div>
 
             <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/propietario"
-                className="px-6 py-3.5 bg-[#b9fa3c] hover:bg-[#b9fa3c]/90 text-[#04045E] font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md text-center hover:scale-[1.02] active:scale-95"
+              <a
+                href="https://frontend-olzedn7qe-hidekiiiii.vercel.app/propietario/dashboard"
+                className="px-6 py-3.5 bg-[#ccff00] hover:bg-opacity-95 text-[#000033] font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md text-center hover:scale-[1.02] active:scale-95"
               >
                 Ir a mi Panel de Propietario 🏡
-              </Link>
+              </a>
               <Link
                 href="/properties"
-                className="px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-[#04045E] border border-slate-200 font-bold text-xs uppercase tracking-widest rounded-xl transition-all text-center hover:scale-[1.02] active:scale-95"
+                className="px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-[#000033] border border-slate-200 font-bold text-xs uppercase tracking-widest rounded-xl transition-all text-center hover:scale-[1.02] active:scale-95"
               >
                 Ver Catálogo Inmobiliario
               </Link>
@@ -267,29 +360,27 @@ export default function PublicarPropiedadPage() {
           </div>
         ) : (
           /* FORMULARIO SMART-CAPTURE */
-          <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-xl p-8 md:p-10 flex flex-col gap-6">
+          <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-xl p-6 md:p-10 flex flex-col gap-6">
             
-            {/* Stepper del Formulario */}
+            {/* Stepper */}
             <div className="space-y-4">
-              {/* Desktop Stepper */}
               <div className="hidden md:flex items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-                <div className={`flex items-center gap-2 pb-2 ${step >= 1 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>1</span> Datos Básicos
+                <div className={`flex items-center gap-2 pb-2 ${step >= 1 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>1</span> Datos Básicos
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 2 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>2</span> Ubicación
+                <div className={`flex items-center gap-2 pb-2 ${step >= 2 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>2</span> Ubicación
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 3 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>3</span> Legal
+                <div className={`flex items-center gap-2 pb-2 ${step >= 3 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>3</span> Legal
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 4 ? 'text-[#04045E] border-b-2 border-[#b9fa3c]' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 4 ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-slate-100 text-slate-400'}`}>4</span> Fotos
+                <div className={`flex items-center gap-2 pb-2 ${step >= 4 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 4 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>4</span> Fotos
                 </div>
               </div>
-              {/* Mobile Stepper */}
               <div className="flex md:hidden items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400 select-none">
-                <div className="text-[#04045E] flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#b9fa3c] text-[#04045E] flex items-center justify-center text-[10px] font-black">{step}</span>
+                <div className="text-[#000033] flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#ccff00] text-[#000033] flex items-center justify-center text-[10px] font-black">{step}</span>
                   <span>
                     {step === 1 && 'Datos Básicos'}
                     {step === 2 && 'Ubicación'}
@@ -305,59 +396,137 @@ export default function PublicarPropiedadPage() {
               
               {/* PASO 1: DATOS BÁSICOS */}
               {step === 1 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-[#04045E] mb-2 uppercase">1. Ficha Técnica del Inmueble</h2>
-                    <p className="text-slate-500 text-sm font-medium">Configura el valor de mercado y la tipología física de tu inmueble.</p>
+                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">1. Ficha Técnica del Inmueble</h2>
+                    <p className="text-slate-500 text-sm font-medium">Configura la información financiera, tipología y atributos de tu inmueble.</p>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Título Comercial</label>
+                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Título Comercial</label>
                     <input
                       type="text"
                       required
                       placeholder="Ej. Departamento de lujo con acabados importados"
                       value={formData.title}
                       onChange={(e) => updateFormData({ title: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Precio Pretendido (USD)</label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        placeholder="Ej. 135000"
-                        value={formData.price}
-                        onChange={(e) => updateFormData({ price: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                      />
+                  {/* LÓGICA FINANCIERA DE MONEDA */}
+                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Moneda de Publicación</label>
+                        <select
+                          value={formData.currency}
+                          onChange={(e) => handlePriceChange(e.target.value, 'CURRENCY')}
+                          className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
+                        >
+                          <option value="BOB">Bolivianos (Bs.)</option>
+                          <option value="USD">Dólares (USD)</option>
+                        </select>
+                      </div>
+
+                      {formData.currency === 'USD' ? (
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">
+                            Tipo de Cambio (Bs. x 1 USD) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            placeholder="Ej. 6.96"
+                            value={formData.exchangeRate}
+                            onChange={(e) => handlePriceChange(e.target.value, 'RATE')}
+                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
+                          />
+                        </div>
+                      ) : null}
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {formData.currency === 'BOB' ? (
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Precio en Bolivianos (Bs.)</label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            placeholder="Ej. 700000"
+                            value={formData.priceBOB}
+                            onChange={(e) => handlePriceChange(e.target.value, 'BOB')}
+                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Precio en Dólares (USD)</label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            placeholder="Ej. 100000"
+                            value={formData.priceUSD}
+                            onChange={(e) => handlePriceChange(e.target.value, 'USD')}
+                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
+                          />
+                        </div>
+                      )}
+
+                      {formData.currency === 'USD' ? (
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
+                            Equivalente Calculado (Bs.)
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            placeholder="Bs. 0.00"
+                            value={formData.priceBOB ? `${parseFloat(formData.priceBOB).toLocaleString('es-BO')} Bs.` : ''}
+                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm outline-none cursor-default"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
+                            Referencia en Dólares (USD)
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            placeholder="USD 0.00"
+                            value={formData.priceUSD ? `${parseFloat(formData.priceUSD).toLocaleString('en-US')} USD` : ''}
+                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm outline-none cursor-default"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-amber-600 mb-2 flex items-center gap-1.5">
-                        🔒 Mínimo Ocular (Tope Opcional)
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
+                        Precio mínimo sugerido por el propietario (Tope Opcional)
                       </label>
                       <input
                         type="number"
-                        placeholder="Ej. 125000"
+                        placeholder="Monto confidencial para negociaciones"
                         value={formData.minPrice}
                         onChange={(e) => updateFormData({ minPrice: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-amber-500 bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
                       />
-                      <span className="text-[10px] text-slate-400 font-medium mt-1.5 block">Invisible para clientes finales.</span>
+                      <span className="text-[9px] text-slate-450 font-bold mt-1.5 block uppercase tracking-wider">🔒 Visible solo para agentes.</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Tipo de Oferta</label>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Tipo de Oferta</label>
                       <select
                         value={formData.offerType}
                         onChange={(e) => updateFormData({ offerType: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
                       >
                         <option value="VENTA">Venta 💰</option>
                         <option value="ALQUILER">Alquiler 🔑</option>
@@ -366,90 +535,165 @@ export default function PublicarPropiedadPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Tipo de Inmueble</label>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Tipo de Inmueble</label>
                       <select
                         value={formData.type}
                         onChange={(e) => updateFormData({ type: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
                       >
                         <option value="DEPARTAMENTO">Departamento 🏢</option>
                         <option value="CASA">Casa 🏡</option>
                         <option value="TERRENO">Terreno 🏜️</option>
                         <option value="OFICINA">Oficina 👔</option>
+                        <option value="LOCAL_COMERCIAL">Local Comercial 🏪</option>
+                        <option value="EDIFICIO">Edificio 🏫</option>
                       </select>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  {/* SUPERFICIES SEPARADAS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Sup. (M²)</label>
+                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Superficie de Terreno (m²)</label>
                       <input
                         type="number"
-                        required
-                        placeholder="Ej. 120"
-                        value={formData.area}
-                        onChange={(e) => updateFormData({ area: e.target.value })}
-                        className="w-full px-3 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
+                        placeholder="Ej. 300"
+                        value={formData.landArea}
+                        onChange={(e) => updateFormData({ landArea: e.target.value })}
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Dorm.</label>
+                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Superficie Construida (m²)</label>
+                      <input
+                        type="number"
+                        placeholder="Ej. 180"
+                        value={formData.builtArea}
+                        onChange={(e) => updateFormData({ builtArea: e.target.value })}
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Dormitorios</label>
                       <input
                         type="number"
                         required
                         value={formData.rooms}
                         onChange={(e) => updateFormData({ rooms: e.target.value })}
-                        className="w-full px-3 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Baños</label>
+                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Baños</label>
                       <input
                         type="number"
                         required
                         value={formData.bathrooms}
                         onChange={(e) => updateFormData({ bathrooms: e.target.value })}
-                        className="w-full px-3 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Descripción Destacada</label>
+                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Descripción Destacada</label>
                     <textarea
                       required
                       rows={4}
                       placeholder="Agrega comodidades, acabados y detalles que cautiven..."
                       value={formData.description}
                       onChange={(e) => updateFormData({ description: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
+                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
                     />
                   </div>
+
+                  {/* CHECKLIST DE ATRIBUTOS DE ALTO VALOR */}
+                  <div className="border-t border-slate-200 pt-6 space-y-4">
+                    <h3 className="text-lg font-serif font-bold text-[#000033] uppercase">Atributos de Alto Valor</h3>
+                    <div className="space-y-6">
+                      {Object.entries(ATTRIBUTES_BY_CATEGORY).map(([category, items]) => (
+                        <div key={category} className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-450 uppercase tracking-widest">{category}</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {items.map((item) => {
+                              const isChecked = !!selectedAttributes[item];
+                              return (
+                                <button
+                                  type="button"
+                                  key={item}
+                                  onClick={() => toggleAttribute(item)}
+                                  className={`px-3 py-2 rounded-xl text-xs font-medium text-left border transition-all flex items-center justify-between ${
+                                    isChecked
+                                      ? 'bg-[#ccff00]/10 border-[#ccff00] text-[#000033] font-bold'
+                                      : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350 text-slate-600'
+                                  }`}
+                                >
+                                  <span>{item}</span>
+                                  {isChecked && <span className="text-[#000033] font-black">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               )}
 
-              {/* PASO 2: GEOLOCALIZACIÓN E UBICACIÓN */}
+              {/* PASO 2: GEOLOCALIZACIÓN */}
               {step === 2 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-[#04045E] mb-2 uppercase">2. Ubicación y Geolocalización</h2>
-                    <p className="text-slate-500 text-sm font-medium">Ubica con total precisión tu propiedad en el mapa para guiar al agente de forma segura.</p>
+                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">2. Ubicación y Geolocalización</h2>
+                    <p className="text-slate-500 text-sm font-medium">Ubica con total precisión tu propiedad en el mapa para guiar a los interesados.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Ciudad / Departamento</label>
+                      <select
+                        value={formData.location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                      >
+                        {DEPARTAMENTOS.map((dep) => (
+                          <option key={dep} value={dep}>{dep}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Zona / Barrio</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Queru Queru"
+                        value={formData.zona}
+                        onChange={(e) => updateFormData({ zona: e.target.value })}
+                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Dirección Escrita / Zona</label>
+                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Dirección Completa</label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Calle Aniceto Padilla #456, Queru Queru"
+                      placeholder="Ej. Calle Aniceto Padilla #456"
                       value={formData.address}
                       onChange={(e) => updateFormData({ address: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#04045E] mb-2">Marcador en Mapa Táctil</label>
+                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Marcador en Mapa Táctil</label>
                     <LeafletMap
                       lat={formData.latitude}
                       lng={formData.longitude}
@@ -459,11 +703,11 @@ export default function PublicarPropiedadPage() {
 
                   <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-[10px] font-mono text-slate-500">
                     <div>
-                      <span className="block uppercase tracking-wider font-bold text-[#04045E] mb-0.5">Latitud GPS:</span>
+                      <span className="block uppercase tracking-wider font-bold text-[#000033] mb-0.5">Latitud GPS:</span>
                       <span className="font-bold text-slate-800 text-xs">{formData.latitude.toFixed(6)}</span>
                     </div>
                     <div>
-                      <span className="block uppercase tracking-wider font-bold text-[#04045E] mb-0.5">Longitud GPS:</span>
+                      <span className="block uppercase tracking-wider font-bold text-[#000033] mb-0.5">Longitud GPS:</span>
                       <span className="font-bold text-slate-800 text-xs">{formData.longitude.toFixed(6)}</span>
                     </div>
                   </div>
@@ -472,147 +716,213 @@ export default function PublicarPropiedadPage() {
 
               {/* PASO 3: CHECKLIST LEGAL */}
               {step === 3 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-[#04045E] mb-2 uppercase">3. Checklist de Validación Legal</h2>
+                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">3. Checklist de Validación Legal</h2>
                     <p className="text-slate-500 text-sm font-medium">
-                      Adjunta la documentación para activar el <span className="text-[#04045E] font-black uppercase">Sello Oro</span> de tu propiedad (Modalidad: {formData.offerType}).
+                      Adjunta la documentación para activar el <span className="text-[#000033] font-black uppercase">Sello Oro</span> de tu propiedad (Modalidad: {formData.offerType}).
                     </p>
                   </div>
 
                   <div className="space-y-3.5">
                     {/* Folio Real */}
-                    <div
-                      onClick={() => updateDocuments({ hasFolioReal: !documents.hasFolioReal })}
-                      className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                        documents.hasFolioReal
-                          ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                          : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                      }`}
-                    >
-                      <div className="pt-0.5">
-                        <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                          documents.hasFolioReal ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                        }`}>
-                          {documents.hasFolioReal && '✓'}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                      <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasFolioReal: !documents.hasFolioReal })}>
+                        <div className="pt-0.5">
+                          <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                            documents.hasFolioReal ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                          }`}>
+                            {documents.hasFolioReal && '✓'}
+                          </div>
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold uppercase tracking-wide">Folio Real Actualizado (Libre Alodial)</h4>
+                          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Certifica que el inmueble está libre de hipotecas, anotaciones o deudas.</p>
                         </div>
                       </div>
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold uppercase tracking-wide">Folio Real Actualizado (Libre Alodial)</h4>
-                        <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Certifica que el inmueble está libre de hipotecas, anotaciones o deudas.</p>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                          <span>📎 Adjuntar</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                alert(`Copia de Folio Real cargada: ${e.target.files[0].name}`);
+                                updateDocuments({ hasFolioReal: true });
+                              }
+                            }}
+                          />
+                        </label>
                       </div>
                     </div>
 
                     {formData.offerType === 'ALQUILER' ? (
                       /* Cédula CI para Alquiler */
-                      <div
-                        onClick={() => updateDocuments({ hasCI: !documents.hasCI })}
-                        className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                          documents.hasCI
-                            ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                            : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                        }`}
-                      >
-                        <div className="pt-0.5">
-                          <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                            documents.hasCI ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                          }`}>
-                            {documents.hasCI && '✓'}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                        <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasCI: !documents.hasCI })}>
+                          <div className="pt-0.5">
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                              documents.hasCI ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                            }`}>
+                              {documents.hasCI && '✓'}
+                            </div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <h4 className="text-xs font-bold uppercase tracking-wide">Cédula de Identidad Vigente (CI)</h4>
+                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Copia de CI legible del propietario legal para contratación.</p>
                           </div>
                         </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold uppercase tracking-wide">Cédula de Identidad Vigente (CI)</h4>
-                          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Copia de CI legible del propietario legal para contratación.</p>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                            <span>📎 Adjuntar</span>
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                  alert(`Copia de CI cargada: ${e.target.files[0].name}`);
+                                  updateDocuments({ hasCI: true });
+                                }
+                              }}
+                            />
+                          </label>
                         </div>
                       </div>
                     ) : (
                       /* Venta / Anticrético / Proyecto */
                       <div className="space-y-3.5">
                         {/* Certificado Catastral */}
-                        <div
-                          onClick={() => updateDocuments({ hasCatastro: !documents.hasCatastro })}
-                          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                            documents.hasCatastro
-                              ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                              : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                          }`}
-                        >
-                          <div className="pt-0.5">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              documents.hasCatastro ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                            }`}>
-                              {documents.hasCatastro && '✓'}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasCatastro: !documents.hasCatastro })}>
+                            <div className="pt-0.5">
+                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                                documents.hasCatastro ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                              }`}>
+                                {documents.hasCatastro && '✓'}
+                              </div>
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold uppercase tracking-wide">Certificado Catastral Al Día</h4>
+                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Registro y plano catastral aprobado por el municipio correspondiente.</p>
                             </div>
                           </div>
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs font-bold uppercase tracking-wide">Certificado Catastral Al Día</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Registro y plano catastral aprobado por el municipio correspondiente.</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                              <span>📎 Adjuntar</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    alert(`Copia de Certificado Catastral cargada: ${e.target.files[0].name}`);
+                                    updateDocuments({ hasCatastro: true });
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
                         </div>
 
                         {/* Testimonio de Escritura */}
-                        <div
-                          onClick={() => updateDocuments({ hasTestimonio: !documents.hasTestimonio })}
-                          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                            documents.hasTestimonio
-                              ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                              : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                          }`}
-                        >
-                          <div className="pt-0.5">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              documents.hasTestimonio ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                            }`}>
-                              {documents.hasTestimonio && '✓'}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasTestimonio: !documents.hasTestimonio })}>
+                            <div className="pt-0.5">
+                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                                documents.hasTestimonio ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                              }`}>
+                                {documents.hasTestimonio && '✓'}
+                              </div>
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold uppercase tracking-wide">Testimonio de Escritura Pública</h4>
+                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Escritura de compraventa notariada que acredita la propiedad.</p>
                             </div>
                           </div>
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs font-bold uppercase tracking-wide">Testimonio de Escritura Pública</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Escritura de compraventa notariada que acredita la propiedad.</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                              <span>📎 Adjuntar</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    alert(`Copia de Testimonio de Escritura cargada: ${e.target.files[0].name}`);
+                                    updateDocuments({ hasTestimonio: true });
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
                         </div>
 
                         {/* Impuestos Municipales */}
-                        <div
-                          onClick={() => updateDocuments({ hasImpuestosAlDia: !documents.hasImpuestosAlDia })}
-                          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                            documents.hasImpuestosAlDia
-                              ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                              : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                          }`}
-                        >
-                          <div className="pt-0.5">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              documents.hasImpuestosAlDia ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                            }`}>
-                              {documents.hasImpuestosAlDia && '✓'}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasImpuestosAlDia: !documents.hasImpuestosAlDia })}>
+                            <div className="pt-0.5">
+                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                                documents.hasImpuestosAlDia ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                              }`}>
+                                {documents.hasImpuestosAlDia && '✓'}
+                              </div>
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold uppercase tracking-wide">Impuestos Municipales Al Día</h4>
+                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Comprobante de pago del último impuesto a la propiedad municipal.</p>
                             </div>
                           </div>
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs font-bold uppercase tracking-wide">Impuestos Municipales Al Día</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Comprobante de pago del último impuesto a la propiedad municipal.</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                              <span>📎 Adjuntar</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    alert(`Copia de Impuestos cargada: ${e.target.files[0].name}`);
+                                    updateDocuments({ hasImpuestosAlDia: true });
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
                         </div>
 
                         {/* Plano de Uso de Suelo */}
-                        <div
-                          onClick={() => updateDocuments({ hasPlanoUsoSuelo: !documents.hasPlanoUsoSuelo })}
-                          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer flex gap-4 items-start ${
-                            documents.hasPlanoUsoSuelo
-                              ? 'bg-emerald-50 border-emerald-300 text-[#04045E]'
-                              : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350'
-                          }`}
-                        >
-                          <div className="pt-0.5">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              documents.hasPlanoUsoSuelo ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                            }`}>
-                              {documents.hasPlanoUsoSuelo && '✓'}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
+                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasPlanoUsoSuelo: !documents.hasPlanoUsoSuelo })}>
+                            <div className="pt-0.5">
+                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                                documents.hasPlanoUsoSuelo ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
+                              }`}>
+                                {documents.hasPlanoUsoSuelo && '✓'}
+                              </div>
+                            </div>
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold uppercase tracking-wide">Plano de Uso de Suelo Aprobado</h4>
+                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Plano municipal de zonificación, dimensiones y uso permitido.</p>
                             </div>
                           </div>
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs font-bold uppercase tracking-wide">Plano de Uso de Suelo Aprobado</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Plano municipal de zonificación, dimensiones y uso permitido.</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
+                              <span>📎 Adjuntar</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    alert(`Copia de Plano de Uso de Suelo cargada: ${e.target.files[0].name}`);
+                                    updateDocuments({ hasPlanoUsoSuelo: true });
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
                         </div>
                       </div>
@@ -621,35 +931,36 @@ export default function PublicarPropiedadPage() {
                 </div>
               )}
 
-              {/* PASO 4: FOTOS Y MULTIMEDIA */}
+              {/* PASO 4: FOTOS */}
               {step === 4 && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-[#04045E] mb-2 uppercase">4. Galería e Imágenes</h2>
-                    <p className="text-slate-500 text-sm font-medium">Carga las fotografías más destacadas del inmueble para convencer a los leads.</p>
+                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">4. Subir fotografías</h2>
+                    <p className="text-slate-500 text-sm font-medium">Carga las fotografías más destacadas del inmueble (Formatos de imagen nativos, peso máx: 150 MB).</p>
                   </div>
 
-                  <div className="relative border-2 border-dashed border-slate-200 hover:border-[#04045E] bg-slate-50 hover:bg-slate-100 rounded-xl p-8 text-center transition-all duration-300 cursor-pointer group">
+                  <div className="relative border-2 border-dashed border-slate-200 hover:border-[#000033] bg-slate-50 hover:bg-slate-100 rounded-xl p-8 text-center transition-all duration-300 cursor-pointer group">
                     <input
                       type="file"
                       multiple
+                      accept="image/*"
                       onChange={handleFileUploadSimulate}
                       className="absolute inset-0 opacity-0 cursor-pointer z-10"
                     />
                     <div className="space-y-2.5">
                       <span className="text-3xl block group-hover:scale-110 transition-transform">📸</span>
-                      <h4 className="text-xs font-bold text-[#04045E] uppercase tracking-wider">Subir fotografías y documentos</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold">Arrastra o presiona para seleccionar imágenes. (JPG, PNG, PDF)</p>
+                      <h4 className="text-xs font-bold text-[#000033] uppercase tracking-wider">Subir fotografías</h4>
+                      <p className="text-[10px] text-slate-400 font-semibold">Arrastra o presiona para seleccionar imágenes. (JPG, PNG, WEBP)</p>
                     </div>
                   </div>
 
                   {files.length > 0 && (
-                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs font-sans">
                       <h4 className="text-[10px] uppercase font-bold text-slate-450 tracking-widest">Archivos en proceso de carga</h4>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {files.map((file, idx) => (
                           <div key={idx} className="space-y-1 p-3 bg-white border border-slate-100 rounded-lg shadow-sm">
-                            <div className="text-[9px] font-bold text-[#04045E] truncate" title={file.name}>
+                            <div className="text-[9px] font-bold text-[#000033] truncate" title={file.name}>
                               {file.name}
                             </div>
                             <div className="flex justify-between text-[8px] text-slate-400">
@@ -658,7 +969,7 @@ export default function PublicarPropiedadPage() {
                             </div>
                             <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
                               <div
-                                className="h-full bg-[#04045E] transition-all"
+                                className="h-full bg-[#000033] transition-all"
                                 style={{ width: `${file.progress}%` }}
                               ></div>
                             </div>
@@ -668,7 +979,7 @@ export default function PublicarPropiedadPage() {
                     </div>
                   )}
 
-                  {/* Alerta de validación documental */}
+                  {/* Alerta documental */}
                   {!checklistOk ? (
                     <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 space-y-1.5 text-xs">
                       <div className="flex gap-2 items-start font-bold uppercase tracking-wide">
@@ -677,7 +988,7 @@ export default function PublicarPropiedadPage() {
                       </div>
                       <p className="text-[10px] leading-relaxed text-slate-500 font-semibold">
                         Faltan documentos obligatorios para certificar tu inmueble con el **Sello Oro de Propio**. 
-                        La propiedad se publicará como <span className="text-red-600 font-bold">PENDIENTE DE VALIDACIÓN</span> hasta que completes la carpeta.
+                        La propiedad se publicará como <span className="text-red-650 font-bold">PENDIENTE DE VALIDACIÓN</span> hasta que completes la carpeta.
                       </p>
                     </div>
                   ) : (
@@ -700,7 +1011,7 @@ export default function PublicarPropiedadPage() {
                   <button
                     type="button"
                     onClick={handlePrev}
-                    className="px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-455 hover:text-[#04045E] border border-slate-200 font-bold text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+                    className="px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-[#000033] border border-slate-200 font-bold text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] active:scale-95 shrink-0"
                   >
                     Anterior
                   </button>
@@ -715,10 +1026,8 @@ export default function PublicarPropiedadPage() {
                     saving
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       : step === 4
-                        ? checklistOk
-                          ? 'bg-[#b9fa3c] hover:bg-[#b9fa3c]/90 text-[#04045E]'
-                          : 'bg-red-650 hover:bg-red-700 text-white animate-pulse'
-                        : 'bg-[#b9fa3c] hover:bg-[#b9fa3c]/90 text-[#04045E]'
+                        ? 'bg-[#ccff00] hover:bg-opacity-90 text-[#000033]'
+                        : 'bg-[#ccff00] hover:bg-opacity-90 text-[#000033]'
                   }`}
                 >
                   {saving ? (

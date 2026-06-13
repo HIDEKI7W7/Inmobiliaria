@@ -9,6 +9,7 @@ interface MapViewProps {
   selectedPropertyId: string | null;
   onSelectProperty: (id: string) => void;
   currency: 'USD' | 'BOB';
+  center?: [number, number];
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -17,6 +18,7 @@ export const MapView: React.FC<MapViewProps> = ({
   selectedPropertyId,
   onSelectProperty,
   currency,
+  center,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -116,10 +118,10 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!L || !mapContainerRef.current || mapRef.current) return;
 
-    // Crear el mapa centrado en Cochabamba
+    // Crear el mapa centrado en Cochabamba o la ciudad especificada
     const map = L.map(mapContainerRef.current, {
-      center: [-17.3780, -66.1560],
-      zoom: 14,
+      center: center || [-17.3780, -66.1560],
+      zoom: 13,
       zoomControl: false,
     });
 
@@ -143,6 +145,15 @@ export const MapView: React.FC<MapViewProps> = ({
       mapRef.current = null;
     };
   }, [L]);
+
+  // Efecto para centrar dinámicamente cuando el prop center cambia
+  useEffect(() => {
+    if (!L || !mapRef.current || !center) return;
+    mapRef.current.setView(center, 13, {
+      animate: true,
+      duration: 1.0,
+    });
+  }, [center, L]);
 
   // Efecto para corregir el Layout Glitch de Leaflet (Dimensiones colapsadas) recalculando en caliente
   useEffect(() => {
@@ -240,13 +251,13 @@ export const MapView: React.FC<MapViewProps> = ({
 
         const isHovered = activePropertyId === property.id || selectedPropertyId === property.id;
         const priceK = (property.price / 1000).toFixed(0);
-        const priceLabel = currency === 'USD' ? `$${priceK}K` : `Bs. ${(property.price * 10 / 1000).toFixed(0)}K`;
+        const priceLabel = currency === 'USD' ? `$${priceK}K` : `Bs. ${(property.priceBob || property.price * 10 / 1000).toFixed(0)}K`;
         
         const markerHtml = `
           <div class="font-sans font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-md border transition-all duration-300 whitespace-nowrap cursor-pointer ${
             isHovered
-              ? 'bg-[#b9fa3c] text-[#04045E] border-[#04045E] scale-110 ring-4 ring-[#b9fa3c]/45 font-black'
-              : 'bg-[#04045E] text-[#b9fa3c] border-[#b9fa3c]/20 hover:scale-105'
+              ? 'bg-[#ccff00] text-[#000033] border-[#000033] scale-110 ring-4 ring-[#ccff00]/45 font-black'
+              : 'bg-[#000033] text-[#ccff00] border-[#ccff00]/20 hover:scale-105'
           }">
             ${property.verified ? '👑 ' : ''}${priceLabel}
           </div>
@@ -275,16 +286,16 @@ export const MapView: React.FC<MapViewProps> = ({
             <div class="relative h-28 w-full overflow-hidden">
               <img src="${property.imageUrl}" alt="${property.title}" class="object-cover h-full w-full" />
               ${property.verified ? '<span class="absolute top-2 left-2 bg-amber-500 text-propio-blue font-black text-[8px] px-2 py-0.5 rounded-full border border-amber-300">👑 Oro</span>' : ''}
-              <span class="absolute bottom-2 right-2 bg-propio-blue text-white text-xs font-black px-2.5 py-1 rounded-lg border border-white/10">${formattedPriceFull}</span>
+              <span class="absolute bottom-2 right-2 bg-[#000033] text-white text-xs font-black px-2.5 py-1 rounded-lg border border-white/10">${formattedPriceFull}</span>
             </div>
             <div class="p-3.5 space-y-2">
-              <h4 class="font-heading font-black text-propio-blue text-sm leading-tight m-0 line-clamp-1">${property.title}</h4>
+              <h4 class="font-heading font-black text-[#000033] text-sm leading-tight m-0 line-clamp-1">${property.title}</h4>
               <p class="text-[10px] text-gray-500 font-bold m-0">📍 ${property.location}</p>
               <div class="grid grid-cols-2 gap-1.5 pt-1">
-                <button class="bg-propio-green hover:bg-propio-green/90 text-propio-blue font-black text-[9px] py-2 px-1.5 rounded-lg border-0 cursor-pointer text-center w-full uppercase tracking-wider transition-colors" onclick="window.alert('Contactando para: ${property.title}')">
+                <button class="bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-black text-[9px] py-2 px-1.5 rounded-lg border-0 cursor-pointer text-center w-full uppercase tracking-wider transition-colors" onclick="window.alert('Contactando para: ${property.title}')">
                   CONTACTAR
                 </button>
-                <button class="bg-white hover:bg-slate-100 text-propio-blue font-bold text-[9px] py-2 px-1.5 rounded-lg border border-slate-200 cursor-pointer text-center w-full uppercase tracking-wider transition-colors" onclick="window.alert('Agendando visita para: ${property.title}')">
+                <button class="bg-[#000033] hover:bg-[#000044] text-white font-bold text-[9px] py-2 px-1.5 rounded-lg border-0 cursor-pointer text-center w-full uppercase tracking-wider transition-colors" onclick="window.alert('Agendando visita para: ${property.title}')">
                   AGENDAR
                 </button>
               </div>
@@ -336,10 +347,10 @@ export const MapView: React.FC<MapViewProps> = ({
     <div className="relative w-full h-full overflow-hidden" style={{ height: '100%', width: '100%' }}>
       <div ref={mapContainerRef} className="w-full h-full z-0" style={{ height: '100%', width: '100%' }} />
       
-      {/* Indicador Flotante Cochabamba */}
-      <div className="absolute top-4 left-4 z-[1000] bg-propio-blue text-white px-4 py-2 rounded-2xl shadow-lg border border-white/10 flex items-center gap-2">
-        <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-propio-green" />
-        <span className="text-xs font-black font-sans uppercase tracking-wider">Cochabamba Activo</span>
+      {/* Indicador Flotante Bolivia */}
+      <div className="absolute top-4 left-4 z-[1000] bg-[#000033] text-white px-4 py-2 rounded-2xl shadow-lg border border-white/10 flex items-center gap-2">
+        <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-[#ccff00]" />
+        <span className="text-xs font-black font-sans uppercase tracking-wider">Bolivia Activo</span>
       </div>
 
       {/* Estilos inyectados para formatear los Popups de Leaflet */}

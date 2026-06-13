@@ -161,7 +161,7 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
   return (
     <article
       onClick={onClick}
-      className={`bg-white cursor-pointer overflow-hidden border border-neutral-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col ${active ? 'bg-neutral-50/50 ring-2 ring-black' : ''}`}
+      className={`bg-white cursor-pointer overflow-hidden border border-neutral-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col ${active ? 'bg-neutral-50/50 ring-2 ring-[#000033]' : ''}`}
       onMouseEnter={() => onHover(prop.id)}
       onMouseLeave={() => onHover(null)}
     >
@@ -172,12 +172,12 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
           className="w-full h-full object-cover transition-all duration-700 group-hover:scale-103" 
         />
         {prop.verified && (
-          <span className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-[#04045E] text-[#b9fa3c] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider rounded-full shadow z-10">
+          <span className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-[#000033] text-[#ccff00] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider rounded-full shadow z-10">
             {t("VERIFICADO")}
           </span>
         )}
         
-        {/* Botón de favoritos interactivo en verde lima */}
+        {/* Botón de favoritos interactivo */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -197,27 +197,30 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
             viewBox="0 0 24 24"
             className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-300 ${
               isFavorite
-                ? 'stroke-[#A3E635] fill-[#A3E635] drop-shadow-md hover:scale-110 transition-transform'
-                : 'stroke-[#A3E635] stroke-2 fill-transparent hover:scale-110 transition-transform'
+                ? 'stroke-red-500 fill-red-500 drop-shadow-md hover:scale-110 transition-transform'
+                : 'stroke-neutral-500 stroke-2 fill-transparent hover:scale-110 transition-transform'
             }`}
           >
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
           </svg>
         </button>
 
-        <span className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 bg-white/95 backdrop-blur-sm text-[#04045E] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider border border-slate-150 rounded-full shadow-sm z-10">
+        <span className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 bg-white/95 backdrop-blur-sm text-[#000033] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider border border-slate-150 rounded-full shadow-sm z-10">
           {prop.offerType}
         </span>
       </div>
       
       <div className="p-2 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
         <div className="space-y-1">
-          <div className="flex justify-between items-baseline gap-1.5 truncate">
-            <span className="font-serif text-xs sm:text-base md:text-xl lg:text-2xl font-black text-black block truncate">
-              ${prop.price.toLocaleString()}
+          <div className="flex flex-col gap-0.5 truncate">
+            <span className="font-serif text-xs sm:text-base md:text-lg lg:text-xl font-black text-black block truncate">
+              Bs. {(prop.priceBob || prop.price * 10).toLocaleString()}
+            </span>
+            <span className="text-neutral-400 text-[8px] sm:text-[9px] font-medium">
+              ${prop.price.toLocaleString()} USD
             </span>
           </div>
-          <h3 className="font-sans text-[10px] sm:text-xs md:text-sm font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
+          <h3 className="font-sans text-[10px] sm:text-xs md:text-sm font-bold text-[#000033] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
             {prop.title}
           </h3>
           <p className="text-neutral-400 text-[7px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 truncate">
@@ -240,10 +243,46 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
         <div className="pt-0.5 flex items-center justify-between">
           <DaysOnMarketBadge propertyId={prop.id} size="sm" />
         </div>
+
+        <div className="pt-2.5 flex items-center justify-between gap-1.5 border-t border-neutral-100 mt-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            className="flex-1 text-center py-2 bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold text-[8px] sm:text-[9px] uppercase tracking-wider rounded-lg transition-all"
+          >
+            Ver Ficha
+          </button>
+          <a
+            href={`https://wa.me/59171234567?text=Hola,%20estoy%20interesado%20en%20la%20propiedad%20"${encodeURIComponent(prop.title)}"%20publicada%20en%20Propio.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="flex-1 text-center py-2 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-sans font-black text-[8px] sm:text-[9px] uppercase tracking-wider rounded-lg transition-all"
+          >
+            WhatsApp
+          </a>
+        </div>
       </div>
     </article>
   );
 }
+
+const DEPARTAMENTOS_COORDS: { [key: string]: [number, number] } = {
+  'LA PAZ': [-16.5000, -68.1500],
+  'COCHABAMBA': [-17.3895, -66.1568],
+  'SANTA CRUZ': [-17.7833, -63.1833],
+  'ORURO': [-17.9833, -67.1500],
+  'POTOSÍ': [-19.5833, -65.7500],
+  'POTOSI': [-19.5833, -65.7500],
+  'TARIJA': [-21.5355, -64.7299],
+  'CHUQUISACA': [-19.0333, -65.2627],
+  'BENI': [-14.8333, -64.9000],
+  'PANDO': [-11.0200, -66.1000]
+};
 
 // ─── Contenido del Buscador ────────────────────────────────────────────────────────
 function PropertiesContent() {
@@ -1177,22 +1216,23 @@ function PropertiesContent() {
         </div>
       </div>
 
-      {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA IZQUIERDA / LISTADO DERECHA) ─── */}
-      <div className="flex flex-1 overflow-hidden relative">
+      {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA DERECHA / LISTADO IZQUIERDA) ─── */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative h-full">
 
-        {/* ── MAPA DINÁMICO LEAFLET REAL (IZQUIERDA - 50%) ── */}
-        <div className={`${isMapView ? 'block w-full' : 'hidden'} md:block w-full md:w-1/2 h-full max-w-full max-h-full relative overflow-hidden border-r border-neutral-200`}>
+        {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 50% en desktop, ARRIBA - 75% en mobile) ── */}
+        <div className="w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2">
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
             selectedPropertyId={selectedPropertyId}
             onSelectProperty={(id) => setSelectedPropertyId(id)}
-            currency="USD"
+            currency="BOB"
+            center={DEPARTAMENTOS_COORDS[searchParams.get('city')?.toUpperCase() || 'COCHABAMBA'] || DEPARTAMENTOS_COORDS['COCHABAMBA']}
           />
         </div>
 
-        {/* ── GRILLA DE RESULTADOS EDITORIAL (DERECHA - 50%) ── */}
-        <div className={`${!isMapView ? 'block w-full' : 'hidden'} md:block md:w-1/2 overflow-y-auto bg-white no-scrollbar`}>
+        {/* ── GRILLA DE RESULTADOS EDITORIAL (IZQUIERDA - 50% en desktop, ABAJO - 25% en mobile) ── */}
+        <div className="w-full h-[25%] md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1">
 
           {/* Listado de Propiedades */}
           <div className="p-4 sm:p-6 pb-20 space-y-6">
@@ -1206,51 +1246,28 @@ function PropertiesContent() {
                     {filtered.length} {t("propiedades encontradas")}
                   </p>
                 </div>
-                
-                {/* Botón de Estadísticas Colapsable - Oculto en móvil */}
-                <button
-                  onClick={() => setShowAnalytics(!showAnalytics)}
-                  className="hidden md:flex bg-neutral-50 hover:bg-neutral-100 text-[#04045E] border border-neutral-200 text-[9px] font-black px-3.5 py-2.5 uppercase tracking-widest transition-all rounded-none items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v16.5M12 3v16.5m8.25-16.5v16.5" />
-                  </svg>
-                  {showAnalytics ? t("Ocultar Análisis") : t("Ver Análisis de Zona")}
-                </button>
-
                 {/* Ordenado por: Casas para ti (Visible en móviles) */}
                 <span className="md:hidden text-[9px] font-bold text-neutral-500 bg-neutral-100 px-2.5 py-1.5 rounded-full uppercase tracking-wider shrink-0 select-none">
                   Casas para ti
                 </span>
               </div>
 
-              {/* Contenedor de Estadísticas (Analytics) Colapsable */}
-              {showAnalytics && (
-                <div className="p-4 border border-neutral-200 bg-[#fbf9f9] space-y-4 rounded-xl animate-fadeIn">
-                  <div>
-                    <p className="text-[9px] font-bold text-[#04045E] uppercase tracking-widest mb-3">{t("Tendencia de Precios en ")}{searchParams.get('zone') || 'Cala Cala'}</p>
-                    <PriceTrendChart
-                      zona={searchParams.get('zone') || 'Cala Cala'}
-                      height={120}
-                      showSummary={false}
+              {/* Contenedor de Alertas de Búsqueda */}
+              <div className="p-4 border border-neutral-200 bg-[#fbf9f9] rounded-xl">
+                <details className="group">
+                  <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#000033] py-1 list-none uppercase tracking-widest select-none">
+                    <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+                  </summary>
+                  <div className="pt-3 border-t border-neutral-100 mt-2">
+                    <PropertyAlertForm
+                      defaultZona={searchParams.get('zone') || ''}
+                      defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
+                      defaultMaxPrice={maxPrice}
                     />
                   </div>
-                  
-                  <details className="group border-t border-neutral-250 pt-3">
-                    <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#04045E] py-1 list-none uppercase tracking-widest select-none">
-                      <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
-                    </summary>
-                    <div className="pt-3 border-t border-neutral-100 mt-2">
-                      <PropertyAlertForm
-                        defaultZona={searchParams.get('zone') || ''}
-                        defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
-                        defaultMaxPrice={maxPrice}
-                      />
-                    </div>
-                  </details>
-                </div>
-              )}
+                </details>
+              </div>
             </header>
 
             {sortedProperties.length === 0 ? (

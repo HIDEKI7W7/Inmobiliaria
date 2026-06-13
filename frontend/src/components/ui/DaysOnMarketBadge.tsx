@@ -38,7 +38,7 @@ const URGENCY_CONFIG: Record<UrgencyLevel, UrgencyConfig> = {
     pulse: true,
   },
   normal: {
-    label: 'En mercado',
+    label: 'Publicado',
     icon: '📅',
     bgClass: 'bg-blue-50',
     textClass: 'text-blue-600',
@@ -46,7 +46,7 @@ const URGENCY_CONFIG: Record<UrgencyLevel, UrgencyConfig> = {
     pulse: false,
   },
   aging: {
-    label: 'Hace tiempo',
+    label: 'Hace días',
     icon: '⏳',
     bgClass: 'bg-amber-50',
     textClass: 'text-amber-700',
@@ -54,7 +54,7 @@ const URGENCY_CONFIG: Record<UrgencyLevel, UrgencyConfig> = {
     pulse: false,
   },
   stale: {
-    label: 'Mucho tiempo',
+    label: 'Semanas atrás',
     icon: '⚠️',
     bgClass: 'bg-slate-100',
     textClass: 'text-slate-500',
@@ -111,8 +111,9 @@ export function DaysOnMarketBadge({ propertyId, approvedAt, size = 'md' }: DaysO
   const sizeClasses = {
     sm: 'text-[10px] px-2 py-0.5 gap-1',
     md: 'text-xs px-3 py-1 gap-1.5',
+    bgClass: 'md', // fallback
     lg: 'text-sm px-4 py-1.5 gap-2',
-  }[size];
+  }[size] || 'text-xs px-3 py-1 gap-1.5';
 
   if (loading) {
     return (
@@ -125,11 +126,11 @@ export function DaysOnMarketBadge({ propertyId, approvedAt, size = 'md' }: DaysO
   return (
     <div
       className={`inline-flex items-center rounded-full border font-semibold ${config.bgClass} ${config.textClass} ${config.ringClass} ${sizeClasses}`}
-      title={`${days} días en el mercado`}
+      title={`${days} días publicados`}
     >
       <span className={config.pulse ? 'animate-bounce' : ''}>{config.icon}</span>
       <span>
-        {days === 0 ? 'Nuevo hoy' : days === 1 ? '1 día en mercado' : `${days} días en mercado`}
+        {days === 0 ? 'Nuevo hoy' : days === 1 ? '1 día publicado' : `${days} días publicados`}
       </span>
       {(level === 'new' || level === 'fresh') && (
         <span className={`w-1.5 h-1.5 rounded-full ${level === 'new' ? 'bg-red-400' : 'bg-emerald-400'} animate-pulse`} />

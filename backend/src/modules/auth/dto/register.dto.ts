@@ -8,6 +8,9 @@ export class RegisterDto {
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   password: string;
 
+  @IsString({ message: 'El número de WhatsApp es obligatorio.' })
+  whatsappPhone: string;
+
   @IsOptional()
   @IsString({ message: 'El nombre debe ser texto.' })
   @MinLength(3, { message: 'El nombre debe tener al menos 3 caracteres.' })

@@ -245,10 +245,28 @@ export function PropertyDetailClient({
     setIsFavorited(newFavState);
   };
 
-  const [activeTab, setActiveTab] = useState<'fotos' | '3d' | 'plano' | 'mapa'>('fotos');
+  const [activeTab, setActiveTab] = useState<'fotos' | 'mapa' | '3d' | 'plano'>('fotos');
   const [selectedAgent, setSelectedAgent] = useState<string>('age_1');
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [showQR, setShowQR] = useState<boolean>(false);
+
+  // Estados del Formulario de Agendamiento de Visitas
+  const [showAppointmentModal, setShowAppointmentModal] = useState<boolean>(false);
+  const [appointmentName, setAppointmentName] = useState<string>('');
+  const [appointmentWhatsApp, setAppointmentWhatsApp] = useState<string>('');
+  const [appointmentEmail, setAppointmentEmail] = useState<string>('');
+  const [appointmentDate, setAppointmentDate] = useState<string>('');
+  const [appointmentTime, setAppointmentTime] = useState<string>('');
+  const [appointmentSuccessMsg, setAppointmentSuccessMsg] = useState<string>('');
+
+  useEffect(() => {
+    const user = getCurrentUser() as any;
+    if (user) {
+      setAppointmentName(user.name || '');
+      setAppointmentEmail(user.email || '');
+      setAppointmentWhatsApp(user.whatsappPhone || user.phone || '');
+    }
+  }, [showAppointmentModal]);
 
   // ─── Estados Interactivos de la Calculadora Hipotecaria Real ───
   const [downPayment, setDownPayment] = useState<number>(Math.round(currentProperty.price * 0.2));
@@ -319,6 +337,30 @@ export function PropertyDetailClient({
     `Hola ${currentAgent.name}, me interesa el inmueble "${currentProperty.title}" (${currentProperty.code}). ¿Podríamos coordinar una cita de atención premium?`
   );
   const whatsappUrl = `https://wa.me/${currentAgent.phone.replace(/\D/g, '')}?text=${whatsappMsg}`;
+
+  const handleActionClick = (e: React.MouseEvent, actionType: 'visita' | 'whatsapp') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const tokenVal = getToken();
+    const userVal = getCurrentUser();
+    const isAuthenticated = !!(userVal && tokenVal);
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (actionType === 'visita') {
+      setShowAppointmentModal(true);
+    } else {
+      window.open(whatsappUrl, '_blank');
+    }
+  };
+
+  const handleAppointmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAppointmentSuccessMsg(
+      `¡Visita programada con éxito! Confirmación: Se agendó para el ${appointmentDate} a las ${appointmentTime}. Recibirás un mensaje automático al WhatsApp ${appointmentWhatsApp}.`
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-700 antialiased selection:bg-[#b9fa3c]/30">
@@ -548,8 +590,6 @@ export function PropertyDetailClient({
               <div className="absolute bottom-4 left-4 right-4 z-10 flex justify-center">
                 <div className="bg-white/90 backdrop-blur-md p-1 rounded-full flex gap-1 shadow-lg border border-slate-200/50 max-w-full overflow-x-auto no-scrollbar">
                   {[
-                    { key: '3d', label: 'Inicio 3D' },
-                    { key: 'plano', label: 'Plano' },
                     { key: 'fotos', label: 'Fotos' },
                     { key: 'mapa', label: 'Mapa' }
                   ].map((tab) => (
@@ -558,8 +598,8 @@ export function PropertyDetailClient({
                       onClick={() => setActiveTab(tab.key as any)}
                       className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 ${
                         activeTab === tab.key 
-                          ? 'bg-[#04045E] text-white shadow' 
-                          : 'text-[#04045E] hover:bg-slate-100'
+                          ? 'bg-[#000033] text-white shadow' 
+                          : 'text-[#000033] hover:bg-slate-100'
                       }`}
                     >
                       {tab.label}
@@ -633,7 +673,7 @@ export function PropertyDetailClient({
           <section className="space-y-4">
             <h3 className="text-sm font-black uppercase tracking-wider text-[#04045E]">¿Qué tiene de especial?</h3>
             <div className="flex flex-wrap gap-2.5">
-              {currentProperty.amenities.map((amenity: string, idx: number) => (
+              {(currentProperty.amenities || []).map((amenity: string, idx: number) => (
                 <span 
                   key={idx} 
                   className="bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-600 font-sans font-bold text-[10px] px-4 py-2.5 rounded-full tracking-wider uppercase cursor-default transition-all duration-200 flex items-center gap-1.5"
@@ -646,162 +686,138 @@ export function PropertyDetailClient({
 
           <hr className="border-slate-200/80" />
 
-          {/* 4. HISTORIAL DE PRECIOS - REDISEÑADO COMO LÍNEA DE TIEMPO VERTICAL COMPASS */}
-          <section className="space-y-5">
-            <h3 className="text-sm font-black uppercase tracking-wider text-[#04045E]">Historial de eventos y precio de mercado</h3>
-            
-            <div className="relative border-l border-slate-200 ml-4 pl-6 space-y-6 py-2">
-              {currentProperty.history.map((row: PriceHistory, idx: number) => (
-                <div key={idx} className="relative">
-                  {/* Timeline circle node */}
-                  <span className="absolute -left-[31px] top-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white border-2 border-[#04045E] shadow-sm">
-                    <span className="h-2 w-2 rounded-full bg-[#b9fa3c]" />
-                  </span>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-4.5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+          {currentProperty.offerType === 'VENTA' && (
+            <>
+              {/* 5. CALCULADORA DE PAGO MENSUAL INTERACTIVA COMPLETA */}
+              <section className="space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#000033]">Calculadora de Pago Mensual Interactiva</h3>
+                <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8">
+                  
+                  {/* Desglose visual en tiempo real */}
+                  <div className="space-y-6 flex flex-col justify-center">
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-mono">{row.date}</span>
-                      <h4 className="text-sm font-black text-[#04045E] mt-0.5">{row.event}</h4>
+                      <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Cuota mensual estimada</span>
+                      <h4 className="text-3xl font-black text-[#000033] font-sans pt-1">
+                        Bs. {(mortgageResults.totalMonthly * 10).toLocaleString()} <span className="text-xs text-slate-400 font-semibold tracking-normal">/ mes</span>
+                      </h4>
                     </div>
-                    <span className="text-base font-black text-[#04045E] font-sans">${row.price.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <hr className="border-slate-200/80" />
-
-          {/* 5. CALCULADORA DE PAGO MENSUAL INTERACTIVA COMPLETA */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-wider text-[#04045E]">Calculadora de Pago Mensual Interactiva</h3>
-            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8">
-              
-              {/* Desglose visual en tiempo real */}
-              <div className="space-y-6 flex flex-col justify-center">
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Cuota mensual estimada</span>
-                  <h4 className="text-3xl font-black text-[#04045E] font-sans pt-1">
-                    ${mortgageResults.totalMonthly.toLocaleString()} <span className="text-xs text-slate-400 font-semibold tracking-normal">/ mes</span>
-                  </h4>
-                </div>
-                
-                {/* Barra de Porcentaje Multicolor Dinámica segmentada */}
-                <div className="space-y-4">
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-                    <div 
-                      className="h-full bg-[#04045E] transition-all duration-300" 
-                      style={{ width: `${mortgageResults.percentages.principalInterest}%` }} 
-                      title="Capital e intereses"
-                    />
-                    <div 
-                      className="h-full bg-blue-500 transition-all duration-300" 
-                      style={{ width: `${mortgageResults.percentages.tax}%` }} 
-                      title="Impuestos"
-                    />
-                    <div 
-                      className="h-full bg-[#b9fa3c] transition-all duration-300" 
-                      style={{ width: `${mortgageResults.percentages.insurance}%` }} 
-                      title="Seguro"
-                    />
-                  </div>
-
-                  <div className="space-y-2.5 pt-1">
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 bg-[#04045E] rounded-full inline-block" />
-                          Capital e intereses
-                        </span>
-                        <span className="text-[#04045E]">${mortgageResults.monthlyPrincipalInterest.toLocaleString()} ({mortgageResults.percentages.principalInterest}%)</span>
+                    
+                    {/* Barra de Porcentaje Dinámica */}
+                    <div className="space-y-4">
+                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                        <div 
+                          className="h-full bg-[#000033] transition-all duration-300" 
+                          style={{ width: `${mortgageResults.percentages.principalInterest}%` }} 
+                          title="Capital e intereses"
+                        />
+                        <div 
+                          className="h-full bg-blue-500 transition-all duration-300" 
+                          style={{ width: `${mortgageResults.percentages.tax}%` }} 
+                          title="Impuestos"
+                        />
+                        <div 
+                          className="h-full bg-[#ccff00] transition-all duration-300" 
+                          style={{ width: `${mortgageResults.percentages.insurance}%` }} 
+                          title="Seguro"
+                        />
                       </div>
-                    </div>
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 bg-blue-500 rounded-full inline-block" />
-                          Impuesto predial mensual
-                        </span>
-                        <span className="text-blue-500">${mortgageResults.monthlyTax.toLocaleString()} ({mortgageResults.percentages.tax}%)</span>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 bg-[#b9fa3c] rounded-full inline-block" />
-                          Seguro de hogar
-                        </span>
-                        <span className="text-[#04045E] font-black">${mortgageResults.monthlyInsurance.toLocaleString()} ({mortgageResults.percentages.insurance}%)</span>
+
+                      <div className="space-y-2.5 pt-1">
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-xs font-bold text-slate-600">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 bg-[#000033] rounded-full inline-block" />
+                              Capital e intereses
+                            </span>
+                            <span className="text-[#000033]">Bs. {(mortgageResults.monthlyPrincipalInterest * 10).toLocaleString()} ({mortgageResults.percentages.principalInterest}%)</span>
+                          </div>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-xs font-bold text-slate-600">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full inline-block" />
+                              Impuesto predial mensual
+                            </span>
+                            <span className="text-blue-500">Bs. {(mortgageResults.monthlyTax * 10).toLocaleString()} ({mortgageResults.percentages.tax}%)</span>
+                          </div>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-xs font-bold text-slate-600">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 bg-[#ccff00] rounded-full inline-block" />
+                              Seguro de hogar
+                            </span>
+                            <span className="text-[#000033] font-black">Bs. {(mortgageResults.monthlyInsurance * 10).toLocaleString()} ({mortgageResults.percentages.insurance}%)</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Formulario Interactivo */}
-              <div className="bg-[#F8FAFC] p-6 border border-slate-200 rounded-2xl space-y-4 flex flex-col justify-between">
-                <div className="space-y-3.5">
-                  <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Cuota Inicial (USD)</label>
-                    <input 
-                      type="number"
-                      value={downPayment}
-                      onChange={(e) => setDownPayment(Math.min(currentProperty.price, Math.max(0, Number(e.target.value))))}
-                      className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#04045E] text-[#04045E] font-sans"
-                    />
+                  {/* Formulario Interactivo */}
+                  <div className="bg-[#F8FAFC] p-6 border border-slate-200 rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Cuota Inicial (Bs)</label>
+                        <input 
+                          type="number"
+                          value={downPayment * 10}
+                          onChange={(e) => setDownPayment(Math.min(currentProperty.price, Math.max(0, Math.round(Number(e.target.value) / 10))))}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#000033] text-[#000033] font-sans"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Tasa de interés (%)</label>
+                        <input 
+                          type="number"
+                          step="0.1"
+                          value={interestRate}
+                          onChange={(e) => setInterestRate(Math.max(0, Number(e.target.value)))}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#000033] text-[#000033] font-sans"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Plazo (Años)</label>
+                        <select 
+                          value={loanTerm}
+                          onChange={(e) => setLoanTerm(Number(e.target.value))}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                        >
+                          <option value={10}>10 años</option>
+                          <option value={15}>15 años</option>
+                          <option value={20}>20 años</option>
+                          <option value={30}>30 años</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="pt-2 text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider select-none">
+                      ⚡ Actualizado en tiempo real
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Tasa de interés (%)</label>
-                    <input 
-                      type="number"
-                      step="0.1"
-                      value={interestRate}
-                      onChange={(e) => setInterestRate(Math.max(0, Number(e.target.value)))}
-                      className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#04045E] text-[#04045E] font-sans"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Plazo (Años)</label>
-                    <select 
-                      value={loanTerm}
-                      onChange={(e) => setLoanTerm(Number(e.target.value))}
-                      className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#04045E] text-[#04045E]"
-                    >
-                      <option value={10}>10 años</option>
-                      <option value={15}>15 años</option>
-                      <option value={20}>20 años</option>
-                      <option value={30}>30 años</option>
-                    </select>
-                  </div>
                 </div>
-                <div className="pt-2 text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider select-none">
-                  ⚡ Actualizado en tiempo real
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <hr className="border-slate-200/80" />
-
-          {/* 6. TENDENCIAS DE PRECIOS POR ZONA */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tendencia de precios por Zona</h3>
-              <span className="text-xs font-bold text-[#04045E] bg-[#b9fa3c]/30 px-3 py-1 rounded-full border border-[#04045E]/10">
-                {currentProperty.city.split(',')[0]}
-              </span>
-            </div>
-            <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm">
-              <PriceTrendChart zona={currentProperty.city.split(',')[0]} height={200} />
-            </div>
-          </section>
-
-          <hr className="border-slate-200/80" />
+              </section>
+              <hr className="border-slate-200/80" />
+            </>
+          )}
 
           {/* 7. MINI MAPA ENTORNO INFERIOR */}
           <section className="space-y-3">
-            <h3 className="text-sm font-black uppercase tracking-wider text-[#04045E]">Ubicación y Entorno</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-[#000033]">MÁS OPCIONES</h3>
             <div className="w-full h-80 bg-slate-100 border border-slate-200 rounded-3xl overflow-hidden relative shadow-inner">
               <MiniMap center={currentProperty.coordinates} isInteractive={false} />
+            </div>
+            {/* Sello Documental */}
+            <div className="pt-2 flex items-center gap-2 text-xs font-bold font-sans">
+              <span className="text-slate-400 uppercase tracking-widest text-[9px]">Sello documental:</span>
+              {currentProperty.verified ? (
+                <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider text-[9px] font-black">
+                  ✓ documentación verificada
+                </span>
+              ) : (
+                <span className="text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 uppercase tracking-wider text-[9px] font-black">
+                  ✗ No verificado
+                </span>
+              )}
             </div>
           </section>
 
@@ -824,24 +840,16 @@ export function PropertyDetailClient({
         <div className="w-full lg:w-[35%] p-4 md:p-6 bg-slate-50/40 lg:bg-transparent">
           <div className="w-full lg:sticky lg:top-24 space-y-4">
             
-            {/* CAJA 1: HORARIOS DE OPEN HOUSE */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block">Tour Disponible</span>
-              <h4 className="text-sm font-black text-[#04045E] pt-1">Próxima jornada de Open-House</h4>
-              <p className="text-xs text-slate-500 font-semibold">Sábado de esta semana • 14:00 a 17:00</p>
-              <button className="text-[10px] font-black uppercase tracking-widest text-[#04045E] underline block pt-1 hover:text-opacity-80 transition-colors cursor-pointer">
-                Añadir al calendario corporativo
-              </button>
-            </div>
-
-            {/* CAJA 2: TARJETA DE AGENTE RESPONSABLE CON SELECTOR */}
+            {/* CAJA 1: ELIMINADA JORNADA DE OPEN HOUSE */}
+            
+            {/* CAJA 2: TARJETA DE AGENTE RESPONSABLE (SELECTOR INHABILITADO) */}
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#04045E]/5 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 flex items-center justify-center font-heading font-black text-[#04045E] text-base">
+                <div className="w-12 h-12 bg-[#000033]/5 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 flex items-center justify-center font-heading font-black text-[#000033] text-base">
                   {currentAgent.avatar}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-black text-[#04045E] leading-tight">{currentAgent.name}</h4>
+                  <h4 className="text-sm font-black text-[#000033] leading-tight">{currentAgent.name}</h4>
                   <p className="text-xs font-semibold text-slate-400 mt-0.5">{currentAgent.agency}</p>
                   
                   {/* Calificación */}
@@ -852,30 +860,24 @@ export function PropertyDetailClient({
                 </div>
               </div>
 
-              {/* Selector de agente */}
+              {/* Selector de agente inhabilitado */}
               <div className="pt-3.5 border-t border-slate-100">
                 <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
                   Agente de Atención Asignado
                 </label>
-                <select 
-                  value={selectedAgent}
-                  onChange={(e) => setSelectedAgent(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl focus:outline-none focus:border-[#04045E] cursor-pointer transition-all"
-                >
-                  {staffAgents.map((ag) => (
-                    <option key={ag.id} value={ag.id}>Cambiar agente: {ag.name}</option>
-                  ))}
-                </select>
+                <div className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl select-none">
+                  Agente Asignado: {currentAgent.name}
+                </div>
               </div>
             </div>
 
             {/* CAJA 3: BOTONES DE ACCIÓN PRINCIPALES - CONVERSIÓN QUIRÚRGICA */}
             <div className="space-y-2.5">
               
-              {/* [SOLICITAR VISITA GUIADA] en verde lima sólido vibrante con texto negro */}
+              {/* [SOLICITAR VISITA GUIADA] */}
               <button 
-                onClick={() => setShowQR(true)}
-                className="w-full bg-[#b9fa3c] hover:bg-[#b0f02c] text-[#04045E] font-heading font-black py-4 px-6 rounded-2xl shadow-md hover:shadow-lg hover:shadow-[#b9fa3c]/15 text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[#04045E]/10 cursor-pointer"
+                onClick={(e) => handleActionClick(e, 'visita')}
+                className="w-full bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-heading font-black py-4 px-6 rounded-2xl shadow-md text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[#ccff00]/10 cursor-pointer"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
@@ -883,17 +885,12 @@ export function PropertyDetailClient({
                 Solicitar visita guiada
               </button>
 
-              <a 
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full bg-[#04045E] hover:bg-opacity-95 text-white font-black py-4 px-6 rounded-2xl shadow-sm text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer text-center"
+              <button 
+                onClick={(e) => handleActionClick(e, 'whatsapp')}
+                className="w-full bg-[#000033] hover:bg-[#000044] text-white font-black py-4 px-6 rounded-2xl shadow-sm text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer text-center"
               >
-                <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.019-5.117-2.875-6.976C16.602 1.905 14.128.885 11.498.885c-5.414 0-9.822 4.417-9.826 9.862-.001 1.702.463 3.364 1.34 4.816l-.997 3.636 3.731-.978c1.41.8 3.01 1.218 4.62 1.218h.007zm14.394-7.3c-.272-.136-1.61-.795-1.86-.886-.25-.09-.432-.136-.613.136-.182.273-.705.886-.864 1.068-.159.182-.318.205-.59.069-.272-.136-1.15-.424-2.19-1.3-.183-.137-.364-.318-.545-.454-.182-.136-.318-.272-.364-.363-.09-.136-.454-.772-.454-1.408 0-.636.318-.954.454-1.09.136-.136.318-.182.409-.182.09 0 .182 0 .272.045.09 0 .227-.045.364.272.136.318.455 1.182.5 1.273.045.09.045.227 0 .318-.045.09-.136.227-.227.318-.09.09-.182.227-.09.363.136.273.545.91 1.136 1.455.773.682 1.41.91 1.59 1 .182.09.318.09.409-.045.09-.136.409-.455.5-.636.09-.182.182-.136.364-.09.182.045 1.182.59 1.364.682.182.09.318.136.364.227.09.09.09.545-.09 1-.182.454-1.09 1-1.545 1.045-.455.045-.91-.09-2.636-.772z"/>
-                </svg>
                 Contactar por WhatsApp
-              </a>
+              </button>
             </div>
 
           </div>
@@ -948,27 +945,125 @@ export function PropertyDetailClient({
         </div>
       )}
 
+      {showAppointmentModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white p-8 rounded-3xl max-w-md w-full text-left space-y-6 shadow-2xl border border-slate-100 font-sans">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h4 className="text-sm font-black text-[#000033] uppercase tracking-wide">Agendar Visita Guiada</h4>
+              <button 
+                onClick={() => {
+                  setShowAppointmentModal(false);
+                  setAppointmentSuccessMsg('');
+                }}
+                className="text-slate-400 hover:text-black font-bold text-lg cursor-pointer bg-transparent border-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {appointmentSuccessMsg ? (
+              <div className="space-y-4 py-4 text-center">
+                <div className="text-4xl text-emerald-500">✓</div>
+                <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+                  {appointmentSuccessMsg}
+                </p>
+                <button
+                  onClick={() => {
+                    setShowAppointmentModal(false);
+                    setAppointmentSuccessMsg('');
+                  }}
+                  className="w-full bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold py-3 rounded-xl text-xs uppercase tracking-widest transition-all"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleAppointmentSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={appointmentName}
+                    onChange={(e) => setAppointmentName(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Número de WhatsApp</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Ej: 71234567"
+                    value={appointmentWhatsApp}
+                    onChange={(e) => setAppointmentWhatsApp(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Correo Electrónico</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="tu@correo.com"
+                    value={appointmentEmail}
+                    onChange={(e) => setAppointmentEmail(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Fecha</label>
+                    <input
+                      type="date"
+                      required
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hora de Visita</label>
+                    <input
+                      type="time"
+                      required
+                      value={appointmentTime}
+                      onChange={(e) => setAppointmentTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#000033] text-[#000033]"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#000033] hover:bg-[#000044] text-white font-sans font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-all"
+                >
+                  Agendar Cita de Visita
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Barra de Contacto Fija en la Base para Móviles (Zillow / Airbnb Style) */}
       <div className="lg:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-fadeIn">
         <div className="flex flex-col">
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Precio</span>
-          <span className="text-lg font-black text-[#04045E]">${currentProperty.price.toLocaleString()}</span>
+          <span className="text-sm font-black text-[#000033]">Bs. ${(currentProperty.priceBob || currentProperty.price * 10).toLocaleString()}</span>
         </div>
         <div className="flex gap-2 flex-1 max-w-[240px]">
           <button 
-            onClick={() => setShowQR(true)}
-            className="flex-1 bg-[#b9fa3c] hover:bg-[#b0f02c] text-[#04045E] font-heading font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] border border-[#04045E]/10 cursor-pointer"
+            onClick={(e) => handleActionClick(e, 'visita')}
+            className="flex-1 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-heading font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] border border-[#ccff00]/10 cursor-pointer"
           >
             Reservar
           </button>
-          <a 
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 bg-[#04045E] hover:bg-opacity-95 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-[0.98] text-center cursor-pointer"
+          <button 
+            onClick={(e) => handleActionClick(e, 'whatsapp')}
+            className="flex-1 bg-[#000033] hover:bg-opacity-95 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-[0.98] text-center cursor-pointer"
           >
             WhatsApp
-          </a>
+          </button>
         </div>
       </div>
 

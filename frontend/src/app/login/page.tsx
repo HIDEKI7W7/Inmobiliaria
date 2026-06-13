@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Estados de carga, éxito y errores
@@ -32,6 +33,7 @@ export default function LoginPage() {
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [whatsappError, setWhatsappError] = useState('');
 
   // Redirigir si la sesión ya está activa
   useEffect(() => {
@@ -84,6 +86,12 @@ export default function LoginPage() {
     return '';
   };
 
+  const validateWhatsapp = (val: string) => {
+    if (!val.trim()) return t('El número de WhatsApp es requerido');
+    if (val.trim().length < 7) return t('Ingresa un número válido de al menos 7 dígitos');
+    return '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -93,12 +101,14 @@ export default function LoginPage() {
     const eErr = validateEmail(email);
     const pErr = validatePassword(password);
     const nErr = isRegister ? validateName(name) : '';
+    const wErr = isRegister ? validateWhatsapp(whatsappPhone) : '';
 
     setEmailError(eErr);
     setPasswordError(pErr);
     setNameError(nErr);
+    setWhatsappError(wErr);
 
-    if (eErr || pErr || nErr) return;
+    if (eErr || pErr || nErr || wErr) return;
 
     setIsLoading(true);
     const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -109,7 +119,7 @@ export default function LoginPage() {
         const registerRes = await fetch(`${API}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name }),
+          body: JSON.stringify({ email, password, name, whatsappPhone }),
         });
 
         const registerData = await registerRes.json();
@@ -359,6 +369,26 @@ export default function LoginPage() {
                   disabled={isLoading}
                 />
                 {nameError && <p className="text-[10px] font-bold text-red-500 mt-1">{nameError}</p>}
+              </div>
+            )}
+
+            {/* WhatsApp / Teléfono (Solo en Registro) */}
+            {isRegister && (
+              <div className="space-y-2 animate-fadeIn">
+                <label htmlFor="whatsappPhone" className="block text-[11px] font-bold tracking-wider text-[#000033] uppercase">{t("Número de WhatsApp / Teléfono")}</label>
+                <input
+                  id="whatsappPhone"
+                  type="tel"
+                  placeholder="e.g. 71234567"
+                  value={whatsappPhone}
+                  onChange={(e) => { setWhatsappPhone(e.target.value); setWhatsappError(''); setError(null); }}
+                  onBlur={(e) => setWhatsappError(validateWhatsapp(e.target.value))}
+                  className={`w-full px-4 py-3.5 rounded-xl border outline-none text-sm text-slate-900 font-medium bg-[#F8FAFC] transition-all focus:border-[#000033] focus:bg-white ${
+                    whatsappError ? 'border-red-500' : 'border-slate-200'
+                  }`}
+                  disabled={isLoading}
+                />
+                {whatsappError && <p className="text-[10px] font-bold text-red-500 mt-1">{whatsappError}</p>}
               </div>
             )}
 

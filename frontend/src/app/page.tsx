@@ -21,48 +21,84 @@ export function LogoIcon({ className = 'w-6 h-6' }: { className?: string }) {
   );
 }
 
-const FEATURED_PROPERTIES = [
+// Inversiones inteligentes: Filtrar exclusivamente por PROYECTOS o VENTAS recientes.
+// Se muestran en Bolivianos (Bs.) por defecto.
+const INVERSIONES_PROPERTIES = [
   {
     id: 'prop-1-cala-cala',
     title: 'Casa Familiar en Cala Cala',
-    price: 320000,
+    priceBob: 3200000,
     location: 'Cala Cala, Cochabamba',
     area: 350,
     rooms: 5,
     baths: 4,
     image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=900&q=85',
+    verified: true,
+    offerType: 'VENTA',
   },
   {
     id: 'prop-2-queru-queru',
     title: 'Penthouse de Lujo en Queru Queru',
-    price: 185000,
+    priceBob: 1850000,
     location: 'Queru Queru, Cochabamba',
     area: 195,
     rooms: 4,
     baths: 3,
     image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=900&q=85',
+    verified: true,
+    offerType: 'PROYECTO',
   },
   {
-    id: 'prop-3-el-prado',
-    title: 'Departamento Moderno en El Prado',
-    price: 95000,
-    location: 'El Prado, Cochabamba',
-    area: 85,
-    rooms: 2,
-    baths: 2,
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=900&q=85',
+    id: 'prop-4-sarco',
+    title: 'Terreno Comercial en Sarco',
+    priceBob: 480000,
+    location: 'Sarco, Cochabamba',
+    area: 400,
+    rooms: 0,
+    baths: 0,
+    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=85',
+    verified: false,
+    offerType: 'VENTA',
   },
 ];
 
-const ZONAS_POPULARES = [
-  { name: 'Cala Cala', count: 128, img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80' },
-  { name: 'Queru Queru', count: 94, img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=600&q=80' },
-  { name: 'El Prado', count: 76, img: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80' },
-  { name: 'Sarco', count: 52, img: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80' },
+const DEPARTAMENTOS_BOLIVIA = [
+  'Cochabamba',
+  'La Paz',
+  'Santa Cruz',
+  'Oruro',
+  'Potosí',
+  'Tarija',
+  'Chuquisaca',
+  'Beni',
+  'Pando'
 ];
 
-function PropertyCard({ property }: { property: (typeof FEATURED_PROPERTIES)[0] }) {
-  const t = (key: string) => key;
+const CATEGORIAS_BUSQUEDA = [
+  { value: 'VENTA', label: 'Venta' },
+  { value: 'ALQUILER', label: 'Alquiler' },
+  { value: 'ANTICRETICO', label: 'Anticrético' },
+  { value: 'PROYECTOS', label: 'Proyectos' }
+];
+
+const TIPOS_PROPIEDAD = [
+  'Local Comercial',
+  'Oficina',
+  'Casa',
+  'Casa en condominio',
+  'Terreno',
+  'Propiedad agrícola/ganadera',
+  'Edificio',
+  'Hotel',
+  'Monoambiente',
+  'Garzonier',
+  'Departamento',
+  'Penthouse',
+  'Garaje/Baulera',
+  'Galpón'
+];
+
+function PropertyInversionCard({ property }: { property: typeof INVERSIONES_PROPERTIES[0] }) {
   return (
     <Link href={`/properties?id=${property.id}`} className="group cursor-pointer block">
       <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100 border border-neutral-200 rounded-3xl shadow-sm group-hover:shadow-md transition-all duration-300">
@@ -71,86 +107,69 @@ function PropertyCard({ property }: { property: (typeof FEATURED_PROPERTIES)[0] 
           alt={property.title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
-        <span className="absolute top-6 left-6 bg-[#04045E] text-[#b9fa3c] px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-full">
-          {t("VERIFICADO SELLO ORO")}
+        {/* Sello de confianza de acuerdo a especificaciones */}
+        <span className={`absolute top-6 left-6 text-[9px] font-black px-3.5 py-1.5 uppercase tracking-wider rounded-full shadow-sm z-10 ${
+          property.verified ? 'bg-[#000033] text-[#ccff00]' : 'bg-slate-500 text-white'
+        }`}>
+          {property.verified ? 'documentacion verificada' : 'sin verificar'}
+        </span>
+        <span className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-sm text-[#000033] text-[9px] font-black px-3.5 py-1.5 uppercase tracking-wider rounded-xl shadow-sm border border-slate-200/50">
+          {property.offerType}
         </span>
       </div>
       <div className="mt-6 space-y-2">
-        <h3 className="font-sans text-xl font-bold text-[#04045E] tracking-tight group-hover:text-opacity-80 transition-all leading-tight">
+        <h3 className="font-sans text-xl font-bold text-[#000033] tracking-tight group-hover:text-opacity-85 transition-all leading-tight">
           {property.title}
         </h3>
         <div className="flex justify-between items-baseline pt-1">
           <span className="text-xs font-semibold text-slate-500 font-sans tracking-wide">
-            {property.location} • {property.area} m²
+            {property.location}
           </span>
-          <span className="font-sans text-lg font-black text-[#04045E]">
-            ${property.price.toLocaleString()}
+          <span className="font-sans text-lg font-black text-[#000033]">
+            Bs. {property.priceBob.toLocaleString()}
           </span>
         </div>
+
+        {/* Especificaciones con iconos vectoriales */}
         <div className="flex gap-4 pt-3 border-t border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          <span>{property.rooms} {t("Dorms")}</span>
-          <span>{property.baths} {t("Baños")}</span>
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+            {property.rooms} Dorms
+          </span>
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545M2.25 5.5l4.5-1.636M18.75 5.5l-1.5.545m-9 3.5v3m0 0V17m0-4.5H10.5m-3 0h3m-3 0V17m0-4.5H4.5" />
+            </svg>
+            {property.baths} Baños
+          </span>
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L12 7.5l5.571 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0L12 16.5 6.429 14.25" />
+            </svg>
+            {property.area} m²
+          </span>
         </div>
       </div>
     </Link>
   );
 }
 
-const UBICACIONES_BOLIVIA = [
-  { label: "Cochabamba - Cala Cala", valor: "cochabamba_cala_cala" },
-  { label: "Cochabamba - Queru Queru", valor: "cochabamba_queru_queru" },
-  { label: "Cochabamba - El Prado", valor: "cochabamba_el_prado" },
-  { label: "Cochabamba - Sacaba", valor: "cochabamba_sacaba" },
-  { label: "Cochabamba - Quillacollo", valor: "cochabamba_quillacollo" },
-  { label: "Santa Cruz - Equipetrol", valor: "santa_cruz_equipetrol" },
-  { label: "Santa Cruz - Urubó", valor: "santa_cruz_urubo" },
-  { label: "Santa Cruz - Centro", valor: "santa_cruz_centro" },
-  { label: "La Paz - Sopocachi", valor: "la_paz_sopocachi" },
-  { label: "La Paz - Zona Sur (Calacoto)", valor: "la_paz_calacoto" },
-  { label: "La Paz - El Alto", valor: "la_paz_el_alto" },
-  { label: "Chuquisaca - Sucre Centro", valor: "chuquisaca_sucre" },
-  { label: "Tarija - Barrio El Molino", valor: "tarija_el_molino" },
-  { label: "Oruro - Zona Central", valor: "oruro_centro" },
-  { label: "Potosí - Centro Histórico", valor: "potosi_centro" },
-  { label: "Beni - Trinidad", valor: "beni_trinidad" },
-  { label: "Pando - Cobija", valor: "pando_cobija" }
-];
-
 export default function HomePage() {
   const router = useRouter();
-  const [zona, setZona] = useState('');
-  const [tipo, setTipo] = useState('casa');
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const t = (key: string) => key;
-
-  // Estados del Buscador Predictivo (Autocomplete)
-  const [showMenu, setShowMenu] = useState(false);
-  const [opcionesFiltradas, setOpcionesFiltradas] = useState(UBICACIONES_BOLIVIA);
-
-  const handleZonaChange = (value: string) => {
-    setZona(value);
-    setShowMenu(true);
-    if (!value.trim()) {
-      setOpcionesFiltradas(UBICACIONES_BOLIVIA);
-    } else {
-      const filtered = UBICACIONES_BOLIVIA.filter((loc) =>
-        loc.label.toLowerCase().includes(value.toLowerCase())
-      );
-      setOpcionesFiltradas(filtered);
-    }
-  };
-
-  const handleInputFocus = () => {
-    setShowMenu(true);
-  };
+  
+  // Estados reactivos de filtros secuenciales obligatorios
+  const [ciudad, setCiudad] = useState('Cochabamba');
+  const [categoria, setCategoria] = useState('VENTA');
+  const [tipoPropiedad, setTipoPropiedad] = useState('Casa');
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const params = new URLSearchParams();
-    if (zona) params.set('zone', zona);
-    if (tipo) params.set('type', tipo.toUpperCase());
-    if (priceRange.min) params.set('min', priceRange.min);
-    if (priceRange.max) params.set('max', priceRange.max);
+    params.set('city', ciudad);
+    params.set('category', categoria);
+    params.set('type', tipoPropiedad);
     router.push(`/properties?${params.toString()}`);
   };
 
@@ -158,7 +177,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#F8FAFC] text-neutral-900 font-sans antialiased">
       
       {/* ─── HERO SECTION CORPORATIVO A COLOR ─── */}
-      <section className="relative min-h-screen flex flex-col justify-center bg-[#04045E] overflow-hidden pt-20">
+      <section className="relative min-h-[90vh] flex flex-col justify-center bg-[#000033] overflow-hidden pt-20">
         <div className="absolute inset-0 opacity-40 z-0">
           <img
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2200&q=85"
@@ -168,265 +187,183 @@ export default function HomePage() {
         </div>
         
         {/* Máscara translúcida de marca para una fusión armónica */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#04045E] via-[#04045E]/40 to-[#04045E]/70 z-5" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#000033] via-[#000033]/40 to-[#000033]/70 z-5" />
 
         {/* Patrón geométrico */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#b9fa3c_1px,transparent_1px)] [background-size:16px_16px] z-5"></div>
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ccff00_1px,transparent_1px)] [background-size:16px_16px] z-5"></div>
 
         <div className="relative z-10 max-w-[1440px] mx-auto px-8 lg:px-20 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-20">
           <div className="lg:col-span-10 flex flex-col gap-6">
-            <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-[#b9fa3c]/20 border border-[#b9fa3c]/20 w-fit rounded-full backdrop-blur-md">
-              <LogoIcon className="w-4 h-4 text-[#b9fa3c]" />
-              <span className="text-[10px] font-black tracking-widest text-[#b9fa3c] uppercase">
-                {t("PROPIO · TRATO DIRECTO VERIFICADO")}
-              </span>
-            </div>
             
             <h1 className="font-sans text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-black tracking-tight leading-[1.1] uppercase break-words hyphens-auto">
-              {t("Arquitectura,")}<br />
-              <span className="text-[#b9fa3c]">{t("Respaldo Legal")}</span><br />
-              {t("y Trato Directo.")}
+              Arquitectura,<br />
+              <span className="text-[#ccff00]">Respaldo Legal</span><br />
+              y Trato Directo.
             </h1>
             
-            <p className="max-w-xl text-sm sm:text-base font-medium leading-relaxed text-slate-300 mt-2">
-              {t("Una selección de propiedades exclusivas verificadas jurídicamente con Sello Oro en Bolivia. Conecta directamente con propietarios reales, sin comisiones de corretaje.")}
+            <p className="max-w-xl text-sm sm:text-base font-medium leading-relaxed text-slate-350 mt-2">
+              Hazlo seguro. Hazlo tuyo. Hazlo propio.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <Link
                 href="/properties"
-                className="w-full sm:w-auto text-center bg-[#b9fa3c] text-[#04045E] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg shadow-lime-100"
+                className="w-full sm:w-auto text-center bg-[#ccff00] text-[#000033] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg shadow-lime-100"
               >
-                {t("Explorar Propiedades")}
+                explorar en el mapa
               </Link>
               <Link
                 href="/login?tab=register"
-                className="w-full sm:w-auto text-center border-2 border-white/60 text-white px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#04045E] transition-all duration-300 rounded-xl"
+                className="w-full sm:w-auto text-center border-2 border-white/60 text-white px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#000033] transition-all duration-300 rounded-xl"
               >
-                {t("Publicar Inmueble")}
+                Publicar Inmueble
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── FILTROS DE BÚSQUEDA ─── */}
+      {/* ─── MOTOR DE BÚSQUEDA AVANZADA (HOME FILTERS) ─── */}
       <section className="relative z-20 -mt-16 max-w-[1440px] mx-auto px-8 lg:px-20">
         <form
           onSubmit={handleSearchSubmit}
           className="bg-white p-8 md:p-10 border border-slate-100 rounded-3xl grid grid-cols-1 md:grid-cols-4 gap-8 items-end shadow-xl"
         >
-          <div className="flex flex-col gap-2 relative">
-            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Ubicación / Zona")}</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cala Cala, Queru Queru..."
-                className="w-full border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] placeholder:text-slate-350 text-sm font-semibold text-[#04045E]"
-                value={zona}
-                onFocus={handleInputFocus}
-                onBlur={() => setTimeout(() => setShowMenu(false), 200)}
-                onChange={(e) => handleZonaChange(e.target.value)}
-              />
-              
-              {showMenu && opcionesFiltradas.length > 0 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-b-xl shadow-xl max-h-[200px] overflow-y-auto z-50 animate-fadeIn">
-                  {opcionesFiltradas.map((loc) => (
-                    <button
-                      key={loc.valor}
-                      type="button"
-                      onClick={() => {
-                        setZona(loc.label);
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-[#b9fa3c]/20 hover:text-[#04045E] transition-colors border-b border-slate-50 last:border-b-0 uppercase tracking-wide"
-                    >
-                      📍 {loc.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* 1. CIUDAD */}
           <div className="flex flex-col gap-2">
-            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Tipo de Inmueble")}</label>
+            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">CIUDAD</label>
             <select
-              className="border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] text-sm font-semibold text-[#04045E]"
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
+              className="border-b border-[#000033] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#000033] text-sm font-semibold text-[#000033] cursor-pointer"
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
             >
-              <option value="casa">{t("Casa")}</option>
-              <option value="departamento">{t("Departamento")}</option>
-              <option value="terreno">{t("Terreno")}</option>
-              <option value="oficina">{t("Oficina")}</option>
+              {DEPARTAMENTOS_BOLIVIA.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
+
+          {/* 2. CATEGORÍA */}
           <div className="flex flex-col gap-2">
-            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Presupuesto (USD)")}</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                className="w-1/2 border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] placeholder:text-slate-350 text-sm font-semibold text-[#04045E]"
-                value={priceRange.min}
-                onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-              />
-              <span className="text-slate-300 self-center">/</span>
-              <input
-                type="number"
-                placeholder="Max"
-                className="w-1/2 border-b border-[#04045E] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#04045E] placeholder:text-slate-350 text-sm font-semibold text-[#04045E]"
-                value={priceRange.max}
-                onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-              />
-            </div>
+            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">CATEGORÍA</label>
+            <select
+              className="border-b border-[#000033] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#000033] text-sm font-semibold text-[#000033] cursor-pointer"
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+            >
+              {CATEGORIAS_BUSQUEDA.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
           </div>
+
+          {/* 3. TIPO DE PROPIEDAD */}
+          <div className="flex flex-col gap-2">
+            <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-400">TIPO DE PROPIEDAD</label>
+            <select
+              className="border-b border-[#000033] rounded-none bg-transparent py-2.5 px-1 focus:outline-none focus:ring-0 focus:border-[#000033] text-sm font-semibold text-[#000033] cursor-pointer"
+              value={tipoPropiedad}
+              onChange={(e) => setTipoPropiedad(e.target.value)}
+            >
+              {TIPOS_PROPIEDAD.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* BOTÓN EXPLORAR */}
           <button
             type="submit"
-            className="w-full bg-[#04045E] hover:bg-opacity-95 text-white py-4 font-sans text-xs font-black uppercase tracking-widest transition-colors duration-300 rounded-xl shadow-md"
+            className="w-full bg-[#000033] hover:bg-opacity-95 text-white py-4 font-sans text-xs font-black uppercase tracking-widest transition-colors duration-300 rounded-xl shadow-md cursor-pointer"
           >
-            {t("Buscar")}
+            explorar en el mapa
           </button>
         </form>
       </section>
 
-      {/* ─── METRICAS DE CONFIANZA / SOCIAL PROOF ─── */}
+      {/* ─── SECCIÓN DE PILARES CORPORATIVOS (HORIZONTALES) ─── */}
       <section className="py-24 max-w-[1440px] mx-auto px-8 lg:px-20">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-slate-100 pt-16">
-          <div className="group py-6 border-b border-slate-100 md:border-b-0">
-            <div className="flex flex-col gap-4">
-              <span className="font-sans text-6xl md:text-7xl font-black text-[#04045E] transition-all duration-500">10k+</span>
-              <h3 className="font-sans text-lg font-bold text-[#04045E] uppercase tracking-wider">{t("Propiedades Verificadas")}</h3>
-              <p className="text-slate-500 text-xs leading-relaxed font-semibold max-w-xs">{t("Propiedades seleccionadas y auditadas legalmente por abogados especialistas para garantizar tu seguridad.")}</p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6">
+          
+          {/* Pilar 1 */}
+          <div className="bg-white border border-slate-150 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+            <span className="font-sans text-5xl font-black text-[#000033]">0%</span>
+            <h3 className="font-sans text-base font-black text-[#000033] uppercase tracking-wider">Cero Comisiones Ocultas</h3>
+            <p className="text-slate-500 text-xs leading-relaxed font-semibold">
+              Olvídate de las comisiones infladas. Con nuestra tecnología conectas directo con el dueño y ahorras miles de dólares.
+            </p>
           </div>
-          <div className="group py-6 border-b border-slate-100 md:border-b-0">
-            <div className="flex flex-col gap-4">
-              <span className="font-sans text-6xl md:text-7xl font-black text-[#04045E] transition-all duration-500">100%</span>
-              <h3 className="font-sans text-lg font-bold text-[#04045E] uppercase tracking-wider">{t("Trato Directo Puro")}</h3>
-              <p className="text-slate-500 text-xs leading-relaxed font-semibold max-w-xs">{t("Transparencia total. Negocia de forma confidencial y privada directamente con el propietario del inmueble.")}</p>
-            </div>
+
+          {/* Pilar 2 */}
+          <div className="bg-white border border-slate-150 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+            <span className="font-sans text-5xl font-black text-[#000033]">⚖️</span>
+            <h3 className="font-sans text-base font-black text-[#000033] uppercase tracking-wider">Filtro Legal y Seguro</h3>
+            <p className="text-slate-500 text-xs leading-relaxed font-semibold">
+              Cada propiedad pasa por una auditoría jurídica estricta. Información real, transparente y sin sorpresas.
+            </p>
           </div>
-          <div className="group py-6">
-            <div className="flex flex-col gap-4">
-              <span className="font-sans text-6xl md:text-7xl font-black text-[#04045E] transition-all duration-500">0%</span>
-              <h3 className="font-sans text-lg font-bold text-[#04045E] uppercase tracking-wider">{t("Comisiones Ocultas")}</h3>
-              <p className="text-slate-500 text-xs leading-relaxed font-semibold max-w-xs">{t("Sin comisiones de corretaje inmobiliario abusivas. Ahorra miles de dólares negociando directamente.")}</p>
-            </div>
+
+          {/* Pilar 3 */}
+          <div className="bg-white border border-slate-150 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+            <span className="font-sans text-5xl font-black text-[#000033]">⚡</span>
+            <h3 className="font-sans text-base font-black text-[#000033] uppercase tracking-wider">Agilidad Transacciones a un Clic</h3>
+            <p className="text-slate-500 text-xs leading-relaxed font-semibold">
+              Agenda visitas, oferta y cierra el trato de forma rápida, eficiente y digital.
+            </p>
           </div>
+
         </div>
       </section>
 
-      {/* ─── SECCIÓN EDITORIAL SELECTION ─── */}
+      {/* ─── SECCIÓN INVERSIONES INTELIGENTES ─── */}
       <section className="py-24 bg-white border-y border-slate-100">
         <div className="max-w-[1440px] mx-auto px-8 lg:px-20">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-16 border-b border-slate-100 pb-8 gap-4">
             <div>
-              <span className="font-sans text-[10px] font-bold text-slate-400 block mb-2 tracking-[0.25em] uppercase">{t("SELECCIÓN EXCLUSIVA")}</span>
-              <h2 className="font-sans text-4xl md:text-5xl font-black text-[#04045E] uppercase tracking-tight">
-                {t("Colecciones")} <span className="text-[#b9fa3c]">{t("Destacadas")}</span>
+              <span className="font-sans text-[10px] font-bold text-slate-400 block mb-2 tracking-[0.25em] uppercase">SELECCIÓN EXCLUSIVA</span>
+              <h2 className="font-sans text-4xl md:text-5xl font-black text-[#000033] uppercase tracking-tight leading-none">
+                Inversiones inteligentes <span className="text-[#ccff00] block sm:inline">Maximiza tu capital</span>
               </h2>
             </div>
             <Link
               href="/properties"
-              className="font-sans text-xs font-black uppercase tracking-widest text-[#04045E] underline underline-offset-8 decoration-2 hover:text-opacity-80 transition-colors"
+              className="font-sans text-xs font-black uppercase tracking-widest text-[#000033] underline underline-offset-8 decoration-2 hover:text-opacity-80 transition-colors"
             >
-              {t("Ver Todo el Catálogo")}
+              ver todas las propiedades
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {FEATURED_PROPERTIES.map((property) => (
-              <PropertyCard key={property.id} property={property} />
+            {INVERSIONES_PROPERTIES.map((property) => (
+              <PropertyInversionCard key={property.id} property={property} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── CÓMO FUNCIONA PROPIO ─── */}
-      <section className="py-24 max-w-[1440px] mx-auto px-8 lg:px-20">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="font-sans text-[10px] font-bold text-slate-400 tracking-[0.25em] uppercase">{t("MÉTODO DE CONFIANZA")}</span>
-          <h2 className="font-sans text-4xl md:text-6xl font-black text-[#04045E] uppercase tracking-tight">
-            {t("El Protocolo")} <span className="text-[#b9fa3c]">{t("Propio")}</span>
-          </h2>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-3">
-          {[
-            { n: '01', title: 'Selección Rigurosa', desc: 'Filtramos únicamente propiedades de alto perfil con valores reales de mercado.' },
-            { n: '02', title: 'Auditoría Legal Oro', desc: 'Sometemos los títulos comerciales a una rigurosa revisión jurídica para tu tranquilidad.' },
-            { n: '03', title: 'Cierre Directo', desc: 'Conectas de manera privada con el dueño para acordar los términos finales del traspaso.' },
-          ].map((step) => (
-            <div 
-              key={step.n} 
-              className="border border-slate-100 bg-white p-8 md:p-10 rounded-3xl transition-all duration-300 hover:shadow-xl hover:border-[#b9fa3c]"
-            >
-              <p className="font-sans text-6xl font-black text-[#b9fa3c] leading-none">{step.n}</p>
-              <h3 className="mt-8 text-lg font-bold text-[#04045E] uppercase tracking-wider">{step.title}</h3>
-              <p className="mt-4 text-xs leading-relaxed text-slate-500 font-semibold">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── CALL TO ACTION (CTA) COLOR DE MARCA ─── */}
-      <section className="relative overflow-hidden bg-[#04045E] py-28 px-8 text-white text-center rounded-t-[3rem]">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#b9fa3c_1px,transparent_1px)] [background-size:16px_16px] z-0"></div>
+      {/* ─── SECCIÓN DE PUBLICACIÓN REMANENTE (CTA) ─── */}
+      <section className="relative overflow-hidden bg-[#000033] py-28 px-8 text-white text-center rounded-t-[3rem]">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ccff00_1px,transparent_1px)] [background-size:16px_16px] z-0"></div>
         <div className="relative z-10 max-w-3xl mx-auto space-y-8">
           <h2 className="font-sans text-4xl md:text-6xl font-black leading-[1.1] uppercase tracking-tight">
             ¿Deseas vender o alquilar<br />
-            <span className="text-[#b9fa3c]">{t("tu propiedad?")}</span>
+            <span className="text-[#ccff00]">tu propiedad?</span>
           </h2>
-          <p className="max-w-xl mx-auto text-xs sm:text-sm font-semibold leading-relaxed text-slate-300">
-            {t("Regístrala hoy de manera gratuita y accede a nuestro pipeline asistido con validación legal premium de Sello Oro en Bolivia.")}
-          </p>
+          
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
             <Link 
               href="/login?tab=register" 
-              className="bg-[#b9fa3c] text-[#04045E] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg shadow-lime-100"
+              className="bg-white text-[#000033] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-lg"
             >
-              {t("Publicar Gratis Ahora")}
+              publicar ahora
             </Link>
             <Link 
               href="/servicios" 
-              className="border-2 border-white/40 text-white px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#04045E] transition-all duration-300 rounded-xl"
+              className="bg-[#ccff00] text-[#000033] px-10 py-5 font-sans text-xs font-black uppercase tracking-widest hover:brightness-95 transition-all duration-300 rounded-xl shadow-none"
+              style={{ boxShadow: 'none' }}
             >
-              {t("Ver Servicios Editoriales")}
+              promociona tu propiedad
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── ZONAS POPULARES ─── */}
-      <section className="bg-white py-24 border-t border-slate-100">
-        <div className="max-w-[1440px] mx-auto px-8 lg:px-20">
-          <div className="mb-16 text-center space-y-4">
-            <span className="font-sans text-[10px] font-bold text-slate-400 tracking-[0.25em] uppercase">{t("EXPLORACIÓN ESTRATÉGICA")}</span>
-            <h2 className="font-sans text-4xl md:text-5xl font-black text-[#04045E] uppercase tracking-tight">
-              {t("Zonas")} <span className="text-[#b9fa3c]">{t("Premium")}</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {ZONAS_POPULARES.map((zonaItem) => (
-              <Link
-                key={zonaItem.name}
-                href={`/properties?zone=${zonaItem.name}`}
-                className="group relative block aspect-[3/4] overflow-hidden rounded-3xl border border-slate-100 shadow-sm hover:border-[#b9fa3c] hover:shadow-md transition-all duration-300"
-              >
-                <img 
-                  src={zonaItem.img} 
-                  alt={zonaItem.name} 
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#04045E]/90 via-[#04045E]/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 p-6 z-10">
-                  <p className="text-lg font-bold text-white uppercase tracking-wider">{zonaItem.name}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-[#b9fa3c] mt-1">{zonaItem.count} {t("Propiedades")}</p>
-                </div>
-              </Link>
-            ))}
           </div>
         </div>
       </section>

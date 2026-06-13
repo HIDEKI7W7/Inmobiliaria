@@ -43,6 +43,7 @@ interface MapWrapperProps {
   selectedPropertyId: string | null;
   onSelectProperty: (id: string) => void;
   currency: 'USD' | 'BOB';
+  center?: [number, number];
 }
 
 export const MapWrapper: React.FC<MapWrapperProps> = (props) => {

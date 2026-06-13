@@ -169,7 +169,7 @@ export class AuthService {
   }
 
   async register(data: RegisterDto) {
-    const { email, password, name } = data;
+    const { email, password, name, whatsappPhone } = data;
     if (!email || !password) {
       throw new BadRequestException('Email y contrasena requeridos');
     }
@@ -183,6 +183,7 @@ export class AuthService {
           email: normalizedEmail,
           password: hashedPassword,
           name: name || null,
+          whatsappPhone: whatsappPhone || null,
           role: 'PROPIETARIO',
           authProvider: 'LOCAL',
         },
@@ -204,7 +205,7 @@ export class AuthService {
         onboardingCompleted: false,
         objective: null,
         propertyInterest: null,
-        whatsappPhone: null,
+        whatsappPhone: whatsappPhone || null,
       };
 
       this.mockUsers.push({
@@ -214,6 +215,7 @@ export class AuthService {
         name: tempUser.name,
         role: tempUser.role,
         onboardingCompleted: false,
+        whatsappPhone: whatsappPhone || null,
       });
 
       return {

@@ -46,10 +46,10 @@ export default function LeafletMap({ lat, lng, onChange }: LeafletMapProps) {
     const customIcon = L.divIcon({
       html: `
         <div class="flex flex-col items-center">
-          <div class="bg-[#04045E] text-[#b9fa3c] p-2 rounded-lg border-2 border-[#b9fa3c] shadow-lg font-bold text-xs whitespace-nowrap animate-bounce">
+          <div class="bg-[#000033] text-[#ccff00] p-2 rounded-lg border-2 border-[#ccff00] shadow-lg font-bold text-xs whitespace-nowrap animate-bounce">
             📍 Soltar Marcador Aquí
           </div>
-          <div class="w-3 h-3 bg-[#b9fa3c] rotate-45 -mt-1.5 shadow-md border-r border-b border-[#04045E]"></div>
+          <div class="w-3 h-3 bg-[#ccff00] rotate-45 -mt-1.5 shadow-md border-r border-b border-[#000033]"></div>
         </div>
       `,
       className: 'custom-gps-icon',
@@ -103,8 +103,8 @@ export default function LeafletMap({ lat, lng, onChange }: LeafletMapProps) {
   return (
     <div className="relative w-full h-[280px] rounded-xl overflow-hidden border border-[#23252a] bg-[#141516] shadow-inner">
       <div ref={mapContainerRef} className="w-full h-full" style={{ height: '100%', width: '100%' }} />
-      <div className="absolute bottom-3 left-3 z-[1000] bg-[#04045E] text-[#f7f8f8] px-3 py-1.5 rounded-lg border border-[#23252a] text-[10px] font-sans font-bold flex items-center gap-1.5 shadow-lg">
-        <span className="w-2 h-2 rounded-full bg-[#b9fa3c] animate-pulse"></span>
+      <div className="absolute bottom-3 left-3 z-[1000] bg-[#000033] text-[#f7f8f8] px-3 py-1.5 rounded-lg border border-[#23252a] text-[10px] font-sans font-bold flex items-center gap-1.5 shadow-lg">
+        <span className="w-2 h-2 rounded-full bg-[#ccff00] animate-pulse"></span>
         <span>Modo GPS: Haz clic o arrastra para ubicar</span>
       </div>
       <style jsx global>{`

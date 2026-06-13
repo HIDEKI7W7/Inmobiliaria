@@ -35,9 +35,9 @@ const config: Config = {
         'propio-border': '#E2E8F0',
       },
       fontFamily: {
-        // Unificación total: palo seco sin serifas
-        sans: ['var(--font-inter)', 'sans-serif'],
-        heading: ['var(--font-inter)', 'sans-serif'],
+        // Unificación total: Familia Serif
+        sans: ['var(--font-lora)', 'serif'],
+        heading: ['var(--font-lora)', 'serif'],
       },
     },
   },
