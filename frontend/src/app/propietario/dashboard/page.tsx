@@ -86,7 +86,7 @@ export default function PropietarioDashboard() {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState('Propietario');
+  const [userName, setUserName] = useState('owner');
 
   // Estados del modal de edición
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
@@ -114,7 +114,7 @@ export default function PropietarioDashboard() {
       router.replace('/');
       return;
     }
-    setUserName(user.email?.split('@')[0] || 'Propietario');
+    setUserName((user as any).name || (user as any).email?.split('@')[0] || 'owner');
 
     // Cargar propiedades
     const loadProperties = async () => {
@@ -301,27 +301,27 @@ export default function PropietarioDashboard() {
         {/* ENCABEZADO BIENVENIDA */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
           <div className="space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#000033]/60">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#04045E]/60">
               Portal del Propietario
             </p>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#000033] tracking-tight">
-              Bienvenido, {userName} 👋
+            <h1 className="text-2xl sm:text-3xl font-black text-[#04045E] tracking-tight">
+              Bienvenido, {userName === 'Propietario' ? 'owner' : userName}
             </h1>
-            <p className="text-sm text-slate-500 font-medium">
-              Gestiona tus propiedades, actualiza fotografías, modifica atributos y publica nuevos inmuebles directos en Bolivia.
+            <p className="text-xs text-slate-500 font-medium">
+              Gestiona tus propiedades, revisa solicitudes de clientes y publica nuevos inmuebles
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 text-xs">
             <Link
               href="/propietario/nuevo"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#000033] hover:bg-[#000033]/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm"
             >
               + Publicar Inmueble
             </Link>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 font-bold uppercase tracking-wider rounded-xl transition-all"
             >
               Salir
             </button>
@@ -331,34 +331,34 @@ export default function PropietarioDashboard() {
         {/* KPI CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Inmuebles</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TOTAL INMUEBLES</p>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-3xl font-black text-[#000033]">{(properties || []).length || 0}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border font-bold uppercase">Activos</span>
+              <span className="text-3xl font-black text-[#04045E]">{(properties || []).length || 0}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border font-bold uppercase">ACTIVOS</span>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sello Oro</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SELLO ORO</p>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-3xl font-black text-emerald-600">{verified}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold uppercase">Verificados</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold uppercase">VERIFICADOS</span>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">En Validación</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">EN VALIDACIÓN</p>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-3xl font-black text-amber-500">{pendingDocs}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-bold uppercase">Pendientes</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-bold uppercase">PENDIENTES</span>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leads Interesados</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">LEADS INTERESADOS</p>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-3xl font-black text-indigo-600">{((properties || []).length || 0) * 3}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold uppercase">Potenciales</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold uppercase">POTENCIALES</span>
             </div>
           </div>
         </div>
@@ -366,7 +366,7 @@ export default function PropietarioDashboard() {
         {/* LISTADO DE PROPIEDADES */}
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black text-[#000033] uppercase tracking-wider">
+            <h2 className="text-sm font-black text-[#04045E] uppercase tracking-wider">
               Mis Propiedades Publicadas
             </h2>
             <span className="text-[10px] text-slate-400 font-mono">
@@ -377,7 +377,7 @@ export default function PropietarioDashboard() {
           {loading ? (
             <div className="h-64 flex items-center justify-center bg-white rounded-2xl border border-slate-200">
               <div className="flex flex-col items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#000033]" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#04045E]" />
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
                   Cargando propiedades...
                 </p>
@@ -387,14 +387,14 @@ export default function PropietarioDashboard() {
             <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-4">
               <span className="text-4xl">🏡</span>
               <div className="space-y-1">
-                <h3 className="font-black text-[#000033] text-sm uppercase">Aún no tienes propiedades publicadas</h3>
+                <h3 className="font-black text-[#04045E] text-sm uppercase">Aún no tienes propiedades publicadas</h3>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto">
                   Registra tu primer inmueble para conectar con miles de compradores sin intermediarios.
                 </p>
               </div>
               <Link
                 href="/propietario/nuevo"
-                className="px-5 py-2 bg-[#000033] hover:bg-[#000033]/90 text-white text-xs font-black uppercase rounded-xl tracking-wider transition-all"
+                className="px-5 py-2 bg-[#04045E] hover:bg-[#04045E]/90 text-white text-xs font-black uppercase rounded-xl tracking-wider transition-all"
               >
                 Publicar mi primera propiedad
               </Link>
@@ -433,7 +433,7 @@ export default function PropietarioDashboard() {
                           {property.area} m²
                         </span>
                       </div>
-                      <h3 className="text-sm font-serif font-black text-[#000033] tracking-tight leading-snug">
+                      <h3 className="text-sm font-serif font-black text-[#04045E] tracking-tight leading-snug">
                         {property.title}
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
@@ -444,7 +444,7 @@ export default function PropietarioDashboard() {
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                       <div>
                         <p className="text-[9px] text-slate-400 font-bold uppercase">Precio</p>
-                        <p className="text-base font-black text-[#000033]">
+                        <p className="text-base font-black text-[#04045E]">
                           {(property.priceBob || (property.price * 6.96)).toLocaleString('es-BO')} Bs.
                           <span className="text-[10px] text-slate-400 font-medium ml-1.5">
                             (~ ${(property.price || (property.priceBob / 6.96)).toLocaleString('en-US')} USD)
@@ -453,22 +453,22 @@ export default function PropietarioDashboard() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
-                          className="px-3 py-1.5 bg-[#ccff00] text-[#000033] hover:bg-opacity-95 text-[11px] font-bold rounded-xl transition-all"
+                          className="px-3 py-1.5 bg-[#b9fa3c] text-[#04045E] hover:bg-opacity-95 text-[11px] font-black uppercase rounded-xl transition-all"
                           onClick={() => handleStartEdit(property)}
                         >
-                          Editar Anuncio ✏️
+                          Editar Anuncio
                         </button>
                         <button
                           className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-[11px] font-bold text-red-650 rounded-xl transition-all"
                           onClick={() => handleStopPublishing(property.id)}
                         >
-                          Dejar de publicar ✕
+                          dejar de publicar
                         </button>
                         <button
                           className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-650 rounded-xl transition-all"
                           onClick={() => alert(`Leads de interés para: ${property.title}`)}
                         >
-                          Leads (3) 📬
+                          Ver Leads
                         </button>
                       </div>
                     </div>
@@ -482,8 +482,8 @@ export default function PropietarioDashboard() {
         {/* SECCIÓN DE MONETIZACIÓN: PLANES DE SUSCRIPCIÓN */}
         <section className="pt-16 border-t border-slate-200 mt-16 space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-black text-[#000033] uppercase tracking-wide">
-              Maximiza la visibilidad de tus publicaciones
+            <h2 className="text-xl font-black text-[#04045E] uppercase tracking-wide">
+              Elige tu plan ideal
             </h2>
             <p className="text-xs text-slate-500 font-medium max-w-lg mx-auto">
               Contrata un plan de difusión para obtener el Sello Oro, posicionamiento destacado en el mapa y mayor número de publicaciones activas.
@@ -496,13 +496,13 @@ export default function PropietarioDashboard() {
                 key={plan.id}
                 className={`relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 bg-white border ${
                   plan.highlight
-                    ? 'border-2 border-[#ccff00] shadow-xl scale-[1.02] z-10'
+                    ? 'border-2 border-[#b9fa3c] shadow-xl scale-[1.02] z-10'
                     : 'border-slate-200 shadow-sm hover:shadow-md'
                 }`}
               >
                 {plan.badge && (
                   <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest ${
-                    plan.highlight ? 'bg-[#ccff00] text-[#000033]' : 'bg-[#000033] text-white'
+                    plan.highlight ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-[#04045E] text-white'
                   }`}>
                     {plan.badge}
                   </div>
@@ -510,12 +510,12 @@ export default function PropietarioDashboard() {
                 
                 <div className="flex-1 flex flex-col justify-between space-y-6">
                   <div>
-                    <h3 className="font-bold text-sm text-[#000033] uppercase tracking-wide mb-2">
+                    <h3 className="font-bold text-sm text-[#04045E] uppercase tracking-wide mb-2">
                       {plan.name}
                     </h3>
                     
                     <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-2xl font-black text-[#000033]">
+                      <span className="text-2xl font-black text-[#04045E]">
                         {plan.price === 0 ? 'Gratis' : `Bs. ${plan.price}`}
                       </span>
                       {plan.price > 0 && <span className="text-[10px] text-slate-400">/{plan.period}</span>}
@@ -545,8 +545,8 @@ export default function PropietarioDashboard() {
                       }}
                       className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-sm ${
                         plan.highlight
-                          ? 'bg-[#ccff00] text-[#000033] hover:bg-[#b5e600]'
-                          : 'bg-[#000033] text-white hover:bg-[#000044]'
+                          ? 'bg-[#b9fa3c] text-[#04045E] hover:brightness-95'
+                          : 'bg-[#04045E] text-white hover:bg-[#04045E]/90'
                       }`}
                     >
                       {plan.price === 0 ? 'Comenzar Gratis' : 'Contratar Plan'}
@@ -562,11 +562,11 @@ export default function PropietarioDashboard() {
 
       {/* MODAL DE EDICIÓN FLUIDO Y COMPLETO */}
       {editingProperty && (
-        <div className="fixed inset-0 z-50 bg-[#000033]/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#04045E]/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6 animate-fadeIn">
             
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <h2 className="text-xl font-serif font-black text-[#000033] uppercase">Editar Anuncio Activo</h2>
+              <h2 className="text-xl font-serif font-black text-[#04045E] uppercase">Editar Anuncio Activo</h2>
               <button 
                 onClick={() => setEditingProperty(null)}
                 className="text-slate-400 hover:text-slate-600 text-lg font-bold"
@@ -578,25 +578,25 @@ export default function PropietarioDashboard() {
             <form onSubmit={handleSaveEdit} className="space-y-6">
               {/* Título */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Título Comercial</label>
+                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Título Comercial</label>
                 <input
                   type="text"
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
                 />
               </div>
 
               {/* Descripción */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Descripción</label>
+                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Descripción</label>
                 <textarea
                   required
                   rows={4}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
                 />
               </div>
 
@@ -604,7 +604,7 @@ export default function PropietarioDashboard() {
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Moneda</label>
+                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Moneda</label>
                     <select
                       value={editCurrency}
                       onChange={(e) => handlePriceChange(e.target.value, 'CURRENCY')}
@@ -615,7 +615,7 @@ export default function PropietarioDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Tipo de Cambio</label>
+                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Tipo de Cambio</label>
                     <input
                       type="number"
                       step="0.01"
@@ -628,7 +628,7 @@ export default function PropietarioDashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Precio (Bs.)</label>
+                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Precio (Bs.)</label>
                     <input
                       type="number"
                       value={editPriceBOB}
@@ -637,7 +637,7 @@ export default function PropietarioDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Precio (USD)</label>
+                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Precio (USD)</label>
                     <input
                       type="number"
                       value={editPriceUSD}
@@ -651,7 +651,7 @@ export default function PropietarioDashboard() {
               {/* Superficies */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Sup. Terreno (m²)</label>
+                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Sup. Terreno (m²)</label>
                   <input
                     type="number"
                     value={editLandArea}
@@ -660,7 +660,7 @@ export default function PropietarioDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Sup. Construida (m²)</label>
+                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Sup. Construida (m²)</label>
                   <input
                     type="number"
                     value={editBuiltArea}
@@ -669,7 +669,7 @@ export default function PropietarioDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-1.5">Zona / Barrio</label>
+                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Zona / Barrio</label>
                   <input
                     type="text"
                     value={editZona}
@@ -681,7 +681,7 @@ export default function PropietarioDashboard() {
 
               {/* Atributos */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#000033] border-b pb-1">Modificar Atributos de Valor</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#04045E] border-b pb-1">Modificar Atributos de Valor</h4>
                 <div className="max-h-48 overflow-y-auto space-y-4 pr-2">
                   {Object.entries(ATTRIBUTES_BY_CATEGORY).map(([category, items]) => (
                     <div key={category} className="space-y-1">
@@ -696,7 +696,7 @@ export default function PropietarioDashboard() {
                               onClick={() => toggleAttribute(item)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium text-left border transition-all flex items-center justify-between ${
                                 isChecked
-                                  ? 'bg-[#ccff00]/10 border-[#ccff00] text-[#000033] font-bold'
+                                  ? 'bg-[#b9fa3c]/10 border-[#b9fa3c] text-[#04045E] font-bold'
                                   : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350 text-slate-650'
                               }`}
                             >
@@ -714,11 +714,11 @@ export default function PropietarioDashboard() {
               {/* Galería y Fotos */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#000033]">Galería de Fotos del Anuncio</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#04045E]">Galería de Fotos del Anuncio</h4>
                   <button
                     type="button"
                     onClick={handleAddImage}
-                    className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded-xl transition-all"
+                    className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#04045E] bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded-xl transition-all"
                   >
                     + Agregar Foto
                   </button>
@@ -756,7 +756,7 @@ export default function PropietarioDashboard() {
                 <button
                   type="submit"
                   disabled={isSavingEdit}
-                  className="px-5 py-2.5 bg-[#ccff00] hover:bg-opacity-90 text-[#000033] font-bold rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center gap-2"
+                  className="px-5 py-2.5 bg-[#b9fa3c] hover:bg-opacity-90 text-[#04045E] font-bold rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center gap-2"
                 >
                   {isSavingEdit ? 'Guardando...' : 'Guardar Cambios 🚀'}
                 </button>
