@@ -657,7 +657,7 @@ function PropertiesContent() {
 
   // ─── ESTADO GLOBAL DE FILTRADO ZILLOW (FiltrosState) ───────────────────────────
   const [filtros, setFiltros] = useState({
-    tipoTransaccion: 'en_venta', // 'en_venta', 'en_alquiler', 'vendido'
+    tipoTransaccion: '', // '' para todos por defecto, de acuerdo a la matriz de 20 propiedades
     precioMin: null as number | null,
     precioMax: null as number | null,
     modoPrecio: 'list_price', // 'list_price' o 'monthly_payment'
@@ -725,7 +725,7 @@ function PropertiesContent() {
       precioMax: maxPrice !== 500000 ? maxPrice : null,
       dormitorios: activeRooms || 'cualquiera',
       tiposCasa: activeType ? [activeType] : [],
-      tipoTransaccion: activeOffer === 'ALQUILER' || activeOffer === 'ANTICRETICO' ? 'en_alquiler' : activeOffer === 'VENTA' ? 'en_venta' : f.tipoTransaccion
+      tipoTransaccion: activeOffer === 'ALQUILER' || activeOffer === 'ANTICRETICO' ? 'en_alquiler' : activeOffer === 'VENTA' ? 'en_venta' : ''
     }));
   }, [maxPrice, activeRooms, activeType, activeOffer]);
 
@@ -1136,14 +1136,15 @@ function PropertiesContent() {
             <button
               onClick={() => setActiveDropdown(activeDropdown === 'transaction' ? null : 'transaction')}
               className={
-                filtros.tipoTransaccion !== 'en_venta'
+                filtros.tipoTransaccion !== ''
                   ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
                   : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
                 {filtros.tipoTransaccion === 'en_venta' ? t('En venta') :
-                 filtros.tipoTransaccion === 'en_alquiler' ? t('En alquiler') : t('Vendido')}
+                 filtros.tipoTransaccion === 'en_alquiler' ? t('En alquiler') :
+                 filtros.tipoTransaccion === 'vendido' ? t('Vendido') : t('Todos')}
               </span>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'transaction' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -1155,6 +1156,7 @@ function PropertiesContent() {
                   <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tipo transacción</span>
                   <div className="flex flex-col gap-2">
                     {[
+                      { value: '', label: 'Todos' },
                       { value: 'en_venta', label: 'En venta' },
                       { value: 'en_alquiler', label: 'En alquiler' },
                       { value: 'vendido', label: 'Vendido' }
@@ -1165,7 +1167,14 @@ function PropertiesContent() {
                           name="tipoTransaccion"
                           value={op.value}
                           checked={filtros.tipoTransaccion === op.value}
-                          onChange={() => setFiltros(f => ({ ...f, tipoTransaccion: op.value }))}
+                          onChange={() => {
+                            setFiltros(f => ({ ...f, tipoTransaccion: op.value }));
+                            // Sincronizar el botón de tipo de oferta lateral del panel en consecuencia
+                            if (op.value === 'en_venta') setActiveOffer('VENTA');
+                            else if (op.value === 'en_alquiler') setActiveOffer('ALQUILER'); // o el primer valor de alquiler
+                            else if (op.value === 'vendido') setActiveOffer('');
+                            else setActiveOffer('');
+                          }}
                           className="w-4 h-4 text-[#006AFF] focus:ring-blue-600 border-gray-300 rounded-full"
                         />
                         <span>{op.label}</span>
