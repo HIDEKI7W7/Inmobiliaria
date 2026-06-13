@@ -32,6 +32,7 @@ export interface Property {
   hasCI?: boolean;
   createdAt?: string | Date;
   ownerName?: string;
+  offerType?: string;
 }
 
 export interface PropertySpecs {
