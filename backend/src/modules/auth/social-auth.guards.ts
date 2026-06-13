@@ -2,7 +2,18 @@ import { Injectable, ExecutionContext, ServiceUnavailableException } from '@nest
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 
 function hasRealCredential(value: string | undefined): boolean {
-  return Boolean(value && !value.startsWith('mock-'));
+  if (!value) return false;
+  const val = value.trim();
+  return (
+    val !== '' &&
+    !val.startsWith('mock-') &&
+    !val.includes('tu_google_client_id_real') &&
+    !val.includes('tu_google_client_secret_real') &&
+    !val.includes('tu_facebook_app_id_real') &&
+    !val.includes('tu_facebook_app_secret_real') &&
+    !val.includes('tu_apple_') &&
+    !val.startsWith('development-placeholder-')
+  );
 }
 
 function checkAndRedirect(context: ExecutionContext, provider: string, envVarName: string): boolean {
