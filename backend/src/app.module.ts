@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PropertiesModule } from './modules/properties/properties.module';
@@ -14,8 +16,37 @@ import { FavoritosModule } from './modules/favoritos/favoritos.module';
 import { BusquedasGuardadasModule } from './modules/busquedas-guardadas/busquedas-guardadas.module';
 import { HistorialVistasModule } from './modules/historial-vistas/historial-vistas.module';
 
+/**
+ * TSK-7.1 — Configuración del ThrottlerModule (Rate Limiting)
+ *
+ * Tres niveles de throttle para proteger endpoints sensibles:
+ * - `default` : 200 req / 60s  → Catálogo público, analíticas
+ * - `auth`    : 10  req / 60s  → Login, registro, OAuth callbacks
+ * - `leads`   : 20  req / 60s  → Envío de leads / contacto
+ *
+ * Uso con decoradores:
+ *   @SkipThrottle()                      // desactiva throttle en una ruta
+ *   @Throttle({ auth: { limit: 5, ttl: 60000 } })  // sobrescribe por ruta
+ */
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,   // ventana de 60 segundos
+        limit: 200,    // máx 200 peticiones por ventana
+      },
+      {
+        name: 'auth',
+        ttl: 60_000,
+        limit: 10,     // máx 10 intentos de autenticación por minuto
+      },
+      {
+        name: 'leads',
+        ttl: 60_000,
+        limit: 20,     // máx 20 envíos de lead por minuto
+      },
+    ]),
     PrismaModule,
     AuthModule,
     AdminModule,
@@ -32,7 +63,14 @@ import { HistorialVistasModule } from './modules/historial-vistas/historial-vist
     HistorialVistasModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    // TSK-7.1: Guard global de rate-limiting — aplica a todos los endpoints
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
+
 

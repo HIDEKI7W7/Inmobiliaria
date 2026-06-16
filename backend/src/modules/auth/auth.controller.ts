@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req, Res, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
@@ -20,8 +21,10 @@ export class AuthController {
     return { id: authReq.user.id };
   }
 
+  // TSK-7.1: Máx 10 intentos de login por minuto por IP (protección brute-force)
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(body);
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
