@@ -20,19 +20,33 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    try {
-      this.logger.log('Iniciando conexión con la base de datos PostgreSQL...');
-      await this.$connect();
-      this.isConnected = true;
-      this.logger.log('Conexión con PostgreSQL establecida exitosamente.');
-    } catch (error: unknown) {
-      this.isConnected = false;
-      // IMPLEMENTACIÓN DE TYPE GUARDING ESTRICTO
-      if (error instanceof Error) {
-        this.logger.error(`Error al conectar a la base de datos: ${error.message}`);
-        this.logger.error(`Stack: ${error.stack}`);
-      } else {
-        this.logger.error('Un error inesperado no verificado ha ocurrido:', String(error));
+    let retries = 5;
+    const delay = 3000; // 3 segundos para dar tiempo a Neon de despertar
+
+    while (retries > 0) {
+      try {
+        this.logger.log('Iniciando conexión con la base de datos PostgreSQL Serverless...');
+        await this.$connect();
+        this.isConnected = true;
+        this.logger.log('Conexión con PostgreSQL establecida exitosamente.');
+        break;
+      } catch (error: unknown) {
+        retries--;
+        this.isConnected = false;
+        
+        if (error instanceof Error) {
+          this.logger.error(`Fallo de conexión en frío con Neon DB. Reintentos restantes: ${retries}. Detalle: ${error.message}`);
+        } else {
+          this.logger.error(`Fallo de conexión en frío con Neon DB. Reintentos restantes: ${retries}`);
+        }
+
+        if (retries === 0) {
+          this.logger.error('No se pudo establecer conexión definitiva con la Base de Datos.');
+          throw error;
+        }
+
+        this.logger.warn(`Esperando ${delay / 1000}s para el reintento...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
