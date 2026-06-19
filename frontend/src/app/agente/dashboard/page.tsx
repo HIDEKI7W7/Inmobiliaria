@@ -164,33 +164,41 @@ export default function AgentDashboard() {
             
             <div className="text-center space-y-3">
               <div className="h-12 w-12 rounded-full bg-[#b9fa3c]/10 border border-[#b9fa3c]/35 flex items-center justify-center mx-auto text-xl animate-pulse">
-                📢
+                💵
               </div>
               <h2 className="text-lg font-black text-[#04045E] uppercase tracking-wide">
-                Actualizaciones Corporativas
+                Esquema de Comisiones 2026
               </h2>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                 Mensaje Mandatorio para Asesores
               </p>
             </div>
 
-            <div className="text-xs text-slate-650 leading-relaxed font-semibold space-y-3 bg-slate-50 border p-4 rounded-2xl">
-              <p>
-                🚀 <strong>Nuevas Comisiones Desbloqueadas:</strong> Ahora debes registrar el cliente y asociar la propiedad para calcular la comisión de cada cierre en tiempo real.
-              </p>
-              <p>
-                🏷️ <strong>Captación Red Propio:</strong> Se ha integrado el canal de captación de leads &quot;RED PROPIO&quot; en los formularios de registro.
-              </p>
-              <p>
-                📱 <strong>Enfoque en calle:</strong> La plataforma ahora es 100% responsiva para que realices tus gestiones directamente desde tu celular.
-              </p>
+            <div className="text-xs text-slate-650 leading-relaxed font-semibold space-y-4 bg-slate-50 border p-4 rounded-2xl">
+              <div>
+                <p className="text-[#04045E] font-black text-xs uppercase tracking-wider mb-1">📈 Estructura del Cierre:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li><strong>Comisión General:</strong> 1.5% del valor total de la transacción.</li>
+                  <li><strong>Distribución Estándar:</strong> 50% para PROPIO y 50% para el Asesor (0.75% c/u).</li>
+                  <li><strong>Bono Especial:</strong> Captaciones verificadas con <strong>Sello Oro</strong> otorgan un <strong>+0.25% extra</strong> de comisión directa al Asesor.</li>
+                </ul>
+              </div>
+
+              <div className="border-t border-slate-200 pt-3">
+                <p className="text-[#04045E] font-black text-xs uppercase tracking-wider mb-1">🛠️ Reglas de Registro:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Es obligatorio registrar el cliente en el módulo <strong>Mis Clientes</strong> antes del cierre.</li>
+                  <li>El cierre debe asociar de forma directa la propiedad activa y cargar el respaldo en PDF (minuta o contrato).</li>
+                  <li>El asesor tiene un límite de <strong>24 horas</strong> desde la firma para registrar o modificar los datos del cierre.</li>
+                </ul>
+              </div>
             </div>
 
             <button
               onClick={handleCloseModal}
               className="w-full py-3 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99]"
             >
-              Entendido, Continuar al Panel 🚀
+              Entendido y Aceptado 🚀
             </button>
           </div>
         </div>

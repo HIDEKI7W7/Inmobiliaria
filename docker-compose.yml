@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Servicio Backend (NestJS API)
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runtime
+    container_name: propio-backend
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - PORT=4000
+      - NODE_ENV=production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 800M
+        reservations:
+          memory: 200M
+    networks:
+      - propio-network
+
+  # ==========================================
+  # Servicio Frontend (Next.js App)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-runtime
+    container_name: propio-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - PORT=3000
+      - NODE_ENV=production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 800M
+        reservations:
+          memory: 200M
+    depends_on:
+      - backend
+    networks:
+      - propio-network
+
+  # ==========================================
+  # [OPCIONAL] Servicio Base de Datos Local
+  # Descomenta esta sección si deseas ejecutar PostgreSQL localmente
+  # en lugar de usar un proveedor de base de datos externo (ej. Neon / RDS).
+  # ==========================================
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: propio-postgres
+  #   restart: always
+  #   environment:
+  #     POSTGRES_DB: propio_db
+  #     POSTGRES_USER: propio_admin
+  #     POSTGRES_PASSWORD: tu_secure_password_aqui
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 300M
+  #   networks:
+  #     - propio-network
+
+networks:
+  propio-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local

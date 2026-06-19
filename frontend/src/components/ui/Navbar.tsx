@@ -157,7 +157,7 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="w-full bg-[#000033] shadow-md border-b border-white/10 px-6 py-2.5 flex items-center justify-between sticky top-0 z-50">
+    <nav className="w-full h-[60px] bg-[#000033] shadow-md border-b border-white/10 px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 shrink-0">
 
       {/* ── LOGO ── */}
       <PropioLogo />

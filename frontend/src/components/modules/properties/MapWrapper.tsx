@@ -48,7 +48,7 @@ interface MapWrapperProps {
 
 export const MapWrapper: React.FC<MapWrapperProps> = (props) => {
   return (
-    <div className="w-full h-full min-h-[400px] lg:min-h-[550px] relative rounded-2xl overflow-hidden border border-[#161a4c] bg-[#02020a]">
+    <div className="w-full h-full min-h-0 relative rounded-2xl overflow-hidden border border-[#161a4c] bg-[#02020a]">
       <DynamicMapView {...props} />
     </div>
   );

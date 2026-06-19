@@ -88,6 +88,7 @@ export default function LeafletMap({ lat, lng, onChange }: LeafletMapProps) {
       mapRef.current = null;
       markerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [L]);
 
   // Si cambian las coordenadas externamente, movemos el marcador y el mapa

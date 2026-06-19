@@ -35,7 +35,11 @@ describe('ContractsService', () => {
     prisma = module.get(PrismaService);
 
     // Reset all mock implementations before each test
-    jest.clearAllMocks();
+    mockPrismaService.contract.findMany.mockReset();
+    mockPrismaService.contract.findUnique.mockReset();
+    mockPrismaService.contract.create.mockReset();
+    mockPrismaService.contract.delete.mockReset();
+    mockPrismaService.property.update.mockReset();
   });
 
   it('debería estar definido', () => {
@@ -170,6 +174,7 @@ describe('ContractsService', () => {
 
   describe('remove', () => {
     it('debería eliminar el contrato de la base de datos si existe', async () => {
+      mockPrismaService.contract.findUnique.mockResolvedValue({ id: 'contract-123' });
       mockPrismaService.contract.delete.mockResolvedValue({ id: 'contract-123' });
 
       const result = await service.remove('contract-123');
@@ -179,6 +184,7 @@ describe('ContractsService', () => {
     });
 
     it('debería eliminar de memoria (fallback) si la eliminación en DB falla', async () => {
+      mockPrismaService.contract.findUnique.mockResolvedValue({ id: 'contract-1' });
       mockPrismaService.contract.delete.mockRejectedValue(new Error('DB error'));
 
       // Primero agregamos un mock contract al array llamando a findAll (para inicializar el mock contracts con contract-1)
@@ -189,7 +195,7 @@ describe('ContractsService', () => {
     });
 
     it('debería lanzar NotFoundException en remoción de memoria si el contrato no existe', async () => {
-      mockPrismaService.contract.delete.mockRejectedValue(new Error('DB error'));
+      mockPrismaService.contract.findUnique.mockRejectedValue(new Error('DB error'));
 
       await expect(service.remove('non-existent-id')).rejects.toThrow(
         new NotFoundException('El contrato con ID non-existent-id no existe.'),

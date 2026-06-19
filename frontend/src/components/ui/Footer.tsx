@@ -38,7 +38,7 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
         <div className="flex items-center gap-6">
           {/* TikTok */}
           <a
-            href="https://tiktok.com/@propio"
+            href="https://www.tiktok.com/@propio.inmuebles?_r=1&_t=ZS-97GeWMZ1FA4"
             target="_blank"
             rel="noopener noreferrer"
             className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
@@ -51,7 +51,7 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
 
           {/* Facebook */}
           <a
-            href="https://facebook.com/propio"
+            href="https://www.facebook.com/share/1GfPYDUtCX/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
@@ -64,7 +64,7 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
 
           {/* Instagram */}
           <a
-            href="https://instagram.com/propio"
+            href="https://www.instagram.com/propioinmuebles?utm_source=qr&igsh=aGVmdGhpNGFvb3Q="
             target="_blank"
             rel="noopener noreferrer"
             className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"

@@ -276,3 +276,17 @@ model HistorialVista {
   @@map("historial_vistas")
 }
 
+model Cierre {
+  id              String   @id @default(uuid())
+  propiedadId     String   @map("propiedad_id")
+  agenteId        String   @map("agente_id")
+  tipoTransaccion String   @map("tipo_transaccion")
+  fechaCierre     DateTime @default(now()) @map("fecha_cierre")
+  pdfRespaldo     String   @map("pdf_respaldo")
+  pdfEstado       String?  @map("pdf_estado")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("cierres")
+}
+

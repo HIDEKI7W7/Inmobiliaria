@@ -1,6 +1,17 @@
-import { Module } from '@nestjs/common';
+import { Module, Injectable, ExecutionContext } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+
+@Injectable()
+export class CustomThrottlerGuard extends ThrottlerGuard {
+  protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    // Skip throttling in development or test environments to avoid blocking parallel E2E tests (Playwright)
+    if (process.env.NODE_ENV !== 'production') {
+      return true;
+    }
+    return super.shouldSkip(context);
+  }
+}
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PropertiesModule } from './modules/properties/properties.module';
@@ -15,6 +26,7 @@ import { StitchModule } from './modules/stitch/stitch.module';
 import { FavoritosModule } from './modules/favoritos/favoritos.module';
 import { BusquedasGuardadasModule } from './modules/busquedas-guardadas/busquedas-guardadas.module';
 import { HistorialVistasModule } from './modules/historial-vistas/historial-vistas.module';
+import { CierresModule } from './modules/cierres/cierres.module';
 
 /**
  * TSK-7.1 — Configuración del ThrottlerModule (Rate Limiting)
@@ -61,13 +73,14 @@ import { HistorialVistasModule } from './modules/historial-vistas/historial-vist
     FavoritosModule,
     BusquedasGuardadasModule,
     HistorialVistasModule,
+    CierresModule,
   ],
   controllers: [],
   providers: [
-    // TSK-7.1: Guard global de rate-limiting — aplica a todos los endpoints
+    // TSK-7.1: Guard global de rate-limiting — aplica a todos los endpoints (CustomThrottlerGuard bypasses in dev/test)
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard,
     },
   ],
 })

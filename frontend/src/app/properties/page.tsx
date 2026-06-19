@@ -971,7 +971,7 @@ function PropertiesContent() {
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-76px)] pb-16 md:pb-0 overflow-hidden bg-[#fbf9f9]">
+    <div className="fixed top-[60px] bottom-16 md:bottom-0 left-0 right-0 w-full overflow-hidden flex flex-col bg-[#fbf9f9]">
       {/* HEADER SUPERIOR CONSOLIDADO PARA MÓVIL (ESTILO ZILLOW - image_e2cb84.jpg) */}
       <div className="flex md:hidden items-center justify-between gap-2.5 px-3 py-2.5 bg-white border-b border-neutral-200 w-full z-20 shrink-0 font-sans">
         {/* Logo / Isotipo simplificado a la izquierda */}
@@ -1498,10 +1498,10 @@ function PropertiesContent() {
       </div>
 
       {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA DERECHA / LISTADO IZQUIERDA) ─── */}
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative h-full">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden relative h-full">
 
         {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 50% en desktop, ARRIBA - 75% en mobile) ── */}
-        <div className="w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2">
+        <div className="w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0">
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
@@ -1513,7 +1513,7 @@ function PropertiesContent() {
         </div>
 
         {/* ── GRILLA DE RESULTADOS EDITORIAL (IZQUIERDA - 50% en desktop, ABAJO - 25% en mobile) ── */}
-        <div className="w-full h-[25%] md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1">
+        <div className="w-full h-[25%] md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0">
 
           {/* Listado de Propiedades */}
           <div className="p-4 sm:p-6 pb-20 space-y-6">
