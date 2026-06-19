@@ -23,7 +23,7 @@ export class AppleStrategy extends PassportStrategy(ApplePassportStrategy, 'appl
       teamID: process.env.APPLE_TEAM_ID || '__UNCONFIGURED__',
       keyID: process.env.APPLE_KEY_ID || '__UNCONFIGURED__',
       privateKeyString: process.env.APPLE_PRIVATE_KEY || '__UNCONFIGURED__',
-      callbackURL: `${getBackendUrl()}/api/auth/apple/callback`,
+      callbackURL: process.env.APPLE_CALLBACK_URL || `${getBackendUrl()}/api/auth/apple/callback`,
       scope: ['email', 'name'],
       passReqToCallback: false,
     });
