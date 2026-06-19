@@ -228,21 +228,20 @@ export class AuthService {
   async socialLogin(profile: OAuthProfile) {
     const email = profile.email.toLowerCase().trim();
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.user.findUnique({ where: { email } });
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    let user;
 
-      if (existing) {
-        return tx.user.update({
-          where: { id: existing.id },
-          data: {
-            authProvider: profile.provider,
-            providerId: profile.providerId,
-            name: existing.name || profile.name || null,
-          },
-        });
-      }
-
-      return tx.user.create({
+    if (existing) {
+      user = await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          authProvider: profile.provider,
+          providerId: profile.providerId,
+          name: existing.name || profile.name || null,
+        },
+      });
+    } else {
+      user = await this.prisma.user.create({
         data: {
           email,
           password: null,
@@ -253,7 +252,7 @@ export class AuthService {
           onboardingCompleted: false,
         },
       });
-    });
+    }
 
     const token = this.signUser(user);
     const frontendUrl = process.env.FRONTEND_PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
