@@ -1501,7 +1501,8 @@ function PropertiesContent() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden relative h-full">
 
         {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 50% en desktop, ARRIBA - 75% en mobile) ── */}
-        <div className="w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0">
+        {/* ponytail: use className block/hidden toggling to prevent Leaflet re-init flashes on mobile */}
+        <div className={`w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0 ${isMapView ? 'block' : 'md:block hidden'}`}>
           <MapWrapper
             properties={filtered}
             activePropertyId={hoveredPin}
@@ -1513,7 +1514,8 @@ function PropertiesContent() {
         </div>
 
         {/* ── GRILLA DE RESULTADOS EDITORIAL (IZQUIERDA - 50% en desktop, ABAJO - 25% en mobile) ── */}
-        <div className="w-full h-[25%] md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0">
+        {/* ponytail: expand list height to full when map is hidden */}
+        <div className={`w-full ${isMapView ? 'h-[25%]' : 'h-full'} md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0`}>
 
           {/* Listado de Propiedades */}
           <div className="p-4 sm:p-6 pb-20 space-y-6">
@@ -1672,7 +1674,8 @@ function PropertiesContent() {
       </div>
 
       {/* ─── CÁPSULA FLOTANTE DE ALTERNANCIA (ESTILO ZILLOW CLON DE image_ee2142.png) ─── */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none hover:scale-105 active:scale-95 transition-all duration-300">
+      {/* ponytail: shift floating capsule bottom position based on bottom navigation visibility */}
+      <div className={`fixed ${isMapView ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none hover:scale-105 active:scale-95 transition-all duration-300`}>
         <button 
           onClick={() => setIsMapView(!isMapView)}
           className="flex items-center gap-2 text-sm font-bold text-[#04045E] cursor-pointer bg-transparent border-none"
@@ -1708,7 +1711,8 @@ function PropertiesContent() {
       </div>
 
       {/* ─── BARRA DE NAVEGACIÓN INFERIOR FIJA (MÓVIL - ZILLOW STYLE) ─── */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 flex justify-around py-2.5 md:hidden z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] font-sans h-16 items-center">
+      {/* ponytail: hide navigation bar completely when map is hidden */}
+      <div className={`fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 py-2.5 md:hidden z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] font-sans h-16 items-center ${isMapView ? 'flex' : 'hidden'} justify-around`}>
         <button 
           onClick={() => setIsMapView(false)}
           className={`flex flex-col items-center justify-center gap-0.5 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 transition-colors ${!isMapView ? 'text-[#04045E]' : 'text-neutral-450'}`}
