@@ -78,6 +78,9 @@ model User {
   favoritos          Favorito[]
   busquedasGuardadas BusquedaGuardada[]
   historialVistas    HistorialVista[]
+  offers             Offer[]
+  inquiries          Inquiry[]
+  meetings           Meeting[]
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
@@ -124,6 +127,9 @@ model Property {
   expenses          Expense[]
   favorecidoPor     Favorito[]
   historialVistas    HistorialVista[]
+  offers            Offer[]
+  inquiries         Inquiry[]
+  meetings          Meeting[]
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
   deletedAt         DateTime?      @map("deleted_at")
@@ -247,7 +253,6 @@ model Favorito {
   property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
-  @@index([propertyId])
   @@map("favoritos")
 }
 
@@ -259,7 +264,6 @@ model BusquedaGuardada {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@map("busquedas_guardadas")
 }
 
@@ -273,21 +277,60 @@ model HistorialVista {
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
-  @@index([propertyId])
   @@map("historial_vistas")
 }
 
-model Cierre {
-  id              String   @id @default(uuid())
-  propiedadId     String   @map("propiedad_id")
-  agenteId        String   @map("agente_id")
-  tipoTransaccion String   @map("tipo_transaccion")
-  fechaCierre     DateTime @default(now()) @map("fecha_cierre")
-  pdfRespaldo     String   @map("pdf_respaldo")
-  pdfEstado       String?  @map("pdf_estado")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@map("cierres")
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model Offer {
+  id         String      @id @default(uuid())
+  userId     String      @map("user_id")
+  propertyId String      @map("property_id")
+  amount     Float
+  status     OfferStatus @default(PENDING)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("ofertas")
+}
+
+model Inquiry {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  message    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("consultas")
+}
+
+model Meeting {
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  propertyId  String        @map("property_id")
+  scheduledAt DateTime      @map("scheduled_at")
+  status      MeetingStatus @default(SCHEDULED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("reuniones")
+}

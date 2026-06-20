@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { PropertyDetailClient } from './PropertyDetailClient';
+import { resolveApiUrl } from '@/utils/resolveApiUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
 
   if (token) {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const apiBaseUrl = resolveApiUrl();
       const res = await fetch(`${apiBaseUrl}/favoritos/check/${params.id}`, {
         headers: {
           'Content-Type': 'application/json',

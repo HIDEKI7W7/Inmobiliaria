@@ -684,7 +684,7 @@ export function PropertyDetailClient({
   );
   const whatsappUrl = `https://wa.me/${currentAgent.phone.replace(/\D/g, '')}?text=${whatsappMsg}`;
 
-  const handleActionClick = (e: React.MouseEvent, actionType: 'visita' | 'whatsapp') => {
+  const handleActionClick = async (e: React.MouseEvent, actionType: 'visita' | 'whatsapp' | 'oferta' | 'reserva') => {
     e.preventDefault();
     e.stopPropagation();
     const tokenVal = getToken();
@@ -694,15 +694,102 @@ export function PropertyDetailClient({
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
+    
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
     if (actionType === 'visita') {
       setShowAppointmentModal(true);
-    } else {
+    } else if (actionType === 'whatsapp') {
+      try {
+        await fetch(`${apiBaseUrl}/dashboard/inquiries`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenVal}`,
+          },
+          body: JSON.stringify({
+            propertyId: currentProperty.id,
+            message: `Contacto de WhatsApp iniciado por el cliente. Mensaje enviado: ${decodeURIComponent(whatsappMsg)}`,
+          }),
+        });
+      } catch (err) {
+        console.error('Error saving WhatsApp inquiry:', err);
+      }
       window.open(whatsappUrl, '_blank');
+    } else if (actionType === 'oferta') {
+      const amountStr = prompt('Ingrese el monto de su oferta en USD:', String(currentProperty.price * 0.95));
+      if (!amountStr) return;
+      const amount = parseFloat(amountStr);
+      if (isNaN(amount) || amount <= 0) {
+        alert('Por favor ingrese un monto válido.');
+        return;
+      }
+      try {
+        const res = await fetch(`${apiBaseUrl}/dashboard/offers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenVal}`,
+          },
+          body: JSON.stringify({
+            propertyId: currentProperty.id,
+            amount,
+          }),
+        });
+        if (res.ok) {
+          alert('¡Oferta enviada con éxito! Podrás realizar el seguimiento en tu panel.');
+        } else {
+          console.error('Error recording offer on backend');
+        }
+      } catch (err) {
+        console.error('Error saving offer:', err);
+      }
+    } else if (actionType === 'reserva') {
+      try {
+        // Registrar una oferta de reserva mínima del 1% del precio
+        await fetch(`${apiBaseUrl}/dashboard/offers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenVal}`,
+          },
+          body: JSON.stringify({
+            propertyId: currentProperty.id,
+            amount: currentProperty.price * 0.01,
+          }),
+        });
+      } catch (err) {
+        console.error('Error recording reservation offer:', err);
+      }
+      setShowQR(true);
     }
   };
 
-  const handleAppointmentSubmit = (e: React.FormEvent) => {
+  const handleAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const tokenVal = getToken();
+    if (tokenVal) {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const scheduledAt = `${appointmentDate}T${appointmentTime}:00`;
+        const res = await fetch(`${apiBaseUrl}/dashboard/meetings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenVal}`,
+          },
+          body: JSON.stringify({
+            propertyId: currentProperty.id,
+            scheduledAt,
+          }),
+        });
+        if (!res.ok) {
+          console.error('Error recording meeting on backend');
+        }
+      } catch (err) {
+        console.error('Error saving meeting:', err);
+      }
+    }
     setAppointmentSuccessMsg(
       `¡Visita programada con éxito! Confirmación: Se agendó para el ${appointmentDate} a las ${appointmentTime}. Recibirás un mensaje automático al WhatsApp ${appointmentWhatsApp}.`
     );
@@ -1237,6 +1324,13 @@ export function PropertyDetailClient({
               >
                 Contactar por WhatsApp
               </button>
+
+              <button 
+                onClick={(e) => handleActionClick(e, 'oferta')}
+                className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-black py-4 px-6 rounded-2xl shadow-sm text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer text-center"
+              >
+                Enviar Oferta de Compra
+              </button>
             </div>
 
           </div>
@@ -1399,7 +1493,7 @@ export function PropertyDetailClient({
         </div>
         <div className="flex gap-2 flex-1 max-w-[240px]">
           <button 
-            onClick={(e) => handleActionClick(e, 'visita')}
+            onClick={(e) => handleActionClick(e, 'reserva')}
             className="flex-1 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-heading font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] border border-[#ccff00]/10 cursor-pointer"
           >
             Reservar

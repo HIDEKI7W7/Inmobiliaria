@@ -112,7 +112,8 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/agente') || 
       pathname.startsWith('/propietario') || 
       pathname.startsWith('/cliente') || 
-      pathname.startsWith('/onboarding');
+      pathname.startsWith('/onboarding') ||
+      pathname.startsWith('/dashboard');
 
     if (isProtectedArea && !session) {
       return redirectToLogin(request);
@@ -120,6 +121,12 @@ export async function middleware(request: NextRequest) {
 
     if (session) {
       const role = session.role?.toUpperCase();
+      const isAgentOrAdmin = role === 'ADMIN' || role === 'AGENTE';
+
+      // CORTAFUEGOS DE ONBOARDING COMERCIAL (Previene evasión del embudo de configuración)
+      if (!session.onboardingCompleted && !isAgentOrAdmin && !pathname.startsWith('/onboarding')) {
+        return NextResponse.redirect(new URL('/onboarding', request.url));
+      }
 
       // CORTAFUEGOS JERÁRQUICO DE PERMISOS ACUMULATIVOS
       // 1. ADMIN: Accede a todo (/admin, /agente, /propietario, /cliente, /onboarding)
@@ -131,16 +138,12 @@ export async function middleware(request: NextRequest) {
         if (role === 'AGENTE') {
           return NextResponse.redirect(new URL('/agente', request.url));
         }
-        return NextResponse.redirect(new URL('/propietario', request.url));
+        return NextResponse.redirect(new URL('/propietario/dashboard', request.url));
       }
 
       if (pathname.startsWith('/agente') && role !== 'AGENTE' && role !== 'ADMIN') {
         // Redirección si intenta entrar a agente sin tener permisos acumulativos
-        return NextResponse.redirect(new URL('/propietario', request.url));
-      }
-
-      if (role === 'PROPIETARIO' && !session.onboardingCompleted && !pathname.startsWith('/onboarding')) {
-        return NextResponse.redirect(new URL('/onboarding', request.url));
+        return NextResponse.redirect(new URL('/propietario/dashboard', request.url));
       }
     }
 

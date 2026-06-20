@@ -309,7 +309,7 @@ export default function PublicarPropiedadPage() {
       
       {/* Navbar Superior */}
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center select-none flex-shrink-0">
-        <Link href="/" className="text-xl font-serif font-bold text-[#000033]">
+        <Link href="/" className="text-xl font-heading font-bold text-[#000033]">
           Propio<span className="text-[#ccff00] font-black">.</span>
         </Link>
         <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Paso {step} de 4</span>
@@ -325,7 +325,7 @@ export default function PublicarPropiedadPage() {
               <div className="w-16 h-16 mx-auto rounded-full bg-[#ccff00]/20 text-[#000033] flex items-center justify-center text-3xl border border-[#ccff00]/30 animate-bounce">
                 👑
               </div>
-              <h1 className="text-2xl font-serif font-black tracking-tight uppercase text-[#000033]">
+              <h1 className="text-2xl font-heading font-black tracking-tight uppercase text-[#000033]">
                 ¡Propiedad Recibida con Éxito!
               </h1>
               <span className={`inline-block text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${
@@ -398,7 +398,7 @@ export default function PublicarPropiedadPage() {
               {step === 1 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">1. Ficha Técnica del Inmueble</h2>
+                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">1. Ficha Técnica del Inmueble</h2>
                     <p className="text-slate-500 text-sm font-medium">Configura la información financiera, tipología y atributos de tu inmueble.</p>
                   </div>
 
@@ -612,7 +612,7 @@ export default function PublicarPropiedadPage() {
 
                   {/* CHECKLIST DE ATRIBUTOS DE ALTO VALOR */}
                   <div className="border-t border-slate-200 pt-6 space-y-4">
-                    <h3 className="text-lg font-serif font-bold text-[#000033] uppercase">Atributos de Alto Valor</h3>
+                    <h3 className="text-lg font-heading font-bold text-[#000033] uppercase">Atributos de Alto Valor</h3>
                     <div className="space-y-6">
                       {Object.entries(ATTRIBUTES_BY_CATEGORY).map(([category, items]) => (
                         <div key={category} className="space-y-2">
@@ -649,7 +649,7 @@ export default function PublicarPropiedadPage() {
               {step === 2 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">2. Ubicación y Geolocalización</h2>
+                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">2. Ubicación y Geolocalización</h2>
                     <p className="text-slate-500 text-sm font-medium">Ubica con total precisión tu propiedad en el mapa para guiar a los interesados.</p>
                   </div>
 
@@ -718,7 +718,7 @@ export default function PublicarPropiedadPage() {
               {step === 3 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">3. Checklist de Validación Legal</h2>
+                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">3. Checklist de Validación Legal</h2>
                     <p className="text-slate-500 text-sm font-medium">
                       Adjunta la documentación para activar el <span className="text-[#000033] font-black uppercase">Sello Oro</span> de tu propiedad (Modalidad: {formData.offerType}).
                     </p>
@@ -935,7 +935,7 @@ export default function PublicarPropiedadPage() {
               {step === 4 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-2xl font-serif font-black tracking-tight text-[#000033] mb-2 uppercase">4. Subir fotografías</h2>
+                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">4. Subir fotografías</h2>
                     <p className="text-slate-500 text-sm font-medium">Carga las fotografías más destacadas del inmueble (Formatos de imagen nativos, peso máx: 150 MB).</p>
                   </div>
 

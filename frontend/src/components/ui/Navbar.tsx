@@ -88,7 +88,14 @@ export const Navbar = () => {
     if (currentUser) {
       setUser(currentUser);
       setIsAuthenticated(true);
-      setRedirectPath(getRedirectPathByRole(currentUser.role));
+      // Pasar los 3 argumentos para calcular correctamente el destino del panel
+      setRedirectPath(
+        getRedirectPathByRole(
+          currentUser.role,
+          (currentUser as any).objective ?? null,
+          (currentUser as any).onboardingCompleted ?? true
+        )
+      );
     } else {
       setUser(null);
       setIsAuthenticated(false);
@@ -214,9 +221,9 @@ export const Navbar = () => {
                 
                 <div className="flex flex-col">
                   
-                  <Link 
-                    className="w-full text-left px-5 py-2.5 font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block" 
-                    href="/dashboard/perfil"
+                  <Link
+                    className="w-full text-left px-5 py-2.5 font-sans font-bold text-neutral-900 text-[15px] hover:bg-neutral-50 transition-colors block"
+                    href={redirectPath}
                     onClick={() => setIsDropdownOpen(false)}
                   >
                     Mi perfil

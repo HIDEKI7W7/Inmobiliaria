@@ -544,7 +544,7 @@ export class PropertiesService implements OnModuleInit {
 
     if (query.tiposCasa) {
       const typesList = query.tiposCasa.split(',')
-        .map(t => t.trim().toLowerCase())
+        .map((t: string) => t.trim().toLowerCase())
         .filter(Boolean);
       if (typesList.length > 0) {
         where.type = { in: typesList };
@@ -665,7 +665,7 @@ export class PropertiesService implements OnModuleInit {
           if (!isNaN(bathsCount) && p.bathrooms < bathsCount) return false;
         }
         if (query.tiposCasa) {
-          const typesList = query.tiposCasa.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+          const typesList = query.tiposCasa.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean);
           if (typesList.length > 0 && !typesList.includes(p.type.toLowerCase())) return false;
         }
         if (query.text) {

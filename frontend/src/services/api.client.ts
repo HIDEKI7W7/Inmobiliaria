@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+import { resolveApiUrl } from '@/utils/resolveApiUrl';
+
+const API_BASE_URL = resolveApiUrl();
 
 // =========================================================================
 // PROPIO FRONTEND (Next.js) - CLIENTE HTTP DEFENSIVO (api.client.ts)

@@ -27,6 +27,7 @@ import { FavoritosModule } from './modules/favoritos/favoritos.module';
 import { BusquedasGuardadasModule } from './modules/busquedas-guardadas/busquedas-guardadas.module';
 import { HistorialVistasModule } from './modules/historial-vistas/historial-vistas.module';
 import { CierresModule } from './modules/cierres/cierres.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 /**
  * TSK-7.1 — Configuración del ThrottlerModule (Rate Limiting)
@@ -74,6 +75,7 @@ import { CierresModule } from './modules/cierres/cierres.module';
     BusquedasGuardadasModule,
     HistorialVistasModule,
     CierresModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [

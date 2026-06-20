@@ -71,7 +71,7 @@ export default function OnboardingPage() {
     }
 
     const token = getToken();
-    if (!token) {
+    if (!token || token === 'undefined' || token === 'null') {
       router.replace('/login');
       return;
     }
@@ -151,7 +151,7 @@ export default function OnboardingPage() {
             Propio<span className="text-[#b9fa3c] text-2xl leading-none font-bold">.</span>
           </span>
         </div>
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100/70 px-3 py-1.5 rounded-full border border-slate-200/50">
+        <span className="text-[10px] font-sans font-black uppercase tracking-wider text-slate-400 bg-slate-100/70 px-3 py-1.5 rounded-full border border-slate-200/50">
           Onboarding Asistido
         </span>
       </header>
@@ -184,20 +184,20 @@ export default function OnboardingPage() {
                       }
                     }}
                     disabled={isSaving || (item === 2 && !objective) || (item === 3 && (!objective || !propertyInterest))}
-                    className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-left transition-all duration-300 w-full select-none ${
+                    className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-left transition-all duration-300 w-full select-none font-sans ${
                       activeStepView === item 
                         ? 'bg-[#04045E] text-white shadow-lg shadow-[#04045E]/15 scale-[1.02]' 
                         : 'bg-slate-50/80 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-45 disabled:hover:bg-slate-50/80'
                     }`}
                   >
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-black transition-all ${
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-sans font-black transition-all ${
                       activeStepView === item 
                         ? 'bg-[#b9fa3c] text-[#04045E] scale-110 shadow-sm' 
                         : 'bg-slate-200 text-slate-500'
                     }`}>
                       {item}
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">
+                    <span className="text-[10px] font-sans font-black uppercase tracking-widest hidden sm:inline-block">
                       {item === 1 ? 'Intención' : item === 2 ? 'Inmueble' : 'Validación'}
                     </span>
                   </button>
@@ -210,7 +210,7 @@ export default function OnboardingPage() {
                 {isChangingStep ? (
                   /* ── SKELETON LOADERS (PULSING MICRO-ANIMATION) ── */
                   <div className="space-y-6 animate-pulse my-auto">
-                    <div className="space-y-2.5">
+                    <div className="space-y-2.5 font-sans">
                       <div className="h-6.5 bg-slate-200/80 rounded-lg w-1/3"></div>
                       <div className="h-4 bg-slate-100 rounded w-2/3"></div>
                     </div>
@@ -225,11 +225,11 @@ export default function OnboardingPage() {
                   <div className="transition-all duration-300 my-auto">
                     
                     {step === 1 && (
-                      <div className="space-y-6 animate-fadeIn">
+                      <div className="space-y-6 animate-fadeIn font-sans">
                         <div>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-[#04045E]/50">Paso 1 · Intención Comercial</span>
-                          <h2 className="text-xl sm:text-2xl font-black text-[#04045E] tracking-tight mt-1">¿Cuál es tu intención principal?</h2>
-                          <p className="text-xs font-semibold text-slate-450 mt-1.5 leading-relaxed">Selecciona el objetivo que mejor describe lo que deseas realizar en Propio.</p>
+                          <span className="text-[9px] font-sans font-black uppercase tracking-widest text-[#04045E]/50">Paso 1 · Intención Comercial</span>
+                          <h2 className="text-xl sm:text-2xl font-heading font-black text-[#04045E] tracking-tight mt-1">¿Cuál es tu intención principal?</h2>
+                          <p className="text-xs font-sans font-semibold text-slate-450 mt-1.5 leading-relaxed">Selecciona el objetivo que mejor describe lo que deseas realizar en Propio.</p>
                         </div>
                         
                         <div className="grid gap-3.5 sm:grid-cols-3">
@@ -241,21 +241,21 @@ export default function OnboardingPage() {
                                 setObjective(item.value);
                                 handleStepTransition(2);
                               }}
-                              className={`min-h-[140px] rounded-2xl border p-5 text-left transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-sm cursor-pointer ${
+                              className={`min-h-[140px] rounded-2xl border p-5 text-left transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-sm cursor-pointer font-sans ${
                                 objective === item.value
                                   ? 'border-[#04045E] bg-[#04045E] text-white shadow-lg shadow-[#04045E]/15'
                                   : 'border-slate-200 bg-slate-50/50 text-slate-700 hover:border-[#04045E]/40 hover:bg-white'
                               }`}
                             >
                               <div className="space-y-1">
-                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                                <span className={`text-[8px] font-sans font-black uppercase tracking-widest px-2 py-0.5 rounded ${
                                   objective === item.value ? 'bg-[#b9fa3c]/20 text-[#b9fa3c]' : 'bg-slate-200/70 text-slate-500'
                                 }`}>
                                   {item.badge}
                                 </span>
-                                <h3 className="text-sm font-black tracking-tight pt-1.5">{item.label}</h3>
+                                <h3 className="text-sm font-sans font-black tracking-tight pt-1.5">{item.label}</h3>
                               </div>
-                              <p className={`text-xs font-medium leading-relaxed mt-2 ${
+                              <p className={`text-xs font-sans font-medium leading-relaxed mt-2 ${
                                 objective === item.value ? 'text-white/70' : 'text-slate-450'
                               }`}>
                                 {item.detail}
@@ -267,11 +267,11 @@ export default function OnboardingPage() {
                     )}
 
                     {step === 2 && (
-                      <div className="space-y-6 animate-fadeIn">
+                      <div className="space-y-6 animate-fadeIn font-sans">
                         <div>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-[#04045E]/50">Paso 2 · Tipo de Propiedad</span>
-                          <h2 className="text-xl sm:text-2xl font-black text-[#04045E] tracking-tight mt-1">Preferencia de inventario</h2>
-                          <p className="text-xs font-semibold text-slate-455 mt-1.5 leading-relaxed">Selecciona qué tipo de inmueble te interesa comprar, alquilar o vender.</p>
+                          <span className="text-[9px] font-sans font-black uppercase tracking-widest text-[#04045E]/50">Paso 2 · Tipo de Propiedad</span>
+                          <h2 className="text-xl sm:text-2xl font-heading font-black text-[#04045E] tracking-tight mt-1">Preferencia de inventario</h2>
+                          <p className="text-xs font-sans font-semibold text-slate-455 mt-1.5 leading-relaxed">Selecciona qué tipo de inmueble te interesa comprar, alquilar o vender.</p>
                         </div>
                         
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -283,7 +283,7 @@ export default function OnboardingPage() {
                                 setPropertyInterest(item.value);
                                 handleStepTransition(3);
                               }}
-                              className={`rounded-2xl border px-5 py-8 text-center transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col items-center gap-3.5 shadow-sm ${
+                              className={`rounded-2xl border px-5 py-8 text-center transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col items-center gap-3.5 shadow-sm font-sans ${
                                 propertyInterest === item.value
                                   ? 'border-[#b9fa3c] bg-[#b9fa3c] text-[#04045E] shadow-lg shadow-[#b9fa3c]/20 font-black'
                                   : 'border-slate-200 bg-slate-50/50 text-slate-500 hover:border-[#04045E]/40 hover:bg-white hover:text-[#04045E]'
@@ -291,8 +291,8 @@ export default function OnboardingPage() {
                             >
                               <span className="text-4xl filter drop-shadow-sm select-none transform transition-transform group-hover:scale-110">{item.icon}</span>
                               <div className="space-y-0.5">
-                                <span className="block text-xs font-black uppercase tracking-widest">{item.label}</span>
-                                <span className={`block text-[10px] font-semibold ${propertyInterest === item.value ? 'text-[#04045E]/70' : 'text-slate-400'}`}>
+                                <span className="block text-xs font-sans font-black uppercase tracking-widest">{item.label}</span>
+                                <span className={`block text-[10px] font-sans font-semibold ${propertyInterest === item.value ? 'text-[#04045E]/70' : 'text-slate-400'}`}>
                                   {item.desc}
                                 </span>
                               </div>
@@ -303,15 +303,15 @@ export default function OnboardingPage() {
                     )}
 
                     {step === 3 && (
-                      <div className="space-y-6 animate-fadeIn">
+                      <div className="space-y-6 animate-fadeIn font-sans">
                         <div>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-[#04045E]/50">Paso 3 · Validación Comercial</span>
-                          <h2 className="text-xl sm:text-2xl font-black text-[#04045E] tracking-tight mt-1">WhatsApp validado comercial</h2>
-                          <p className="text-xs font-semibold text-slate-450 mt-1.5 leading-relaxed">Introduce tu número de celular con el código internacional de país correspondiente.</p>
+                          <span className="text-[9px] font-sans font-black uppercase tracking-widest text-[#04045E]/50">Paso 3 · Validación Comercial</span>
+                          <h2 className="text-xl sm:text-2xl font-heading font-black text-[#04045E] tracking-tight mt-1">WhatsApp validado comercial</h2>
+                          <p className="text-xs font-sans font-semibold text-slate-450 mt-1.5 leading-relaxed">Introduce tu número de celular con el código internacional de país correspondiente.</p>
                         </div>
                         
                         <div className="space-y-3 max-w-md">
-                          <label htmlFor="whatsappPhone" className="block text-[9px] font-black uppercase tracking-widest text-slate-400 pl-0.5">
+                          <label htmlFor="whatsappPhone" className="block text-[9px] font-sans font-black uppercase tracking-widest text-slate-400 pl-0.5">
                             Número de Celular con Código de País
                           </label>
                           <div className="relative">
@@ -321,23 +321,23 @@ export default function OnboardingPage() {
                               value={whatsappPhone}
                               onChange={(event) => setWhatsappPhone(event.target.value)}
                               placeholder="+59170712345"
-                              className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 text-base font-bold outline-none transition-all duration-300 ${
+                              className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 text-base font-sans font-bold outline-none transition-all duration-300 ${
                                 whatsappPhone
                                   ? isPhoneValid
-                                    ? 'border-emerald-400 bg-emerald-50/10 focus:border-emerald-500 focus:ring-emerald-500/10 text-emerald-800'
-                                    : 'border-red-300 bg-red-50/10 focus:border-red-400 focus:ring-red-400/10 text-red-800'
-                                  : 'border-slate-200 focus:border-[#04045E] text-[#04045E]'
+                                    ? 'border-emerald-400 bg-emerald-50/10 focus:border-emerald-500 focus:ring-emerald-500/10 text-emerald-800 font-sans'
+                                    : 'border-red-300 bg-red-50/10 focus:border-red-400 focus:ring-red-400/10 text-red-800 font-sans'
+                                  : 'border-slate-200 focus:border-[#04045E] text-[#04045E] font-sans'
                               }`}
                             />
                             {whatsappPhone && (
-                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black">
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-sans font-black">
                                 {isPhoneValid ? '✅ Válido' : '❌ Incompleto'}
                               </span>
                             )}
                           </div>
                           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-2">
-                            <p className="text-[10px] font-semibold text-slate-450 leading-relaxed uppercase tracking-wider">
-                              <span className="font-black text-[#04045E] text-[9px]">Ejemplo:</span> Bolivia es <span className="font-black text-[#04045E]">+591</span> seguido de tu celular (ej. +59170712345). Lo utilizaremos para enviarte carpetas de títulos comerciales de tus inmuebles.
+                            <p className="text-[10px] font-sans font-semibold text-slate-450 leading-relaxed uppercase tracking-wider">
+                              <span className="font-black text-[#04045E] text-[9px] font-sans">Ejemplo:</span> Bolivia es <span className="font-black text-[#04045E] font-sans">+591</span> seguido de tu celular (ej. +59170712345). Lo utilizaremos para enviarte carpetas de títulos comerciales de tus inmuebles.
                             </p>
                           </div>
                         </div>
@@ -348,11 +348,11 @@ export default function OnboardingPage() {
 
                 {/* Mensajes de Error (Estilo premium no-invasivo) */}
                 {error && (
-                  <div className="mt-5 rounded-2xl border border-red-100 bg-red-50/70 px-4 py-3.5 text-xs font-bold text-red-700 flex items-start gap-2.5 animate-fadeIn">
+                  <div className="mt-5 rounded-2xl border border-red-100 bg-red-50/70 px-4 py-3.5 text-xs font-sans font-bold text-red-700 flex items-start gap-2.5 animate-fadeIn">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="flex-shrink-0 mt-0.5 text-red-650">
                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <span>{error}</span>
+                    <span className="font-sans">{error}</span>
                   </div>
                 )}
 
@@ -362,7 +362,7 @@ export default function OnboardingPage() {
                     type="button"
                     onClick={() => handleStepTransition(step - 1)}
                     disabled={step === 1 || isSaving}
-                    className="rounded-xl border border-slate-200 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-450 transition-all duration-300 hover:bg-slate-50 hover:text-[#04045E] disabled:opacity-40 cursor-pointer select-none"
+                    className="rounded-xl border border-slate-200 px-5 py-3 text-xs font-sans font-black uppercase tracking-wider text-slate-450 transition-all duration-300 hover:bg-slate-50 hover:text-[#04045E] disabled:opacity-40 cursor-pointer select-none"
                   >
                     Anterior
                   </button>
@@ -381,7 +381,7 @@ export default function OnboardingPage() {
                         }
                         handleStepTransition(step + 1);
                       }}
-                      className="rounded-xl bg-[#04045E] px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-[#04045E]/15 transition-all duration-300 hover:scale-[1.02] hover:bg-[#0b0b82] cursor-pointer select-none"
+                      className="rounded-xl bg-[#04045E] px-6 py-3 text-xs font-sans font-black uppercase tracking-wider text-white shadow-lg shadow-[#04045E]/15 transition-all duration-300 hover:scale-[1.02] hover:bg-[#0b0b82] cursor-pointer select-none"
                     >
                       Continuar
                     </button>
@@ -390,7 +390,7 @@ export default function OnboardingPage() {
                       type="button"
                       onClick={finish}
                       disabled={isSaving || !isPhoneValid}
-                      className="rounded-xl bg-[#b9fa3c] hover:bg-[#adf02c] px-6 py-3 text-xs font-black uppercase tracking-wider text-[#04045E] shadow-lg shadow-[#b9fa3c]/20 transition-all duration-300 hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:hover:bg-[#b9fa3c] cursor-pointer border border-[#04045E]/5 select-none"
+                      className="rounded-xl bg-[#b9fa3c] hover:bg-[#adf02c] px-6 py-3 text-xs font-sans font-black uppercase tracking-wider text-[#04045E] shadow-lg shadow-[#b9fa3c]/20 transition-all duration-300 hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:hover:bg-[#b9fa3c] cursor-pointer border border-[#04045E]/5 select-none"
                     >
                       {isSaving ? 'Guardando Perfil...' : 'Finalizar Configuración'}
                     </button>

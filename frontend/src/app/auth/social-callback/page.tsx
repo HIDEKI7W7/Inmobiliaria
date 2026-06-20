@@ -2,23 +2,28 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { decodeToken, getRedirectPathByRole, saveToken } from '@/utils/session';
+import { decodeToken, getRedirectPathByRole, getToken, saveToken } from '@/utils/session';
 
 export default function SocialCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const token = hashParams.get('token');
+    let token = hashParams.get('token');
     const next = hashParams.get('next');
 
     if (!token) {
-      router.replace('/login');
-      return;
+      // Si no hay token en el hash, verificamos si ya se procesó y guardó localmente
+      token = getToken();
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+    } else {
+      // Guardar el token y limpiar la URL para evitar re-ejecuciones
+      saveToken(token);
+      window.history.replaceState({}, document.title, '/auth/social-callback');
     }
-
-    saveToken(token);
-    window.history.replaceState({}, document.title, '/auth/social-callback');
 
     const payload = decodeToken(token);
     const fallback = payload

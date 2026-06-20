@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveApiUrl } from '@/utils/resolveApiUrl';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -10,6 +11,11 @@ export async function PATCH(request: NextRequest) {
       token = request.cookies.get('propio_token')?.value;
     }
 
+    // Sanitización robusta contra tokens nulos o indefinidos del lado del cliente
+    if (token === 'null' || token === 'undefined') {
+      token = undefined;
+    }
+
     if (!token) {
       return NextResponse.json(
         { message: 'No estás autorizado para realizar esta acción. Inicia sesión nuevamente.' },
@@ -17,7 +23,23 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    const { objective, propertyInterest, whatsappPhone } = body;
+    if (!objective || !propertyInterest || !whatsappPhone) {
+      return NextResponse.json(
+        { message: 'Información incompleta para guardar la configuración de onboarding.' },
+        { status: 400 }
+      );
+    }
+
+    // Filtrado estricto del cuerpo de la petición para coincidir letra por letra con el DTO
+    // y evitar rechazos por la regla 'forbidNonWhitelisted' en el ValidationPipe del backend
+    const sanitizedBody = {
+      objective,
+      propertyInterest,
+      whatsappPhone: String(whatsappPhone).trim(),
+    };
+
+    const backendUrl = resolveApiUrl();
 
     // Llamar al backend real de NestJS
     const response = await fetch(`${backendUrl}/auth/onboarding`, {
@@ -26,7 +48,7 @@ export async function PATCH(request: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(sanitizedBody),
     });
 
     const data = await response.json();

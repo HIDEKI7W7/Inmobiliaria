@@ -96,7 +96,7 @@ export default function ServiciosPage() {
             Vende o alquila rápido<br />
             <span className="text-[#ccff00]">con el respaldo de Propio</span>
           </h1>
-          <p className="font-serif italic text-white/80 text-base md:text-lg max-w-xl mx-auto tracking-wide">
+          <p className="font-sans italic text-white/80 text-base md:text-lg max-w-xl mx-auto tracking-wide">
             "hazlo seguro, hazlo tuyo, hazlo propio"
           </p>
           <p className="text-white/60 text-sm max-w-lg mx-auto leading-relaxed">

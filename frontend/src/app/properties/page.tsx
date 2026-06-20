@@ -11,13 +11,13 @@ import { Property } from '@/components/modules/properties/PropertyCard';
 import { LogoIcon } from '../page';
 import { Footer } from '@/components/ui/Footer';
 import { apiClient } from '@/services/api.client';
-import { getToken, getCurrentUser } from '@/utils/session';
+import { getToken, getCurrentUser, getRedirectPathByRole } from '@/utils/session';
 import { useFavorites } from '@/context/FavoritesContext';
 
 const t = (key: string) => key;
 
 // Carga dinámica del mapa real con Leaflet (ssr: false para evitar errores de window/document)
-const MapWrapper = dynamic(() => import('@/components/modules/properties/MapWrapper'), {
+const PropertiesMap = dynamic(() => import('@/components/modules/properties/MapWrapper'), {
   ssr: false,
   loading: () => (
     <div className="relative w-full h-full min-h-[400px] bg-neutral-100 border border-neutral-200 flex flex-col items-center justify-center overflow-hidden animate-pulse">
@@ -485,7 +485,7 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
       <div className="p-2 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
         <div className="space-y-1">
           <div className="flex flex-col gap-0.5 truncate">
-            <span className="font-serif text-xs sm:text-base md:text-lg lg:text-xl font-black text-black block truncate">
+            <span className="font-sans text-xs sm:text-base md:text-lg lg:text-xl font-black text-black block truncate">
               Bs. {(prop.priceBob || prop.price * 10).toLocaleString()}
             </span>
             <span className="text-neutral-400 text-[8px] sm:text-[9px] font-medium">
@@ -573,6 +573,7 @@ function PropertiesContent() {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [showSavedSearchModal, setShowSavedSearchModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>('default');
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const router = useRouter();
   const { isFavorited, toggleFavorite } = useFavorites();
@@ -594,6 +595,15 @@ function PropertiesContent() {
     }
     return name.substring(0, 2).toUpperCase();
   };
+
+  // Destino dinámico del avatar según rol y objetivo del usuario
+  const avatarHref = currentUser
+    ? getRedirectPathByRole(
+        currentUser.role,
+        (currentUser as any).objective ?? null,
+        (currentUser as any).onboardingCompleted ?? true
+      )
+    : '/login';
 
   const handleFavoriteToggle = async (propertyId: string) => {
     const token = getToken();
@@ -627,6 +637,27 @@ function PropertiesContent() {
     router.push(`/properties/${propId}`);
   };
 
+  const handleApplyPrice = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filtros.precioMin !== null && filtros.precioMin !== undefined && String(filtros.precioMin) !== '') {
+      params.set('price_min', String(filtros.precioMin));
+    } else {
+      params.delete('price_min');
+    }
+    if (filtros.precioMax !== null && filtros.precioMax !== undefined && String(filtros.precioMax) !== '') {
+      params.set('price_max', String(filtros.precioMax));
+    } else {
+      params.delete('price_max');
+    }
+    router.push(`?${params.toString()}`);
+    setActiveDropdown(null);
+  };
+
+  const toggleDropdown = (d: typeof activeDropdown) => {
+    setShowMoreFilters(false);
+    setActiveDropdown(activeDropdown === d ? null : d);
+  };
+
   const handleSaveSearch = async () => {
     const user = getCurrentUser();
     const token = getToken();
@@ -646,6 +677,25 @@ function PropertiesContent() {
         });
         if (res.ok) {
           alert(t('¡Búsqueda guardada con éxito en tu panel de alertas!'));
+          
+          const mappedType = activeType ? activeType.toUpperCase() : 'DEPARTAMENTO';
+          const validTypes = ['CASA', 'DEPARTAMENTO', 'TERRENO', 'OFICINA'];
+          const finalType = validTypes.includes(mappedType) ? mappedType : 'DEPARTAMENTO';
+          
+          await fetch(`${apiBaseUrl}/alerts`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              zona: searchQuery || 'Cochabamba',
+              precioMax: maxPrice || 500000,
+              tipoInmueble: finalType,
+            }),
+          }).catch(err => console.error('Error creating auto alert:', err));
+
+          setIsSubscribed(true);
         } else {
           console.error('Error saving search on backend');
           alert(t('Búsqueda guardada localmente.'));
@@ -713,6 +763,8 @@ function PropertiesContent() {
     const zone = searchParams.get('zone');
     const id = searchParams.get('id');
     const rooms = searchParams.get('rooms');
+    const priceMin = searchParams.get('price_min');
+    const priceMax = searchParams.get('price_max');
     if (type) {
       setActiveType(type.toLowerCase());
       setFiltros(f => ({ ...f, tiposCasa: [type.toLowerCase()] }));
@@ -720,6 +772,12 @@ function PropertiesContent() {
     if (max) {
       setMaxPrice(Number(max));
       setFiltros(f => ({ ...f, precioMax: Number(max) }));
+    }
+    if (priceMin) {
+      setFiltros(f => ({ ...f, precioMin: Number(priceMin) }));
+    }
+    if (priceMax) {
+      setFiltros(f => ({ ...f, precioMax: Number(priceMax) }));
     }
     if (zone) setSearchQuery(zone);
     if (id) setSelectedPropertyId(id);
@@ -971,7 +1029,7 @@ function PropertiesContent() {
   const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
 
   return (
-    <div className="fixed top-[60px] bottom-16 md:bottom-0 left-0 right-0 w-full overflow-hidden flex flex-col bg-[#fbf9f9]">
+    <div className="fixed top-[60px] bottom-0 left-0 right-0 w-full overflow-hidden flex flex-col bg-[#fbf9f9]">
       {/* HEADER SUPERIOR CONSOLIDADO PARA MÓVIL (ESTILO ZILLOW - image_e2cb84.jpg) */}
       <div className="flex md:hidden items-center justify-between gap-2.5 px-3 py-2.5 bg-white border-b border-neutral-200 w-full z-20 shrink-0 font-sans">
         {/* Logo / Isotipo simplificado a la izquierda */}
@@ -1011,7 +1069,7 @@ function PropertiesContent() {
         </div>
 
         {/* Avatar circular del usuario a la derecha */}
-        <Link href="/dashboard/perfil" className="shrink-0 active:scale-95 transition-transform">
+        <Link href={avatarHref} className="shrink-0 active:scale-95 transition-transform">
           <div className="bg-[#0A4D54] text-white rounded-full w-7.5 h-7.5 flex items-center justify-center font-black text-[10px] border border-white shadow-sm uppercase">
             {getInitials()}
           </div>
@@ -1145,10 +1203,10 @@ function PropertiesContent() {
           {/* Píldora 1: Tipo de Transacción (venta, alquiler, vendido) */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'transaction' ? null : 'transaction')}
+              onClick={() => toggleDropdown('transaction')}
               className={
                 filtros.tipoTransaccion !== ''
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
                   : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
@@ -1206,17 +1264,25 @@ function PropertiesContent() {
           {/* Píldora 2: Rango de Precios & Calculadora Financiera */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'price_range' ? null : 'price_range')}
+              onClick={() => toggleDropdown('price_range')}
               className={
                 filtros.precioMin !== null || filtros.precioMax !== null
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
                   : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
               <span>
-                {filtros.precioMin || filtros.precioMax
-                  ? `${filtros.precioMin ? `$${(filtros.precioMin / 1000)}k` : '$0'} - ${filtros.precioMax ? `$${(filtros.precioMax / 1000)}k` : 'Any'}`
-                  : t("Precio")}
+                {filtros.precioMin !== null || filtros.precioMax !== null ? (
+                  filtros.precioMin !== null && filtros.precioMax !== null ? (
+                    `$${filtros.precioMin / 1000}k - $${filtros.precioMax / 1000}k`
+                  ) : filtros.precioMax !== null ? (
+                    `Hasta $${filtros.precioMax / 1000}k`
+                  ) : (
+                    `Desde $${(filtros.precioMin ?? 0) / 1000}k`
+                  )
+                ) : (
+                  t("Precio")
+                )}
               </span>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price_range' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -1299,7 +1365,7 @@ function PropertiesContent() {
                   )}
 
                   <button
-                    onClick={() => setActiveDropdown(null)}
+                    onClick={handleApplyPrice}
                     className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
                   >
                     Aplicar precio
@@ -1312,10 +1378,10 @@ function PropertiesContent() {
           {/* Píldora 3: Dormitorios & Baños */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'rooms_baths' ? null : 'rooms_baths')}
+              onClick={() => toggleDropdown('rooms_baths')}
               className={
                 filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
                   : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
@@ -1398,10 +1464,10 @@ function PropertiesContent() {
           {/* Píldora 4: Tipo de casa */}
           <div className="relative">
             <button
-              onClick={() => setActiveDropdown(activeDropdown === 'home_type' ? null : 'home_type')}
+              onClick={() => toggleDropdown('home_type')}
               className={
                 filtros.tiposCasa.length > 0
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
+                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
                   : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
               }
             >
@@ -1503,7 +1569,7 @@ function PropertiesContent() {
         {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 50% en desktop, ARRIBA - 75% en mobile) ── */}
         {/* ponytail: use className block/hidden toggling to prevent Leaflet re-init flashes on mobile */}
         <div className={`w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0 ${isMapVisible ? 'block' : 'md:block hidden'}`}>
-          <MapWrapper
+          <PropertiesMap
             properties={filtered}
             activePropertyId={hoveredPin}
             selectedPropertyId={selectedPropertyId}
@@ -1518,7 +1584,7 @@ function PropertiesContent() {
         <div className={`w-full ${isMapVisible ? 'h-[25%]' : 'h-full'} md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0`}>
 
           {/* Listado de Propiedades */}
-          <div className="p-4 sm:p-6 pb-20 space-y-6">
+          <div className="p-4 sm:p-6 pb-6 space-y-6">
             <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5 font-sans">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -1537,26 +1603,33 @@ function PropertiesContent() {
 
               {/* Contenedor de Alertas de Búsqueda */}
               <div className="p-4 border border-neutral-200 bg-[#fbf9f9] rounded-xl">
-                <details className="group">
-                  <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#000033] py-1 list-none uppercase tracking-widest select-none">
-                    <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
-                  </summary>
-                  <div className="pt-3 border-t border-neutral-100 mt-2">
-                    <PropertyAlertForm
-                      defaultZona={searchParams.get('zone') || ''}
-                      defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
-                      defaultMaxPrice={maxPrice}
-                    />
+                {isSubscribed ? (
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 py-1 uppercase tracking-widest select-none">
+                    <span>✓ Ya estás suscrito a las alertas de esta búsqueda</span>
                   </div>
-                </details>
+                ) : (
+                  <details className="group">
+                    <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#000033] py-1 list-none uppercase tracking-widest select-none">
+                      <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div className="pt-3 border-t border-neutral-100 mt-2">
+                      <PropertyAlertForm
+                        defaultZona={searchParams.get('zone') || ''}
+                        defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
+                        defaultMaxPrice={maxPrice}
+                        onSuccess={() => setIsSubscribed(true)}
+                      />
+                    </div>
+                  </details>
+                )}
               </div>
             </header>
 
             {sortedProperties.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center border border-dashed border-neutral-300 p-8">
                 <div className="text-4xl mb-4">🏠</div>
-                <h3 className="font-serif text-xl font-light text-black uppercase tracking-wider">Sin Resultados</h3>
+                <h3 className="font-heading text-xl font-black text-black uppercase tracking-wider">Sin Resultados</h3>
                 <p className="text-neutral-400 text-xs font-medium mt-2">{t("Intenta ampliar el presupuesto, modificar los términos o ajustar los filtros de búsqueda.")}</p>
               </div>
             ) : (
@@ -1600,7 +1673,7 @@ function PropertiesContent() {
                 <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
                   <div>
                     <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Ficha Inmobiliaria</span>
-                    <h4 className="font-serif text-2xl font-light text-black leading-tight mt-1 line-clamp-1">{selectedProperty.title}</h4>
+                    <h4 className="font-heading text-2xl font-black text-black leading-tight mt-1 line-clamp-1">{selectedProperty.title}</h4>
                   </div>
                   <button
                     onClick={() => setSelectedPropertyId(null)}
@@ -1626,7 +1699,7 @@ function PropertiesContent() {
                 {/* Info Text */}
                 <div className="space-y-4">
                   <div className="flex items-baseline justify-between">
-                    <span className="font-serif text-3xl font-medium text-black">${selectedProperty.price.toLocaleString()}</span>
+                    <span className="font-sans text-3xl font-black text-black">${selectedProperty.price.toLocaleString()}</span>
                     <span className="text-neutral-400 text-[10px] font-bold">{(selectedProperty.price / selectedProperty.area).toFixed(0)} {t("USD/m²")}</span>
                   </div>
 
@@ -1710,45 +1783,7 @@ function PropertiesContent() {
         </button>
       </div>
 
-      {/* ─── BARRA DE NAVEGACIÓN INFERIOR FIJA (MÓVIL - ZILLOW STYLE) ─── */}
-      {/* ponytail: hide navigation bar completely when map is hidden */}
-      <div className={`fixed bottom-0 left-0 w-full bg-white border-t border-neutral-200 py-2.5 md:hidden z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] font-sans h-16 items-center ${isMapVisible ? 'flex' : 'hidden'} justify-around`}>
-        <button 
-          onClick={() => setIsMapVisible(false)}
-          className={`flex flex-col items-center justify-center gap-0.5 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 transition-colors ${!isMapVisible ? 'text-[#04045E]' : 'text-neutral-450'}`}
-        >
-          <span className="text-base leading-none">🔍</span>
-          <span>Buscar</span>
-        </button>
-        <button 
-          onClick={() => setShowSavedSearchModal(true)}
-          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
-        >
-          <span className="text-base leading-none">🔔</span>
-          <span>Alertas</span>
-        </button>
-        <button 
-          onClick={() => router.push('/dashboard/favoritos')}
-          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
-        >
-          <span className="text-base leading-none">❤️</span>
-          <span>Favoritos</span>
-        </button>
-        <button 
-          onClick={() => alert(t("Propio Créditos: Simula tu crédito hipotecario en tiempo real dentro de la ficha de detalle de cualquier inmueble."))}
-          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
-        >
-          <span className="text-base leading-none">💼</span>
-          <span>Créditos</span>
-        </button>
-        <button 
-          onClick={() => alert(t("Mensajería Premium: Comunícate de forma directa y privada con los asesores asignados a través del botón WhatsApp en la ficha de detalle."))}
-          className="flex flex-col items-center justify-center gap-0.5 text-neutral-450 font-bold text-[10px] bg-transparent border-none cursor-pointer flex-1 hover:text-[#04045E] transition-colors"
-        >
-          <span className="text-base leading-none">📥</span>
-          <span>Mensajes</span>
-        </button>
-      </div>
+
 
       {/* ─── MODAL DE FILTROS EN PANTALLA COMPLETA MÓVIL ─── */}
       {showMobileFilters && (
@@ -1757,7 +1792,7 @@ function PropertiesContent() {
           <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
             <div>
               <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Búsqueda Avanzada</span>
-              <h2 className="font-serif text-2xl font-light text-black uppercase tracking-tight">{t("Filtros")}</h2>
+              <h2 className="font-heading text-2xl font-black text-black uppercase tracking-tight">{t("Filtros")}</h2>
             </div>
             <button
               onClick={() => setShowMobileFilters(false)}

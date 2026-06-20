@@ -26,11 +26,39 @@ export const MapView: React.FC<MapViewProps> = ({
   const [zoom, setZoom] = useState(13);
   const [L, setL] = useState<any>(null);
 
+  // Normalizar coordenadas soportando tanto lat/lng como latitude/longitude desde backend/base de datos
+  const normalizedProperties = React.useMemo(() => {
+    return properties.map((p) => {
+      if (!p) return p;
+      let latVal = p.lat;
+      let lngVal = p.lng;
+      if (latVal === undefined || latVal === null) {
+        latVal = p.latitude as any;
+      }
+      if (lngVal === undefined || lngVal === null) {
+        lngVal = p.longitude as any;
+      }
+      return {
+        ...p,
+        lat: typeof latVal === 'string' ? parseFloat(latVal) : latVal,
+        lng: typeof lngVal === 'string' ? parseFloat(lngVal) : lngVal,
+      };
+    });
+  }, [properties]);
+
   // Carga de Leaflet únicamente en el cliente
   useEffect(() => {
     if (typeof window !== 'undefined') {
       import('leaflet').then((leaflet) => {
         setL(leaflet.default);
+
+        // Fix Leaflet default marker icons bug in Next.js
+        delete (leaflet.default.Icon.Default.prototype as any)._getIconUrl;
+        leaflet.default.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
       });
     }
   }, []);
@@ -180,7 +208,7 @@ export const MapView: React.FC<MapViewProps> = ({
       clearTimeout(timer3);
       window.removeEventListener('resize', forceResize);
     };
-  }, [L, properties]);
+  }, [L, normalizedProperties]);
 
   // Renderizado dinámico de Pines (Marcadores) y Clústeres
   useEffect(() => {
@@ -195,8 +223,8 @@ export const MapView: React.FC<MapViewProps> = ({
     markersRef.current = {};
 
     // Fallback defensivo en el Componente Padre / Renderizador: filtrar propiedades con coordenadas válidas
-    const validProperties = properties.filter(
-      (p) => p && typeof p.lat === 'number' && typeof p.lng === 'number'
+    const validProperties = normalizedProperties.filter(
+      (p) => p && typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng)
     );
 
     const clusters = getClusters(validProperties, zoom);
@@ -317,13 +345,12 @@ export const MapView: React.FC<MapViewProps> = ({
         markersRef.current[property.id] = marker;
       }
     });
-  }, [properties, zoom, activePropertyId, selectedPropertyId, currency, L, onSelectProperty]);
+  }, [normalizedProperties, zoom, activePropertyId, selectedPropertyId, currency, L, onSelectProperty]);
 
-  // Centrar el mapa al seleccionar una propiedad
   useEffect(() => {
     if (!L || !mapRef.current || !selectedPropertyId) return;
 
-    const property = properties.find((p) => p.id === selectedPropertyId);
+    const property = normalizedProperties.find((p) => p.id === selectedPropertyId);
     if (property) {
       if (typeof property.lat !== 'number' || typeof property.lng !== 'number' || isNaN(property.lat) || isNaN(property.lng)) {
         console.warn(`Propiedad con ID ${property.id} saltada por coordenadas inválidas.`);
@@ -342,7 +369,7 @@ export const MapView: React.FC<MapViewProps> = ({
         }, 300);
       }
     }
-  }, [selectedPropertyId, L, properties]);
+  }, [selectedPropertyId, L, normalizedProperties]);
 
   return (
     <div className="relative w-full h-full overflow-hidden z-10" style={{ height: '100%', width: '100%' }}>
@@ -376,10 +403,12 @@ export const MapView: React.FC<MapViewProps> = ({
           box-shadow: 0 10px 25px -5px rgba(4, 4, 94, 0.15) !important;
           border: 1px solid rgba(4, 4, 94, 0.05) !important;
           overflow: hidden !important;
+          font-family: var(--font-sans), system-ui, -apple-system, sans-serif !important;
         }
         .leaflet-popup-content {
           margin: 0 !important;
           width: 224px !important;
+          font-family: var(--font-sans), system-ui, -apple-system, sans-serif !important;
         }
         .leaflet-popup-tip {
           background: white !important;

@@ -36,26 +36,7 @@ export default function ClienteDashboard() {
 
   const { favorites: favContextList, isFavorited } = useFavorites();
 
-  const [requests, setRequests] = useState<LeadRequest[]>([
-    {
-      id: 'req-1',
-      propertyTitle: 'Casa de Campo en Muyurina',
-      propertyId: 'prop-1-muyurina',
-      type: 'Compra',
-      status: 'En revisión',
-      date: '2026-05-21',
-      offerAmount: 220000,
-    },
-    {
-      id: 'req-2',
-      propertyTitle: 'Penthouse de Lujo en Queru Queru',
-      propertyId: 'prop-3-queru-queru',
-      type: 'Compra',
-      status: 'Pendiente',
-      date: '2026-05-22',
-      offerAmount: 128000,
-    },
-  ]);
+  const [requests, setRequests] = useState<LeadRequest[]>([]);
 
   useEffect(() => {
     // Guard de Autenticación
@@ -161,6 +142,18 @@ export default function ClienteDashboard() {
     return sameCategory && inRange;
   });
 
+  // Si no hay intereses, las recomendaciones de la semana serán simplemente propiedades destacadas
+  const showFeatured = combinedInterests.length === 0;
+
+  const sidebarItems = showFeatured
+    ? allProperties.filter(p => p.isVerified || (p as any).verified).slice(0, 5)
+    : recommendations.slice(0, 5);
+
+  // Si no hay verificadas, caemos a las primeras 5 de la cartera
+  const finalSidebarItems = sidebarItems.length > 0
+    ? sidebarItems
+    : allProperties.slice(0, 5);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col font-sans antialiased">
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 sm:px-8 py-10 space-y-10">
@@ -252,10 +245,26 @@ export default function ClienteDashboard() {
                   <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04045E]" />
                 </div>
               ) : combinedInterests.length === 0 ? (
-                <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3 shadow-sm">
-                  <span className="text-3xl">💚</span>
-                  <p className="text-xs font-bold text-slate-400 uppercase">Sin intereses registrados</p>
-                  <p className="text-[11px] text-slate-400">Guarda propiedades como favoritas o contáctalas para verlas aquí.</p>
+                <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-5 shadow-sm">
+                  <div className="w-16 h-16 mx-auto bg-[#ccff00]/25 text-[#000033] rounded-full flex items-center justify-center text-3xl border border-[#ccff00]/40">
+                    🔍
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-heading font-black text-[#04045E] uppercase tracking-wide">
+                      ¿Buscas el hogar de tus sueños?
+                    </h3>
+                    <p className="text-xs font-sans font-medium text-slate-500 max-w-sm mx-auto leading-relaxed">
+                      Aún no tienes búsquedas guardadas.
+                    </p>
+                  </div>
+                  <div>
+                    <Link
+                      href="/properties"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#b9fa3c] hover:bg-[#adf02c] text-[#04045E] font-sans font-black text-xs uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-[1.02] shadow-md shadow-[#b9fa3c]/20"
+                    >
+                      🔍 Explorar Propiedades
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 combinedInterests.map((prop) => {
@@ -308,89 +317,101 @@ export default function ClienteDashboard() {
             </div>
 
             {/* Historial de Propuestas / Solicitudes */}
-            <div className="pt-8 space-y-4">
-              <h2 className="text-xs font-black text-[#04045E] uppercase tracking-wider">
+            <div className="pt-8 space-y-4 font-sans">
+              <h2 className="text-xs font-black text-[#04045E] uppercase tracking-wider font-heading">
                 Detalle de Consultas y Ofertas
               </h2>
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider">Propiedad</th>
-                        <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider">Tipo</th>
-                        <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider">Monto</th>
-                        <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider">Estado</th>
-                        <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
-                      {requests.map((req) => (
-                        <tr key={req.id} className="hover:bg-slate-50/30 transition-all">
-                          <td className="p-4 font-bold text-[#04045E]">{req.propertyTitle}</td>
-                          <td className="p-4">
-                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold uppercase text-[8px] border">
-                              {req.type}
-                            </span>
-                          </td>
-                          <td className="p-4 font-black">
-                            {req.offerAmount ? `$${req.offerAmount.toLocaleString()} USD` : 'N/A'}
-                          </td>
-                          <td className="p-4">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border inline-flex items-center gap-1 ${
-                              req.status === 'Aceptada'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                : req.status === 'En revisión'
-                                ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                : 'bg-slate-50 text-slate-650 border-slate-200'
-                            }`}>
-                              <span className={`h-1 w-1 rounded-full ${
-                                req.status === 'Aceptada' ? 'bg-emerald-500' : req.status === 'En revisión' ? 'bg-amber-500' : 'bg-slate-400'
-                              }`} />
-                              {req.status}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right">
-                            <button
-                              onClick={() => handleCancelRequest(req.id)}
-                              className="text-[9px] font-bold hover:text-red-655 text-slate-400 transition-colors"
-                            >
-                              ✕ Retirar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {requests.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-3 shadow-sm font-sans">
+                  <span className="text-2xl">📋</span>
+                  <p className="text-[10px] font-sans font-bold text-slate-450 uppercase tracking-wider">Sin ofertas ni consultas activas</p>
+                  <p className="text-[9px] font-sans text-slate-450 leading-normal max-w-xs mx-auto">
+                    Cuando realices una consulta o envíes una oferta comercial por un inmueble, podrás realizar el seguimiento en este panel.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse font-sans">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                          <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider font-sans">Propiedad</th>
+                          <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider font-sans">Tipo</th>
+                          <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider font-sans">Monto</th>
+                          <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider font-sans">Estado</th>
+                          <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-wider text-right font-sans">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs">
+                        {requests.map((req) => (
+                          <tr key={req.id} className="hover:bg-slate-50/30 transition-all font-sans">
+                            <td className="p-4 font-sans font-bold text-[#04045E]">{req.propertyTitle}</td>
+                            <td className="p-4">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold uppercase text-[8px] border font-sans">
+                                {req.type}
+                              </span>
+                            </td>
+                            <td className="p-4 font-sans font-black">
+                              {req.offerAmount ? `$${req.offerAmount.toLocaleString()} USD` : 'N/A'}
+                            </td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border inline-flex items-center gap-1 font-sans ${
+                                req.status === 'Aceptada'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : req.status === 'En revisión'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                  : 'bg-slate-50 text-slate-650 border-slate-200'
+                              }`}>
+                                <span className={`h-1 w-1 rounded-full ${
+                                  req.status === 'Aceptada' ? 'bg-emerald-500' : req.status === 'En revisión' ? 'bg-amber-500' : 'bg-slate-400'
+                                }`} />
+                                {req.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => handleCancelRequest(req.id)}
+                                className="text-[9px] font-bold hover:text-red-655 text-slate-450 transition-colors font-sans"
+                              >
+                                ✕ Retirar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* RECOMENDADOS (Derecha 1/3) */}
           <div className="space-y-6">
             <div className="border-b border-slate-150 pb-2">
-              <h2 className="text-xs font-black text-[#04045E] uppercase tracking-wider">
-                Recomendados Cercanos (Barra Lateral)
+              <h2 className="text-xs font-black text-[#04045E] uppercase tracking-wider font-heading">
+                {showFeatured ? 'Propiedades destacadas de la semana' : 'Recomendados Cercanos (Barra Lateral)'}
               </h2>
-              <p className="text-[9px] text-slate-400 font-semibold mt-1">
-                Filtro estricto: misma oferta y radio &lt; 3km.
+              <p className="text-[9px] text-slate-400 font-semibold mt-1 font-sans">
+                {showFeatured 
+                  ? 'Selección exclusiva de inmuebles recomendados en Bolivia.' 
+                  : 'Filtro estricto: misma oferta y radio < 3km.'}
               </p>
             </div>
 
-            {/* Selector de Referencia si hay favoritos */}
-            {favContextList.length > 0 && (
+            {/* Selector de Referencia si hay favoritos y no estamos en modo destacado */}
+            {favContextList.length > 0 && !showFeatured && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
-                <label className="block text-[8px] font-black uppercase text-slate-400 tracking-wider">
+                <label className="block text-[8px] font-sans font-black uppercase text-slate-400 tracking-wider">
                   Inmueble de Referencia
                 </label>
                 <select
                   value={selectedFavoriteId || ''}
                   onChange={(e) => setSelectedFavoriteId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-250 rounded-lg text-[10px] font-black text-[#04045E] focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-250 rounded-lg text-[10px] font-sans font-black text-[#04045E] focus:outline-none"
                 >
                   {favContextList.map(f => (
-                    <option key={f.id} value={f.id}>
+                    <option key={f.id} value={f.id} className="font-sans">
                       {f.title} ({f.offerType || 'Venta'})
                     </option>
                   ))}
@@ -398,28 +419,34 @@ export default function ClienteDashboard() {
               </div>
             )}
 
-            {/* Listado de Recomendados */}
+            {/* Listado de Recomendados o Destacados */}
             {loading ? (
               <div className="h-48 bg-white border border-slate-200 rounded-2xl flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04045E]" />
               </div>
-            ) : recommendations.length === 0 ? (
-              <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl space-y-2">
+            ) : finalSidebarItems.length === 0 ? (
+              <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl space-y-2 font-sans">
                 <span className="text-2xl">📍</span>
-                <p className="text-[10px] text-slate-400 font-black uppercase">Sin Recomendados Cercanos</p>
+                <p className="text-[10px] text-slate-400 font-black uppercase">Sin inmuebles disponibles</p>
                 <p className="text-[9px] text-slate-400 leading-normal">
-                  No se encontraron inmuebles a menos de 3km con la misma categoría de oferta ({selectedRefProp?.offerType || 'VENTA'}).
+                  No se encontraron propiedades en la plataforma actualmente.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {recommendations.slice(0, 5).map((prop) => {
-                  const refLat = selectedRefProp?.lat ?? selectedRefProp?.latitude ?? -17.3895;
-                  const refLng = selectedRefProp?.lng ?? selectedRefProp?.longitude ?? -66.1568;
-                  const pLat = prop.lat ?? prop.latitude ?? -17.3895;
-                  const pLng = prop.lng ?? prop.longitude ?? -66.1568;
-                  const distance = getDistanceKm(refLat, refLng, pLat, pLng).toFixed(2);
+                {finalSidebarItems.map((prop) => {
                   const finalPriceBob = prop.priceBob ?? (prop.price * 10);
+                  
+                  // Calcular distancia solo si no estamos en showFeatured
+                  let distanceLabel = prop.location || 'Bolivia';
+                  if (!showFeatured && selectedRefProp) {
+                    const refLat = selectedRefProp?.lat ?? selectedRefProp?.latitude ?? -17.3895;
+                    const refLng = selectedRefProp?.lng ?? selectedRefProp?.longitude ?? -66.1568;
+                    const pLat = prop.lat ?? prop.latitude ?? -17.3895;
+                    const pLng = prop.lng ?? prop.longitude ?? -66.1568;
+                    const distanceKm = getDistanceKm(refLat, refLng, pLat, pLng).toFixed(2);
+                    distanceLabel = `${distanceKm} km`;
+                  }
 
                   return (
                     <div
@@ -433,25 +460,25 @@ export default function ClienteDashboard() {
                       />
                       <div className="min-w-0 flex flex-col justify-between flex-1">
                         <div className="space-y-0.5">
-                          <h4 className="text-[11px] font-black text-[#04045E] truncate leading-tight">
+                          <h4 className="text-[11px] font-sans font-black text-[#04045E] truncate leading-tight uppercase">
                             {prop.title}
                           </h4>
                           <div className="flex gap-1.5 items-center">
-                            <span className="text-[7px] font-black bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded border border-emerald-100 uppercase">
+                            <span className="text-[7px] font-sans font-black bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded border border-emerald-100 uppercase">
                               {prop.offerType}
                             </span>
-                            <span className="text-[8px] text-slate-400 font-bold">
-                              📍 {distance} km
+                            <span className="text-[8px] font-sans text-slate-400 font-bold truncate max-w-[120px]">
+                              📍 {distanceLabel}
                             </span>
                           </div>
                         </div>
                         <div className="flex justify-between items-baseline pt-2">
-                          <p className="text-xs font-black text-[#04045E]">
+                          <p className="text-xs font-sans font-black text-[#04045E]">
                             {finalPriceBob.toLocaleString('es-BO')} Bs.
                           </p>
                           <Link
                             href={`/properties/${prop.id}`}
-                            className="text-[8px] font-black text-[#04045E] hover:underline"
+                            className="text-[8px] font-sans font-black text-[#04045E] hover:underline uppercase"
                           >
                             Ver →
                           </Link>

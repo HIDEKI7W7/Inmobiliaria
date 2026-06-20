@@ -1,16 +1,23 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Lora } from 'next/font/google';
+import { Plus_Jakarta_Sans, Outfit } from 'next/font/google';
 import { Navbar } from '../components/ui/Navbar';
 import { Footer } from '../components/ui/Footer';
 import HttpInterceptor from '../components/HttpInterceptor';
 import { FavoritesProvider } from '../context/FavoritesContext';
 import { FloatingWhatsApp } from '../components/ui/FloatingWhatsApp';
 
-const lora = Lora({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  variable: '--font-lora',
-  weight: ['400', '500', '600', '700'],
+  variable: '--font-plus-jakarta-sans',
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+});
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit',
+  weight: ['400', '500', '600', '700', '800', '900'],
   display: 'swap',
 });
 
@@ -26,7 +33,7 @@ export default function RootLayout({
 }) {
   try {
     return (
-      <html lang="es" className={`${lora.variable}`}>
+      <html lang="es" className={`${plusJakartaSans.variable} ${outfit.variable}`}>
         <body className="font-sans antialiased min-h-screen flex flex-col bg-slate-50 relative">
           <HttpInterceptor />
           <FavoritesProvider>
@@ -48,7 +55,7 @@ export default function RootLayout({
       <html lang="es">
         <body className="bg-white text-black p-8 font-sans">
           <div className="max-w-md mx-auto my-20 p-8 border border-neutral-300">
-            <h1 className="font-serif text-2xl mb-4 uppercase">Error de Inicialización</h1>
+            <h1 className="font-sans font-black text-2xl mb-4 uppercase">Error de Inicialización</h1>
             <p className="text-sm text-neutral-500">Ocurrió un error inesperado al cargar la plataforma. Por favor, recarga la página.</p>
           </div>
         </body>

@@ -122,7 +122,10 @@ export default function PropietarioDashboard() {
         setLoading(true);
         const allProperties = await propertiesService.getProperties({ verifiedOnly: false });
         const ownerProperties = allProperties.filter(
-          (p: any) => p.ownerId === 'owner-1' || p.id === '1' || p.id === '4' || String(p.id).startsWith('prop-')
+          (p: any) =>
+            p.ownerId === user.userId ||
+            (user.userId === 'owner-1' &&
+              (p.ownerId === 'owner-1' || p.id === '1' || p.id === '4' || String(p.id).startsWith('prop-')))
         );
         setProperties(ownerProperties);
       } catch (error) {
@@ -433,7 +436,7 @@ export default function PropietarioDashboard() {
                           {property.area} m²
                         </span>
                       </div>
-                      <h3 className="text-sm font-serif font-black text-[#04045E] tracking-tight leading-snug">
+                      <h3 className="text-sm font-sans font-black text-[#04045E] tracking-tight leading-snug">
                         {property.title}
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
@@ -566,7 +569,7 @@ export default function PropietarioDashboard() {
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6 animate-fadeIn">
             
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <h2 className="text-xl font-serif font-black text-[#04045E] uppercase">Editar Anuncio Activo</h2>
+              <h2 className="text-xl font-sans font-black text-[#04045E] uppercase">Editar Anuncio Activo</h2>
               <button 
                 onClick={() => setEditingProperty(null)}
                 className="text-slate-400 hover:text-slate-600 text-lg font-bold"
