@@ -116,3 +116,31 @@ export async function persistLocalMarketingPlan(id: string, price: string): Prom
     console.info('[localDb] Plan de marketing persistido en db.json:', id, price);
   }
 }
+
+// ── CONSTRUCTORAS / DEVELOPERS ───────────────────────────────────────────────
+
+/** Carga las constructoras locales persistidas en localStorage fallback. */
+export async function fetchLocalDevelopers(): Promise<any[]> {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('propio_local_developers');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('[localDb] Error leyendo local developers:', e);
+    return [];
+  }
+}
+
+/** Guarda una constructora local en localStorage fallback. */
+export async function persistLocalDeveloper(dev: any): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const devs = await fetchLocalDevelopers();
+    const filtered = devs.filter((d: any) => d.id !== dev.id);
+    filtered.unshift(dev);
+    localStorage.setItem('propio_local_developers', JSON.stringify(filtered));
+    console.info('[localDb] Constructora local persistida:', dev.id);
+  } catch (e) {
+    console.error('[localDb] Error persistiendo local developer:', e);
+  }
+}

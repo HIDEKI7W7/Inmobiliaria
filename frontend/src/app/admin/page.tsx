@@ -11,7 +11,7 @@ import { paymentsService, Payment } from '../../services/payments.service';
 import { expensesService, Expense } from '../../services/expenses.service';
 import { resolveApiUrl } from '../../utils/resolveApiUrl';
 import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
-import { fetchLocalProperties, fetchLocalContracts, persistContract, deleteLocalProperty, deleteLocalContract } from '@/utils/localDb';
+import { fetchLocalProperties, fetchLocalContracts, persistContract, deleteLocalProperty, deleteLocalContract, fetchLocalDevelopers, persistLocalDeveloper } from '@/utils/localDb';
 interface Property {
   id: string;
   title: string;
@@ -1181,6 +1181,26 @@ function AdminConsole() {
   const [selectedContractTenants, setSelectedContractTenants] = useState<string[]>([]);
   const [selectedContractStatuses, setSelectedContractStatuses] = useState<string[]>([]);
 
+  // Dropdown multi-select filters for Payments (Ingresos)
+  const [selectedPayIds, setSelectedPayIds] = useState<string[]>([]);
+  const [selectedPayCategories, setSelectedPayCategories] = useState<string[]>([]);
+  const [selectedPayIssuers, setSelectedPayIssuers] = useState<string[]>([]);
+  const [selectedPayContracts, setSelectedPayContracts] = useState<string[]>([]);
+  const [selectedPayAmounts, setSelectedPayAmounts] = useState<string[]>([]);
+  const [selectedPayDestinations, setSelectedPayDestinations] = useState<string[]>([]);
+  const [selectedPayDates, setSelectedPayDates] = useState<string[]>([]);
+  const [selectedPayMethods, setSelectedPayMethods] = useState<string[]>([]);
+  const [selectedPayStatuses, setSelectedPayStatuses] = useState<string[]>([]);
+
+  // Dropdown multi-select filters for Expenses (Gastos)
+  const [selectedExpIds, setSelectedExpIds] = useState<string[]>([]);
+  const [selectedExpDates, setSelectedExpDates] = useState<string[]>([]);
+  const [selectedExpRequesters, setSelectedExpRequesters] = useState<string[]>([]);
+  const [selectedExpCategories, setSelectedExpCategories] = useState<string[]>([]);
+  const [selectedExpConcepts, setSelectedExpConcepts] = useState<string[]>([]);
+  const [selectedExpVinculaciones, setSelectedExpVinculaciones] = useState<string[]>([]);
+  const [selectedExpStatuses, setSelectedExpStatuses] = useState<string[]>([]);
+
   // Map popover state
   const [activeMapPopoverId, setActiveMapPopoverId] = useState<string | null>(null);
 
@@ -1918,7 +1938,7 @@ function AdminConsole() {
     }
 
     try {
-      const token = getToken() || '';
+      const adminToken = getToken() || (typeof window !== 'undefined' ? localStorage.getItem('propio_token') : '') || '';
       const response = await apiClient.postWithAuth<any>('/admin/developers', {
         name: newDevName,
         nit: newDevNit,
@@ -1932,7 +1952,7 @@ function AdminConsole() {
         officeAddress: newDevOfficeAddress,
         description: newDevDescription,
         specialties: newDevSpecialties
-      }, token);
+      }, adminToken);
 
       alert(response.message || 'Constructora registrada con éxito');
       
@@ -1969,8 +1989,45 @@ function AdminConsole() {
 
       await loadAllData();
     } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Error al registrar la constructora');
+      console.warn('[Admin] Failed registering developer in backend. Triggering local fallback...', err);
+      
+      const newDevId = `DEV-${300 + developers.length + 1}`;
+      const newDev: Constructora = {
+        id: newDevId,
+        empresa: newDevName,
+        nit: newDevNit,
+        representante: newDevRepresentative,
+        contacto: {
+          email: newDevEmail,
+          phone: newDevPhone
+        },
+        stock: 0,
+        esquemaComision: '3% Venta Escalonada',
+        etapa: 'Preventa Torre A'
+      };
+
+      // Persistencia de resguardo local
+      await persistLocalDeveloper(newDev);
+
+      // Sincronizar estado visual
+      setDevelopers(prev => [...prev, newDev]);
+
+      // Reset form states
+      setNewDevName('');
+      setNewDevNit('');
+      setNewDevFoundedYear('');
+      setNewDevLogoUrl('');
+      setNewDevRepresentative('');
+      setNewDevPhone('');
+      setNewDevEmail('');
+      setNewDevWebsite('');
+      setNewDevOfficeZone('');
+      setNewDevOfficeAddress('');
+      setNewDevDescription('');
+      setNewDevSpecialties([]);
+      setIsNewDeveloperModalOpen(false);
+
+      alert(`Servidor de producción no autorizado (${err.status || 'Red'}). La constructora se registró en la base de datos de simulación local (localStorage) con éxito.`);
     }
   };
 
@@ -2533,6 +2590,26 @@ function AdminConsole() {
   const uniqueContractTenants = React.useMemo(() => Array.from(new Set(contracts.map(c => c.tenant?.name || c.tenantId))), [contracts]);
   const uniqueContractStatuses = React.useMemo(() => Array.from(new Set(contracts.map(c => c.status))), [contracts]);
 
+  // Unique options for Payments (Ingresos)
+  const uniquePayIds = React.useMemo(() => Array.from(new Set(payments.map(p => p.id))), [payments]);
+  const uniquePayCategories = React.useMemo(() => Array.from(new Set(payments.map(p => p.category_type || (p as any).category || ''))).filter(Boolean), [payments]);
+  const uniquePayIssuers = React.useMemo(() => Array.from(new Set(payments.map(p => p.issuerName || ''))).filter(Boolean), [payments]);
+  const uniquePayContracts = React.useMemo(() => Array.from(new Set(payments.map(p => p.contractId || ''))).filter(Boolean), [payments]);
+  const uniquePayAmounts = React.useMemo(() => Array.from(new Set(payments.map(p => String(p.amount)))), [payments]);
+  const uniquePayDestinations = React.useMemo(() => Array.from(new Set(payments.map(p => p.destinationAccount || ''))).filter(Boolean), [payments]);
+  const uniquePayDates = React.useMemo(() => Array.from(new Set(payments.map(p => new Date(p.paymentDate).toLocaleDateString()))), [payments]);
+  const uniquePayMethods = React.useMemo(() => Array.from(new Set(payments.map(p => p.paymentMethod || ''))).filter(Boolean), [payments]);
+  const uniquePayStatuses = React.useMemo(() => Array.from(new Set(payments.map(p => p.status || ''))).filter(Boolean), [payments]);
+
+  // Unique options for Expenses (Gastos)
+  const uniqueExpIds = React.useMemo(() => Array.from(new Set(expenses.map(e => e.id))), [expenses]);
+  const uniqueExpDates = React.useMemo(() => Array.from(new Set(expenses.map(e => new Date(e.date).toLocaleDateString()))), [expenses]);
+  const uniqueExpRequesters = React.useMemo(() => Array.from(new Set(expenses.map(e => e.requester || ''))).filter(Boolean), [expenses]);
+  const uniqueExpCategories = React.useMemo(() => Array.from(new Set(expenses.map(e => e.category || ''))).filter(Boolean), [expenses]);
+  const uniqueExpConcepts = React.useMemo(() => Array.from(new Set(expenses.map(e => e.concept || ''))).filter(Boolean), [expenses]);
+  const uniqueExpVinculaciones = React.useMemo(() => Array.from(new Set(expenses.map(e => e.vinculacion || ''))).filter(Boolean), [expenses]);
+  const uniqueExpStatuses = React.useMemo(() => Array.from(new Set(expenses.map(e => e.status || ''))).filter(Boolean), [expenses]);
+
   const filteredContracts = React.useMemo(() => {
     return contracts.filter((cnt: any) => {
       // 1. Date filters
@@ -3007,9 +3084,21 @@ function AdminConsole() {
       }
 
 
-      const filteredDevelopers = developersData.filter((d: any) => {
+      // ── Fusionar constructores con db local fallback ──
+      let mergedDevs = Array.isArray(developersData) ? [...developersData] : [];
+      try {
+        const persistedDevs = await fetchLocalDevelopers();
+        const existingIds = new Set(mergedDevs.map((d: any) => d.id));
+        persistedDevs
+          .filter((d: any) => d && d.id && !existingIds.has(d.id))
+          .forEach((d: any) => mergedDevs.unshift(d));
+      } catch (dbDevsErr) {
+        console.warn('[Admin] Error cargando local developers:', dbDevsErr);
+      }
+
+      const filteredDevelopers = mergedDevs.filter((d: any) => {
         if (selectedSucursal === 'TODOS') return true;
-        return d.officeZone?.toLowerCase().includes(selectedSucursal.toLowerCase());
+        return (d.officeZone || d.etapa || '').toLowerCase().includes(selectedSucursal.toLowerCase());
       });
 
       const mappedDevelopers = filteredDevelopers.map((d: any) => ({
@@ -8221,24 +8310,6 @@ function AdminConsole() {
 
                         <div className="flex gap-2">
                           <button
-                            onClick={handleOpenDocsModalFromHeader}
-                            className="bg-amber-500 hover:scale-[1.02] text-white font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl hover:bg-opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-                          >
-                            📂 Documentos
-                          </button>
-                          <button
-                            onClick={() => setIsContractModalOpen(true)}
-                            className="bg-[#0B1354] hover:scale-[1.02] text-white font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl hover:bg-opacity-90 transition-all cursor-pointer border-0"
-                          >
-                            + Crear Contrato
-                          </button>
-                          <button
-                            onClick={() => setIsUploadContractModalOpen(true)}
-                            className="bg-[#0B1354] hover:scale-[1.02] text-white font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl hover:bg-opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs border-0"
-                          >
-                            SUBIR CONTRATO
-                          </button>
-                          <button
                             onClick={() => exportDataToExcel(filteredContracts, 'Reporte_Contratos_Filtrados')}
                             className="bg-emerald-600 hover:bg-emerald-700 hover:scale-[1.02] text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer"
                           >
@@ -8290,6 +8361,7 @@ function AdminConsole() {
                             </th>
                             <th className="p-4">Monto Mensual</th>
                             <th className="p-4">Vigencia</th>
+                            <th className="p-4 text-center">Documentación</th>
                             <th className="p-4 text-center relative">
                               <DropdownFilter
                                 title="Estado"
@@ -8320,6 +8392,21 @@ function AdminConsole() {
                               </td>
                               <td className="p-4 text-slate-400 font-medium">
                                 {new Date(cnt.startDate).toLocaleDateString()} - {new Date(cnt.endDate).toLocaleDateString()}
+                              </td>
+                              <td className="p-4 text-center">
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleOpenDocsModal(cnt);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-wider bg-[#0a1931] hover:bg-[#0d2248] px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.97] border border-[#0a1931]/80"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  Ver Documentos
+                                </button>
                               </td>
                               <td className="p-4 text-center">
                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
@@ -8441,19 +8528,24 @@ function AdminConsole() {
                     matchesPill = p.category_type !== 'COMISION_VENTA' && !p.category_type?.startsWith('PLAN_MKT');
                   }
 
-                  // Inline column filters
-                  const matchesColId = !colFilterId || p.id.toLowerCase().includes(colFilterId.toLowerCase());
-                  const matchesColCat = !colFilterCategory || p.category_type?.toLowerCase().includes(colFilterCategory.toLowerCase());
-                  const matchesColIssuer = !colFilterIssuer || p.issuerName?.toLowerCase().includes(colFilterIssuer.toLowerCase());
-                  const matchesColContract = !colFilterContract || p.contractId.toLowerCase().includes(colFilterContract.toLowerCase());
-                  const matchesColAmount = !colFilterAmount || String(p.amount).includes(colFilterAmount);
-                  const matchesColDest = !colFilterDestination || p.destinationAccount?.toLowerCase().includes(colFilterDestination.toLowerCase());
-                  const matchesColDate = !colFilterDate || new Date(p.paymentDate).toLocaleDateString().includes(colFilterDate);
-                  const matchesColMethod = !colFilterMethod || p.paymentMethod.toLowerCase().includes(colFilterMethod.toLowerCase());
+                  // Inline column dropdown multi-select filters
+                  if (selectedPayIds.length > 0 && !selectedPayIds.includes(p.id)) return false;
+                  const catVal = p.category_type || (p as any).category || '';
+                  if (selectedPayCategories.length > 0 && !selectedPayCategories.includes(catVal)) return false;
+                  const issuerVal = p.issuerName || '';
+                  if (selectedPayIssuers.length > 0 && !selectedPayIssuers.includes(issuerVal)) return false;
+                  const contractVal = p.contractId || '';
+                  if (selectedPayContracts.length > 0 && !selectedPayContracts.includes(contractVal)) return false;
+                  const destVal = p.destinationAccount || '';
+                  if (selectedPayDestinations.length > 0 && !selectedPayDestinations.includes(destVal)) return false;
+                  const dateVal = new Date(p.paymentDate).toLocaleDateString();
+                  if (selectedPayDates.length > 0 && !selectedPayDates.includes(dateVal)) return false;
+                  const methodVal = p.paymentMethod || '';
+                  if (selectedPayMethods.length > 0 && !selectedPayMethods.includes(methodVal)) return false;
+                  const statusVal = p.status || '';
+                  if (selectedPayStatuses.length > 0 && !selectedPayStatuses.includes(statusVal)) return false;
 
-                  return matchesText && matchesStart && matchesEnd && matchesStatus && matchesPill &&
-                    matchesColId && matchesColCat && matchesColIssuer && matchesColContract && matchesColAmount &&
-                    matchesColDest && matchesColDate && matchesColMethod;
+                  return matchesText && matchesStart && matchesEnd && matchesStatus && matchesPill;
                 }).sort((a, b) => {
                   const dateA = a.createdAt ? new Date(a.createdAt).getTime() : (a.paymentDate ? new Date(a.paymentDate).getTime() : 0);
                   const dateB = b.createdAt ? new Date(b.createdAt).getTime() : (b.paymentDate ? new Date(b.paymentDate).getTime() : 0);
@@ -8604,183 +8696,6 @@ function AdminConsole() {
                           </button>
                         </div>
                       </div>
-                      {/* FILA DE FILTROS ÚNICA Y DESPLEGABLES */}
-                      <div className="w-full flex flex-wrap items-center gap-3 border-t pt-3">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">ID</span>
-                          <select
-                            value={colFilterId}
-                            onChange={e => setColFilterId(e.target.value)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-28"
-                          >
-                            <option value="">Todos</option>
-                            {Array.from(new Set(payments.map(p => p.id))).sort().map(id => (
-                              <option key={id} value={id}>{id}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                      {/* Filter Pills Row */}
-                      <div className="flex flex-wrap gap-1.5 border-t pt-3 w-full">
-                        {(['VER TODOS', 'AGENTES', 'PLANES PUBLICIDAD', 'OTROS'] as const).map(pill => (
-                          <button
-                            key={pill}
-                            onClick={() => setPayFilterCategory(pill === 'VER TODOS' ? 'ALL' : pill)}
-                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
-                              (payFilterCategory === pill || (pill === 'VER TODOS' && payFilterCategory === 'ALL'))
-                                ? 'bg-[#0a1931] border-[#0a1931] text-white shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'
-                            }`}
-                          >
-                            {pill}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <span className="text-[9px] font-black text-slate-400 uppercase">Categoría</span>
-                        <select
-                          value={colFilterCategory}
-                          onChange={e => setColFilterCategory(e.target.value)}
-                          className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-32"
-                        >
-                          <option value="">Todas</option>
-                          {Array.from(new Set(payments.map(p => p.category_type || (p as any).category || ''))).filter(Boolean).sort().map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Emisor</span>
-                          <select
-                            value={colFilterIssuer}
-                            onChange={e => setColFilterIssuer(e.target.value)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-36"
-                          >
-                            <option value="">Todos</option>
-                            {Array.from(new Set(payments.map(p => p.issuerName || ''))).filter(Boolean).sort().map(issuer => (
-                              <option key={issuer} value={issuer}>{issuer}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Contrato</span>
-                          <select
-                            value={colFilterContract}
-                            onChange={e => setColFilterContract(e.target.value)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-32"
-                          >
-                            <option value="">Todos</option>
-                            {Array.from(new Set(payments.map(p => p.contractId || ''))).filter(Boolean).sort().map(cId => (
-                              <option key={cId} value={cId}>{cId}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Monto</span>
-                          <select
-                            value={colFilterAmount}
-                            onChange={e => setColFilterAmount(e.target.value)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-28"
-                          >
-                            <option value="">Todos</option>
-                            {Array.from(new Set(payments.map(p => p.amount))).sort((a, b) => a - b).map(amt => (
-                              <option key={amt} value={String(amt)}>${amt.toLocaleString()} USD</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Fecha Pago</span>
-                          <select
-                            value={colFilterDate}
-                            onChange={e => setColFilterDate(e.target.value)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-32"
-                          >
-                            <option value="">Todas</option>
-                            {Array.from(new Set(payments.map(p => new Date(p.paymentDate).toLocaleDateString()))).sort().map(dt => (
-                              <option key={dt} value={dt}>{dt}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Estado</span>
-                          <select
-                            value={payFilterStatus}
-                            onChange={e => setPayFilterStatus(e.target.value as any)}
-                            className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0a1931] text-[#0a1931] w-32"
-                          >
-                            <option value="ALL">Todos</option>
-                            <option value="CONCILIADO">CONCILIADO</option>
-                            <option value="PENDIENTE">PENDIENTE</option>
-                            <option value="OBSERVADO">OBSERVADO</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Unified Filters Bar */}
-                    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-4 bg-slate-50/80 border border-slate-100 rounded-xl mb-4">
-                      <input 
-                        type="text" 
-                        placeholder="Buscar ID..." 
-                        value={colFilterId} 
-                        onChange={e => setColFilterId(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Categoría..." 
-                        value={colFilterCategory} 
-                        onChange={e => setColFilterCategory(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Emisor..." 
-                        value={colFilterIssuer} 
-                        onChange={e => setColFilterIssuer(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Contrato..." 
-                        value={colFilterContract} 
-                        onChange={e => setColFilterContract(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Monto..." 
-                        value={colFilterAmount} 
-                        onChange={e => setColFilterAmount(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Cuenta..." 
-                        value={colFilterDestination} 
-                        onChange={e => setColFilterDestination(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Fecha..." 
-                        value={colFilterDate} 
-                        onChange={e => setColFilterDate(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="Método..." 
-                        value={colFilterMethod} 
-                        onChange={e => setColFilterMethod(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                      />
                     </div>
 
                     {/* 3. MAQUETACIÓN PIXEL-PERFECT DE LA TABLA DE INGRESOS (11 Columnas Estrictas) */}
@@ -8788,17 +8703,107 @@ function AdminConsole() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[1280px]">
                           <thead>
-                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b border-slate-200 tracking-widest">
-                              <th className="p-3 pl-6">ID INGRESO</th>
-                              <th className="p-3">CATEGORÍA</th>
-                              <th className="p-3">EMISOR</th>
-                              <th className="p-3">CONTRATO REL.</th>
-                              <th className="p-3">MONTO COBRADO</th>
-                              <th className="p-3">CUENTA DESTINO</th>
-                              <th className="p-3">FECHA PAGO</th>
-                              <th className="p-3">MÉTODO</th>
+                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b border-slate-200 tracking-widest select-none">
+                              <th className="p-3 pl-6 relative">
+                                <DropdownFilter
+                                  title="ID INGRESO"
+                                  options={uniquePayIds}
+                                  selectedValues={selectedPayIds}
+                                  onFilterChange={setSelectedPayIds}
+                                  isOpen={activeHeaderFilter === 'pay-id'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-id' ? null : 'pay-id')}
+                                  placeholder="Buscar ID..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="CATEGORÍA"
+                                  options={uniquePayCategories}
+                                  selectedValues={selectedPayCategories}
+                                  onFilterChange={setSelectedPayCategories}
+                                  isOpen={activeHeaderFilter === 'pay-cat'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-cat' ? null : 'pay-cat')}
+                                  placeholder="Categoría..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="EMISOR"
+                                  options={uniquePayIssuers}
+                                  selectedValues={selectedPayIssuers}
+                                  onFilterChange={setSelectedPayIssuers}
+                                  isOpen={activeHeaderFilter === 'pay-issuer'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-issuer' ? null : 'pay-issuer')}
+                                  placeholder="Emisor..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="CONTRATO REL."
+                                  options={uniquePayContracts}
+                                  selectedValues={selectedPayContracts}
+                                  onFilterChange={setSelectedPayContracts}
+                                  isOpen={activeHeaderFilter === 'pay-contract'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-contract' ? null : 'pay-contract')}
+                                  placeholder="Contrato..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="MONTO COBRADO"
+                                  options={uniquePayAmounts}
+                                  selectedValues={selectedPayAmounts}
+                                  onFilterChange={setSelectedPayAmounts}
+                                  isOpen={activeHeaderFilter === 'pay-amount'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-amount' ? null : 'pay-amount')}
+                                  placeholder="Monto..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="CUENTA DESTINO"
+                                  options={uniquePayDestinations}
+                                  selectedValues={selectedPayDestinations}
+                                  onFilterChange={setSelectedPayDestinations}
+                                  isOpen={activeHeaderFilter === 'pay-dest'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-dest' ? null : 'pay-dest')}
+                                  placeholder="Cuenta..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="FECHA PAGO"
+                                  options={uniquePayDates}
+                                  selectedValues={selectedPayDates}
+                                  onFilterChange={setSelectedPayDates}
+                                  isOpen={activeHeaderFilter === 'pay-date'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-date' ? null : 'pay-date')}
+                                  placeholder="Fecha..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="MÉTODO"
+                                  options={uniquePayMethods}
+                                  selectedValues={selectedPayMethods}
+                                  onFilterChange={setSelectedPayMethods}
+                                  isOpen={activeHeaderFilter === 'pay-method'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-method' ? null : 'pay-method')}
+                                  placeholder="Método..."
+                                />
+                              </th>
                               <th className="p-3">COMPROBANTE</th>
-                              <th className="p-3">ESTADO</th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="ESTADO"
+                                  options={uniquePayStatuses}
+                                  selectedValues={selectedPayStatuses}
+                                  onFilterChange={setSelectedPayStatuses}
+                                  isOpen={activeHeaderFilter === 'pay-status'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'pay-status' ? null : 'pay-status')}
+                                  placeholder="Estado..."
+                                />
+                              </th>
                               <th className="p-3 pr-6 text-right">ACCIÓN</th>
                             </tr>
                           </thead>
@@ -8963,17 +8968,22 @@ function AdminConsole() {
                   // Category filter dropdown
                   const matchCategory = expFilterCategory === 'ALL' ? true : exp.category === expFilterCategory;
 
-                  // Independent columns filters
-                  const matchColId = expColFilterId ? exp.id.toLowerCase().includes(expColFilterId.toLowerCase()) : true;
-                  const matchColDate = expColFilterDate ? new Date(exp.date).toLocaleDateString().includes(expColFilterDate) : true;
-                  const matchColRequester = expColFilterRequester ? (exp.requester || '').toLowerCase().includes(expColFilterRequester.toLowerCase()) : true;
-                  const matchColCategory = expColFilterCategory ? exp.category.toLowerCase().includes(expColFilterCategory.toLowerCase()) : true;
-                  const matchColConcept = expColFilterConcept ? exp.concept.toLowerCase().includes(expColFilterConcept.toLowerCase()) : true;
-                  const matchColVinculacion = expColFilterVinculacion ? (exp.vinculacion || '').toLowerCase().includes(expColFilterVinculacion.toLowerCase()) : true;
-                  const matchColAmount = expColFilterAmount ? String(exp.amount).includes(expColFilterAmount) : true;
-                  const matchColStatus = expColFilterStatus ? (exp.status || '').toLowerCase().includes(expColFilterStatus.toLowerCase()) : true;
+                  // Independent columns dropdown multi-select filters
+                  if (selectedExpIds.length > 0 && !selectedExpIds.includes(exp.id)) return false;
+                  const dateVal = new Date(exp.date).toLocaleDateString();
+                  if (selectedExpDates.length > 0 && !selectedExpDates.includes(dateVal)) return false;
+                  const reqVal = exp.requester || '';
+                  if (selectedExpRequesters.length > 0 && !selectedExpRequesters.includes(reqVal)) return false;
+                  const catVal = exp.category || '';
+                  if (selectedExpCategories.length > 0 && !selectedExpCategories.includes(catVal)) return false;
+                  const conceptVal = exp.concept || '';
+                  if (selectedExpConcepts.length > 0 && !selectedExpConcepts.includes(conceptVal)) return false;
+                  const vincVal = exp.vinculacion || '';
+                  if (selectedExpVinculaciones.length > 0 && !selectedExpVinculaciones.includes(vincVal)) return false;
+                  const statusVal = exp.status || '';
+                  if (selectedExpStatuses.length > 0 && !selectedExpStatuses.includes(statusVal)) return false;
 
-                  return matchSearch && matchStatus && matchCategory && matchColId && matchColDate && matchColRequester && matchColCategory && matchColConcept && matchColVinculacion && matchColAmount && matchColStatus;
+                  return matchSearch && matchStatus && matchCategory;
                 }).sort((a, b) => {
                   const dateA = a.createdAt ? new Date(a.createdAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
                   const dateB = b.createdAt ? new Date(b.createdAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
@@ -9108,7 +9118,6 @@ function AdminConsole() {
                         </div>
 
                       </div>
-
                       {/* Add button */}
                       <div className="flex items-end">
                         <button
@@ -9118,66 +9127,6 @@ function AdminConsole() {
                           REGISTRAR GASTO
                         </button>
                       </div>
-                    </div>
-
-                    {/* Unified Filters Bar */}
-                    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-4 bg-slate-50/80 border border-slate-100 rounded-xl mb-4">
-                      <input
-                        type="text"
-                        placeholder="Buscar ID..."
-                        value={expColFilterId}
-                        onChange={(e) => setExpColFilterId(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Fecha..."
-                        value={expColFilterDate}
-                        onChange={(e) => setExpColFilterDate(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Solicitante..."
-                        value={expColFilterRequester}
-                        onChange={(e) => setExpColFilterRequester(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Categoría..."
-                        value={expColFilterCategory}
-                        onChange={(e) => setExpColFilterCategory(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Concepto..."
-                        value={expColFilterConcept}
-                        onChange={(e) => setExpColFilterConcept(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Vinculación..."
-                        value={expColFilterVinculacion}
-                        onChange={(e) => setExpColFilterVinculacion(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Monto..."
-                        value={expColFilterAmount}
-                        onChange={(e) => setExpColFilterAmount(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Estado..."
-                        value={expColFilterStatus}
-                        onChange={(e) => setExpColFilterStatus(e.target.value)}
-                        className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700"
-                      />
                     </div>
 
                     {/* Table container */}
@@ -9196,17 +9145,87 @@ function AdminConsole() {
                         <table className="w-full text-left border-collapse">
                           <thead>
                             {/* Main headers */}
-                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b">
-                              <th className="p-3 pl-5">ID EGR</th>
-                              <th className="p-3">Fecha Registro</th>
-                              <th className="p-3">Solicitante</th>
-                              <th className="p-3">Categoría</th>
-                              <th className="p-3">Concepto / Detalle</th>
-                              <th className="p-3">Vinculación (Prop/Ctr)</th>
-                              <th className="p-3">Monto</th>
-                              <th className="p-3">Comprobante</th>
-                              <th className="p-3">Estado</th>
-                              <th className="p-3 pr-5 text-right">Acción</th>
+                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
+                              <th className="p-3 pl-5 relative">
+                                <DropdownFilter
+                                  title="ID EGR"
+                                  options={uniqueExpIds}
+                                  selectedValues={selectedExpIds}
+                                  onFilterChange={setSelectedExpIds}
+                                  isOpen={activeHeaderFilter === 'exp-id'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-id' ? null : 'exp-id')}
+                                  placeholder="Buscar ID..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Fecha Registro"
+                                  options={uniqueExpDates}
+                                  selectedValues={selectedExpDates}
+                                  onFilterChange={setSelectedExpDates}
+                                  isOpen={activeHeaderFilter === 'exp-date'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-date' ? null : 'exp-date')}
+                                  placeholder="Fecha..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Solicitante"
+                                  options={uniqueExpRequesters}
+                                  selectedValues={selectedExpRequesters}
+                                  onFilterChange={setSelectedExpRequesters}
+                                  isOpen={activeHeaderFilter === 'exp-requester'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-requester' ? null : 'exp-requester')}
+                                  placeholder="Solicitante..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Categoría"
+                                  options={uniqueExpCategories}
+                                  selectedValues={selectedExpCategories}
+                                  onFilterChange={setSelectedExpCategories}
+                                  isOpen={activeHeaderFilter === 'exp-category'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-category' ? null : 'exp-category')}
+                                  placeholder="Categoría..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Concepto / Detalle"
+                                  options={uniqueExpConcepts}
+                                  selectedValues={selectedExpConcepts}
+                                  onFilterChange={setSelectedExpConcepts}
+                                  isOpen={activeHeaderFilter === 'exp-concept'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-concept' ? null : 'exp-concept')}
+                                  placeholder="Concepto..."
+                                />
+                              </th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Vinculación (Prop/Ctr)"
+                                  options={uniqueExpVinculaciones}
+                                  selectedValues={selectedExpVinculaciones}
+                                  onFilterChange={setSelectedExpVinculaciones}
+                                  isOpen={activeHeaderFilter === 'exp-vinculacion'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-vinculacion' ? null : 'exp-vinculacion')}
+                                  placeholder="Vinculación..."
+                                />
+                              </th>
+                              <th className="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px] align-middle">Monto</th>
+                              <th className="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px] align-middle">Comprobante</th>
+                              <th className="p-3 relative">
+                                <DropdownFilter
+                                  title="Estado"
+                                  options={uniqueExpStatuses}
+                                  selectedValues={selectedExpStatuses}
+                                  onFilterChange={setSelectedExpStatuses}
+                                  isOpen={activeHeaderFilter === 'exp-status'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'exp-status' ? null : 'exp-status')}
+                                  placeholder="Estado..."
+                                />
+                              </th>
+                              <th className="p-3 pr-5 text-right font-black text-slate-500 uppercase tracking-widest text-[9px] align-middle">Acción</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y text-xs font-semibold text-slate-700">
