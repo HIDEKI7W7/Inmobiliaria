@@ -1703,7 +1703,7 @@ function AdminConsole() {
     };
     fetchReportDataAuto();
   }, [activeTab, reportSection, reportStartDate, reportEndDate, reportZone, selectedSucursal,
-      properties, agents, prospects, owners, developers, contracts, payments, expenses]);
+      properties, agents, contracts, payments, expenses]);
 
 
   // Excel/PDF Simulation Alert
@@ -9448,8 +9448,9 @@ function AdminConsole() {
                     const reportData = sorted;
                     if (reportData.length === 0) {
                       return (
-                        <div className="p-12 text-center text-xs font-semibold text-slate-450 uppercase tracking-wider">
-                          Presione el botón "Filtrar 🔍" para visualizar la extracción en tiempo real.
+                        <div className="p-12 text-center space-y-2">
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Sin registros para el rango y filtros seleccionados.</p>
+                          <p className="text-[10px] text-slate-300 font-semibold">Cambia la sección, fechas o zona para ampliar la búsqueda.</p>
                         </div>
                       );
                     }
@@ -9728,8 +9729,62 @@ function AdminConsole() {
 
                 return (
                   <div className="space-y-6">
+                    {/* KPI cards — reactive from reportData */}
+                    {reportData.length > 0 && (() => {
+                      const total = reportData.length;
+                      const financialSum = reportData.reduce((s: number, r: any) => {
+                        const v = r.price || r.amount || r.monthly || r.budget || 0;
+                        return s + Math.abs(Number(v));
+                      }, 0);
+                      const activeCount = reportData.filter((r: any) =>
+                        ['APROBADO','VIGENTE','ACTIVO','CONCILIADO','Activo','Verificado'].includes(r.status || '')
+                      ).length;
+                      const sectionIcon: Record<string,string> = {
+                        PROPIEDADES:'🏠', AGENTES:'👤', PROSPECTOS:'🎯', PROPIETARIOS:'🔑',
+                        CONSTRUCTORAS:'🏗️', CONTRATOS:'📄', INGRESOS:'💰', GASTOS:'💸',
+                        'PLANES MKT':'📣', COLABORACIONES:'🤝'
+                      };
+                      const financialLabel: Record<string,string> = {
+                        PROPIEDADES:'Valor total', CONTRATOS:'Renta mensual total',
+                        INGRESOS:'Ingresos totales', GASTOS:'Egresos totales',
+                        PROSPECTOS:'Presupuesto total', AGENTES:'Volumen estimado'
+                      };
+                      const showFinancial = ['PROPIEDADES','CONTRATOS','INGRESOS','GASTOS','PROSPECTOS'].includes(reportSection);
+                      return (
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                              {sectionIcon[reportSection] || '📋'} Total {reportSection}
+                            </span>
+                            <span className="text-2xl font-black text-[#04045E] mt-1 block">{total}</span>
+                            <span className="text-[10px] text-slate-400 font-semibold">registros encontrados</span>
+                          </div>
+                          {showFinancial && (
+                            <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                                💵 {financialLabel[reportSection] || 'Suma financiera'}
+                              </span>
+                              <span className={`text-2xl font-black mt-1 block ${reportSection === 'GASTOS' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                ${financialSum.toLocaleString('es-BO')} USD
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-semibold">acumulado del período</span>
+                            </div>
+                          )}
+                          <div className={`bg-white border border-slate-100 rounded-2xl p-4 shadow-sm ${showFinancial ? '' : 'col-span-2'}`}>
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                              ✅ Estado activo / aprobado
+                            </span>
+                            <span className="text-2xl font-black text-indigo-600 mt-1 block">{activeCount}</span>
+                            <span className="text-[10px] text-slate-400 font-semibold">
+                              de {total} registros ({total > 0 ? Math.round(activeCount/total*100) : 0}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Filters & Action controls panel */}
-                    <form 
+                    <form
                       onSubmit={(e) => {
                         e.preventDefault();
                         handleExtractReport();
