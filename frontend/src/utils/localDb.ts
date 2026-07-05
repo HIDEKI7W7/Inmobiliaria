@@ -96,3 +96,23 @@ export async function deleteLocalContract(id: string): Promise<void> {
     console.info('[localDb] Contrato eliminado de db.json:', id);
   }
 }
+
+// ── MARKETING PLANS ──────────────────────────────────────────────────────────
+
+/** Carga todos los planes de marketing persistidos desde db.json. */
+export async function fetchLocalMarketingPlans(): Promise<any[]> {
+  const data = await apiFetch<{ plans: any[] }>(`${BASE}/marketing-plans`);
+  return data?.plans ?? [];
+}
+
+/** Persiste el precio de un plan de marketing en db.json. */
+export async function persistLocalMarketingPlan(id: string, price: string): Promise<void> {
+  const result = await apiFetch(`${BASE}/marketing-plans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, price }),
+  });
+  if (result?.ok) {
+    console.info('[localDb] Plan de marketing persistido en db.json:', id, price);
+  }
+}

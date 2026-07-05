@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { WHATSAPP_LINK } from '@/utils/whatsapp';
@@ -36,13 +36,29 @@ export default function ServiciosPage() {
     const fetchPlans = async () => {
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiBaseUrl}/marketing-plans`);
+        const res = await fetch(`${apiBaseUrl}/marketing-plans`, {
+          cache: 'no-store',
+          next: { revalidate: 0 }
+        });
         if (res.ok) {
           const data = await res.json();
           setPlans(data);
+        } else {
+          throw new Error('Backend responded with non-200 status');
         }
       } catch (err) {
-        console.error('Error fetching marketing plans:', err);
+        console.warn('Error fetching marketing plans, falling back to local db.json:', err);
+        try {
+          const localRes = await fetch('/api/local/marketing-plans', { cache: 'no-store' });
+          if (localRes && localRes.ok) {
+            const localData = await localRes.json();
+            if (Array.isArray(localData.plans) && localData.plans.length > 0) {
+              setPlans(localData.plans);
+            }
+          }
+        } catch (localErr) {
+          console.error('Local fallback fetch failed:', localErr);
+        }
       } finally {
         setLoading(false);
       }
@@ -111,21 +127,28 @@ export default function ServiciosPage() {
     },
   ];
 
-  const displayPlans = (plans.length > 0 ? plans : fallbackPlans).map(p => {
-    if (p.id === 'plan-cierre-garantizado' || p.id === 'cierre_garantizado') {
-      return {
-        ...p,
-        price: `Comisión: ${commissionRate}%`,
-        billingCycle: 'del valor de venta (Todo incluido)'
-      };
+  const displayPlans = fallbackPlans.map(fallback => {
+    // Find the corresponding plan from fetched api plans
+    const apiPlan = plans.find(p => p.id === fallback.id || p.id === fallback.id.replace('plan-', ''));
+    let priceVal = fallback.price; // default fallback
+    if (apiPlan) {
+      const numericPrice = parseFloat(apiPlan.price);
+      if (!isNaN(numericPrice)) {
+        if (fallback.id === 'plan-gratis') {
+          priceVal = 'Gratis';
+        } else if (fallback.id === 'plan-cierre-garantizado') {
+          priceVal = `Comisión: ${numericPrice}%`;
+        } else {
+          priceVal = `Bs. ${numericPrice}`;
+        }
+      }
     }
-    if (p.id === 'plan-contenidos' || p.id === 'contenidos') {
-      return { ...p, price: 'Bs. 69' };
-    }
-    if (p.id === 'plan-venta-pro' || p.id === 'venta_pro') {
-      return { ...p, price: 'Bs. 199' };
-    }
-    return p;
+    
+    // Return frozen content but with dynamic price
+    return {
+      ...fallback,
+      price: priceVal
+    };
   });
 
   if (loading) {

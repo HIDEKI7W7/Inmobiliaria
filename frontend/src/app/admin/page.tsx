@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { DropdownFilter } from '@/components/ui/DropdownFilter';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { propertiesService } from '../../services/properties.service';
@@ -1167,6 +1168,18 @@ function AdminConsole() {
   const [selectedDocumentation, setSelectedDocumentation] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [activeHeaderFilter, setActiveHeaderFilter] = useState<string | null>(null);
+
+  // Dropdown multi-select filters for Developers (Constructoras)
+  const [selectedDevIds, setSelectedDevIds] = useState<string[]>([]);
+  const [selectedDevEmpresas, setSelectedDevEmpresas] = useState<string[]>([]);
+  const [selectedDevNits, setSelectedDevNits] = useState<string[]>([]);
+  const [selectedDevRepresentantes, setSelectedDevRepresentantes] = useState<string[]>([]);
+
+  // Dropdown multi-select filters for Contracts (Contratos)
+  const [selectedContractIds, setSelectedContractIds] = useState<string[]>([]);
+  const [selectedContractProperties, setSelectedContractProperties] = useState<string[]>([]);
+  const [selectedContractTenants, setSelectedContractTenants] = useState<string[]>([]);
+  const [selectedContractStatuses, setSelectedContractStatuses] = useState<string[]>([]);
 
   // Map popover state
   const [activeMapPopoverId, setActiveMapPopoverId] = useState<string | null>(null);
@@ -2490,25 +2503,35 @@ function AdminConsole() {
     { id: 'DEV-301', empresa: 'INMOBILIARIA LAS PALMAS S.R.L.', nit: '405968783', representante: 'Ing. Fernando Justiniano', contacto: { email: 'fjustiniano@laspalmas.bo', phone: '+59170833445' }, stock: 15, esquemaComision: '3.5% Neto', etapa: 'Entregado' }
   ]);
 
+  const uniqueDevIds = React.useMemo(() => Array.from(new Set(developers.map(d => d.id))), [developers]);
+  const uniqueDevEmpresas = React.useMemo(() => Array.from(new Set(developers.map(d => d.empresa))), [developers]);
+  const uniqueDevNits = React.useMemo(() => Array.from(new Set(developers.map(d => d.nit))), [developers]);
+  const uniqueDevRepresentantes = React.useMemo(() => Array.from(new Set(developers.map(d => d.representante))), [developers]);
+
   const filteredDevs = React.useMemo(() => {
     // ponytail: sort chronologically descending (newest / highest ID first)
     const list = developers.filter(dev => {
-      if (filterDevId && !dev.id.toLowerCase().includes(filterDevId.toLowerCase())) {
+      if (selectedDevIds.length > 0 && !selectedDevIds.includes(dev.id)) {
         return false;
       }
-      if (filterDevEmpresa && !dev.empresa.toLowerCase().includes(filterDevEmpresa.toLowerCase())) {
+      if (selectedDevEmpresas.length > 0 && !selectedDevEmpresas.includes(dev.empresa)) {
         return false;
       }
-      if (filterDevNit && !dev.nit.toLowerCase().includes(filterDevNit.toLowerCase())) {
+      if (selectedDevNits.length > 0 && !selectedDevNits.includes(dev.nit)) {
         return false;
       }
-      if (filterDevRepresentante && !dev.representante.toLowerCase().includes(filterDevRepresentante.toLowerCase())) {
+      if (selectedDevRepresentantes.length > 0 && !selectedDevRepresentantes.includes(dev.representante)) {
         return false;
       }
       return true;
     });
     return list.sort((a, b) => b.id.localeCompare(a.id));
-  }, [developers, filterDevId, filterDevEmpresa, filterDevNit, filterDevRepresentante]);
+  }, [developers, selectedDevIds, selectedDevEmpresas, selectedDevNits, selectedDevRepresentantes]);
+
+  const uniqueContractIds = React.useMemo(() => Array.from(new Set(contracts.map(c => c.id))), [contracts]);
+  const uniqueContractProperties = React.useMemo(() => Array.from(new Set(contracts.map(c => c.property?.title || c.propertyId))), [contracts]);
+  const uniqueContractTenants = React.useMemo(() => Array.from(new Set(contracts.map(c => c.tenant?.name || c.tenantId))), [contracts]);
+  const uniqueContractStatuses = React.useMemo(() => Array.from(new Set(contracts.map(c => c.status))), [contracts]);
 
   const filteredContracts = React.useMemo(() => {
     return contracts.filter((cnt: any) => {
@@ -2538,26 +2561,19 @@ function AdminConsole() {
         }
       }
 
-      // 3. Inline table search filters
-      if (filterContractId && !cnt.id.toLowerCase().includes(filterContractId.toLowerCase())) {
+      // 3. Dropdown multi-select filters
+      if (selectedContractIds.length > 0 && !selectedContractIds.includes(cnt.id)) {
         return false;
       }
       const propTitle = cnt.property?.title || cnt.propertyId;
-      if (filterContractPropiedad && !propTitle.toLowerCase().includes(filterContractPropiedad.toLowerCase())) {
+      if (selectedContractProperties.length > 0 && !selectedContractProperties.includes(propTitle)) {
         return false;
       }
       const tenantName = cnt.tenant?.name || cnt.tenantId;
-      if (filterContractArrendatario && !tenantName.toLowerCase().includes(filterContractArrendatario.toLowerCase())) {
+      if (selectedContractTenants.length > 0 && !selectedContractTenants.includes(tenantName)) {
         return false;
       }
-      const amountStr = cnt.monthlyAmount.toString();
-      if (filterContractMonto && !amountStr.includes(filterContractMonto)) {
-        return false;
-      }
-      const startStr = new Date(cnt.startDate).toLocaleDateString();
-      const endStr = new Date(cnt.endDate).toLocaleDateString();
-      const rangeStr = `${startStr} - ${endStr}`;
-      if (filterContractVigencia && !rangeStr.toLowerCase().includes(filterContractVigencia.toLowerCase())) {
+      if (selectedContractStatuses.length > 0 && !selectedContractStatuses.includes(cnt.status)) {
         return false;
       }
 
@@ -2568,7 +2584,7 @@ function AdminConsole() {
       if (dateB !== dateA) return dateB - dateA;
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
-  }, [contracts, filterContractDateStart, filterContractDateEnd, filterContractDocState, filterContractId, filterContractPropiedad, filterContractArrendatario, filterContractMonto, filterContractVigencia]);
+  }, [contracts, filterContractDateStart, filterContractDateEnd, filterContractDocState, selectedContractIds, selectedContractProperties, selectedContractTenants, selectedContractStatuses]);
 
 
   // Production Kanban for Marketing Planes
@@ -7998,59 +8014,56 @@ function AdminConsole() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                           <thead>
-                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b">
-                              <th className="p-4 pl-6 w-28">ID Corporativo</th>
-                              <th className="p-4 w-48">Empresa</th>
-                              <th className="p-4 w-36">NIT</th>
-                              <th className="p-4 w-40">Representante</th>
+                            <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
+                              <th className="p-4 pl-6 w-28 relative">
+                                <DropdownFilter
+                                  title="ID Corporativo"
+                                  options={uniqueDevIds}
+                                  selectedValues={selectedDevIds}
+                                  onFilterChange={setSelectedDevIds}
+                                  isOpen={activeHeaderFilter === 'dev-id'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'dev-id' ? null : 'dev-id')}
+                                  placeholder="Buscar ID..."
+                                />
+                              </th>
+                              <th className="p-4 w-48 relative">
+                                <DropdownFilter
+                                  title="Empresa"
+                                  options={uniqueDevEmpresas}
+                                  selectedValues={selectedDevEmpresas}
+                                  onFilterChange={setSelectedDevEmpresas}
+                                  isOpen={activeHeaderFilter === 'dev-empresa'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'dev-empresa' ? null : 'dev-empresa')}
+                                  placeholder="Buscar Empresa..."
+                                />
+                              </th>
+                              <th className="p-4 w-36 relative">
+                                <DropdownFilter
+                                  title="NIT"
+                                  options={uniqueDevNits}
+                                  selectedValues={selectedDevNits}
+                                  onFilterChange={setSelectedDevNits}
+                                  isOpen={activeHeaderFilter === 'dev-nit'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'dev-nit' ? null : 'dev-nit')}
+                                  placeholder="Buscar NIT..."
+                                />
+                              </th>
+                              <th className="p-4 w-40 relative">
+                                <DropdownFilter
+                                  title="Representante"
+                                  options={uniqueDevRepresentantes}
+                                  selectedValues={selectedDevRepresentantes}
+                                  onFilterChange={setSelectedDevRepresentantes}
+                                  isOpen={activeHeaderFilter === 'dev-rep'}
+                                  onToggle={() => setActiveHeaderFilter(prev => prev === 'dev-rep' ? null : 'dev-rep')}
+                                  placeholder="Buscar Rep..."
+                                />
+                              </th>
                               <th className="p-4 w-52">Contacto</th>
                               <th className="p-4 w-24">Stock</th>
                               <th className="p-4 w-44">Esquema Comisión</th>
                               <th className="p-4 w-40">Etapa</th>
                               <th className="p-4 pr-6 text-right w-36">Herramientas</th>
-                            </tr>
-                            <tr className="bg-slate-50/50 border-b">
-                              <td className="p-2 pl-6">
-                                <input
-                                  type="text"
-                                  placeholder="Filtrar ID..."
-                                  value={filterDevId}
-                                  onChange={(e) => setFilterDevId(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-[#04045E] focus:outline-hidden focus:border-[#04045E]"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  placeholder="Filtrar Empresa..."
-                                  value={filterDevEmpresa}
-                                  onChange={(e) => setFilterDevEmpresa(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-[#04045E] focus:outline-hidden focus:border-[#04045E]"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  placeholder="Filtrar NIT..."
-                                  value={filterDevNit}
-                                  onChange={(e) => setFilterDevNit(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-[#04045E] focus:outline-hidden focus:border-[#04045E]"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  placeholder="Filtrar Repr..."
-                                  value={filterDevRepresentante}
-                                  onChange={(e) => setFilterDevRepresentante(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-[#04045E] focus:outline-hidden focus:border-[#04045E]"
-                                />
-                              </td>
-                              <td className="p-2"></td>
-                              <td className="p-2"></td>
-                              <td className="p-2"></td>
-                              <td className="p-2"></td>
-                              <td className="p-2 pr-6"></td>
                             </tr>
                           </thead>
                           <tbody className="divide-y text-xs font-semibold text-slate-700">
@@ -8236,57 +8249,58 @@ function AdminConsole() {
                     </div>
                   </div>
 
-                  {/* Unified Filters Bar */}
-                  <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-4 bg-slate-50/80 border border-slate-100 rounded-xl mb-4">
-                    <input 
-                      type="text" 
-                      placeholder="Buscar ID..." 
-                      value={filterContractId} 
-                      onChange={e => setFilterContractId(e.target.value)}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Propiedad..." 
-                      value={filterContractPropiedad} 
-                      onChange={e => setFilterContractPropiedad(e.target.value)}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Inquilino..." 
-                      value={filterContractArrendatario} 
-                      onChange={e => setFilterContractArrendatario(e.target.value)}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Monto..." 
-                      value={filterContractMonto} 
-                      onChange={e => setFilterContractMonto(e.target.value)}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Fecha..." 
-                      value={filterContractVigencia} 
-                      onChange={e => setFilterContractVigencia(e.target.value)}
-                      className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400 text-slate-700" 
-                    />
-                  </div>
-
                   {/* Table with Actions */}
                   <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b">
-                            <th className="p-4 pl-6">ID Contrato</th>
-                            <th className="p-4">Propiedad</th>
-                            <th className="p-4">Arrendatario</th>
+                          <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
+                            <th className="p-4 pl-6 relative">
+                              <DropdownFilter
+                                title="ID Contrato"
+                                options={uniqueContractIds}
+                                selectedValues={selectedContractIds}
+                                onFilterChange={setSelectedContractIds}
+                                isOpen={activeHeaderFilter === 'con-id'}
+                                onToggle={() => setActiveHeaderFilter(prev => prev === 'con-id' ? null : 'con-id')}
+                                placeholder="Buscar ID..."
+                              />
+                            </th>
+                            <th className="p-4 relative">
+                              <DropdownFilter
+                                title="Propiedad"
+                                options={uniqueContractProperties}
+                                selectedValues={selectedContractProperties}
+                                onFilterChange={setSelectedContractProperties}
+                                isOpen={activeHeaderFilter === 'con-prop'}
+                                onToggle={() => setActiveHeaderFilter(prev => prev === 'con-prop' ? null : 'con-prop')}
+                                placeholder="Buscar Prop..."
+                              />
+                            </th>
+                            <th className="p-4 relative">
+                              <DropdownFilter
+                                title="Arrendatario"
+                                options={uniqueContractTenants}
+                                selectedValues={selectedContractTenants}
+                                onFilterChange={setSelectedContractTenants}
+                                isOpen={activeHeaderFilter === 'con-tenant'}
+                                onToggle={() => setActiveHeaderFilter(prev => prev === 'con-tenant' ? null : 'con-tenant')}
+                                placeholder="Buscar Inquilino..."
+                              />
+                            </th>
                             <th className="p-4">Monto Mensual</th>
                             <th className="p-4">Vigencia</th>
-                            <th className="p-4 text-center">Estado</th>
+                            <th className="p-4 text-center relative">
+                              <DropdownFilter
+                                title="Estado"
+                                options={uniqueContractStatuses}
+                                selectedValues={selectedContractStatuses}
+                                onFilterChange={setSelectedContractStatuses}
+                                isOpen={activeHeaderFilter === 'con-status'}
+                                onToggle={() => setActiveHeaderFilter(prev => prev === 'con-status' ? null : 'con-status')}
+                                placeholder="Buscar Estado..."
+                              />
+                            </th>
                             <th className="p-4 pr-6 text-right">Herramientas</th>
                           </tr>
                         </thead>

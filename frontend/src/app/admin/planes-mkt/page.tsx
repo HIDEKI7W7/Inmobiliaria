@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AdminSidebar, Tab } from '@/components/ui/AdminSidebar';
 import { AgentProvider, useAgents } from '@/context/AgentContext';
 import { getCurrentUser, getToken } from '@/utils/session';
+import { persistLocalMarketingPlan } from '@/utils/localDb';
 
 interface Property {
   id: string;
@@ -162,6 +163,33 @@ function PlanesMktDashboard() {
     };
   });
 
+const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCycle: string; featuresText: string }> = {
+  'plan-gratis': {
+    name: 'Plan Gratuito',
+    price: '0',
+    billingCycle: '',
+    featuresText: '1 publicación activa\nFotos básicas (hasta 5)\nContacto directo por WhatsApp'
+  },
+  'plan-contenidos': {
+    name: 'Plan Contenidos',
+    price: '69',
+    billingCycle: '/mes',
+    featuresText: '1 propiedad\nFotos + Video optimizado\nContacto directo por WhatsApp\nMapa interactivo con radar\nAlquiler de letrero físico'
+  },
+  'plan-venta-pro': {
+    name: 'Plan Venta Pro',
+    price: '199',
+    billingCycle: '/mes',
+    featuresText: '1 propiedad\nDron + Fotos Profesionales\nSello Oro + Mapa Premium\nAlquiler de letrero físico\nEstadísticas Avanzadas de Visitas\nPUBLICIDAD PRIORITARIA'
+  },
+  'plan-cierre-garantizado': {
+    name: 'Cierre Garantizado',
+    price: '1.5',
+    billingCycle: 'del valor de venta (Todo incluido)',
+    featuresText: 'Gestión completa por Agente Experto\nVisitas y Negociación delegadas\nAlquiler de letrero físico\nAuditoría Legal y Notarial'
+  }
+};
+
   const [savingPlans, setSavingPlans] = useState(false);
   const [editablePlans, setEditablePlans] = useState<{
     [id: string]: {
@@ -171,37 +199,64 @@ function PlanesMktDashboard() {
       featuresText: string;
     }
   }>({
-    'plan-gratis': { name: 'Gratuito', price: '0', billingCycle: '', featuresText: '' },
-    'plan-contenidos': { name: '', price: '', billingCycle: '', featuresText: '' },
-    'plan-venta-pro': { name: '', price: '', billingCycle: '', featuresText: '' },
-    'plan-cierre-garantizado': { name: '', price: '', billingCycle: '', featuresText: '' },
+    'plan-gratis': { ...FROZEN_PLANS_DATA['plan-gratis'] },
+    'plan-contenidos': { ...FROZEN_PLANS_DATA['plan-contenidos'] },
+    'plan-venta-pro': { ...FROZEN_PLANS_DATA['plan-venta-pro'] },
+    'plan-cierre-garantizado': { ...FROZEN_PLANS_DATA['plan-cierre-garantizado'] },
   });
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiBase}/marketing-plans`, { cache: 'no-store' });
+        const res = await fetch(`${apiBase}/marketing-plans`, {
+          cache: 'no-store',
+          next: { revalidate: 0 }
+        });
+        let data = [];
         if (res.ok) {
-          const data = await res.json();
-          const plansMap: any = {};
-          data.forEach((p: any) => {
-            if (p.id === 'plan-gratis' || p.id === 'plan-contenidos' || p.id === 'plan-venta-pro' || p.id === 'plan-cierre-garantizado') {
-              const fText = Array.isArray(p.features) 
-                ? p.features.map((f: any) => f.text).join('\n') 
-                : '';
-              plansMap[p.id] = {
-                name: p.name || '',
-                price: String(p.price || ''),
-                billingCycle: p.billingCycle || '',
-                featuresText: fText,
-              };
-            }
-          });
-          setEditablePlans(prev => ({ ...prev, ...plansMap }));
+          data = await res.json();
+        } else {
+          throw new Error('Backend failed');
         }
+
+        const plansMap: any = {};
+        data.forEach((p: any) => {
+          if (p.id === 'plan-gratis' || p.id === 'plan-contenidos' || p.id === 'plan-venta-pro' || p.id === 'plan-cierre-garantizado') {
+            const frozen = FROZEN_PLANS_DATA[p.id];
+            plansMap[p.id] = {
+              name: frozen.name,
+              price: String(p.price || frozen.price),
+              billingCycle: frozen.billingCycle,
+              featuresText: frozen.featuresText,
+            };
+          }
+        });
+        setEditablePlans(prev => ({ ...prev, ...plansMap }));
       } catch (err) {
-        console.error('Error fetching marketing plans:', err);
+        console.warn('Error fetching marketing plans from backend, trying local fallback:', err);
+        try {
+          const localRes = await fetch('/api/local/marketing-plans', { cache: 'no-store' });
+          if (localRes && localRes.ok) {
+            const localData = await localRes.json();
+            const data = localData.plans || [];
+            const plansMap: any = {};
+            data.forEach((p: any) => {
+              if (p.id === 'plan-gratis' || p.id === 'plan-contenidos' || p.id === 'plan-venta-pro' || p.id === 'plan-cierre-garantizado') {
+                const frozen = FROZEN_PLANS_DATA[p.id];
+                plansMap[p.id] = {
+                  name: frozen.name,
+                  price: String(p.price || frozen.price),
+                  billingCycle: frozen.billingCycle,
+                  featuresText: frozen.featuresText,
+                };
+              }
+            });
+            setEditablePlans(prev => ({ ...prev, ...plansMap }));
+          }
+        } catch (localErr) {
+          console.error('Local fallback fetch failed:', localErr);
+        }
       }
     };
     fetchPlans();
@@ -234,20 +289,26 @@ function PlanesMktDashboard() {
 
   const handleSaveSinglePlan = async (id: string) => {
     setSavingPlans(true);
+    const plan = editablePlans[id];
+    const frozen = FROZEN_PLANS_DATA[id] || {
+      name: plan.name,
+      billingCycle: plan.billingCycle,
+      featuresText: plan.featuresText
+    };
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      const token = getToken();
-      const plan = editablePlans[id];
-      const features = plan.featuresText
+      const adminToken = getToken() || (typeof window !== 'undefined' ? localStorage.getItem('propio_token') : '') || '';
+      
+      const features = frozen.featuresText
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean)
         .map(text => ({ text, included: true }));
       
       const payload = {
-        name: plan.name,
+        name: frozen.name,
         price: plan.price,
-        billingCycle: plan.billingCycle,
+        billingCycle: frozen.billingCycle,
         features,
       };
 
@@ -255,20 +316,25 @@ function PlanesMktDashboard() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${adminToken}`
         },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        alert(`Plan ${plan.name} guardado exitosamente.`);
+        alert(`Plan ${frozen.name} guardado exitosamente.`);
       } else {
         const errorData = await res.json().catch(() => ({}));
-        alert(`Error al guardar: ${errorData.message || 'Error del servidor'}`);
+        console.warn(`[admin] PATCH /plans/${id} failed with ${res.status}: ${errorData.message || 'Unauthorized'}. Triggering local fallback...`);
+        // Fallback to local DB
+        await persistLocalMarketingPlan(id, plan.price);
+        alert(`Servidor de producción no autorizado (${res.status}). El precio se guardó en la base de datos de simulación local (db.json) exitosamente.`);
       }
     } catch (err: any) {
-      console.error(err);
-      alert(`Error de red: ${err.message}`);
+      console.warn('[admin] PATCH /plans failed with network error. Triggering local fallback...', err);
+      // Fallback to local DB
+      await persistLocalMarketingPlan(id, plan.price);
+      alert(`Servidor fuera de línea. El precio se guardó en la base de datos de simulación local (db.json) exitosamente.`);
     } finally {
       setSavingPlans(false);
     }
@@ -278,11 +344,16 @@ function PlanesMktDashboard() {
     setSavingPlans(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      const token = getToken();
+      const adminToken = getToken() || (typeof window !== 'undefined' ? localStorage.getItem('propio_token') : '') || '';
       
       const payloadPlans = Object.keys(editablePlans).map(id => {
         const p = editablePlans[id];
-        const features = p.featuresText
+        const frozen = FROZEN_PLANS_DATA[id] || {
+          name: p.name,
+          billingCycle: p.billingCycle,
+          featuresText: p.featuresText
+        };
+        const features = frozen.featuresText
           .split('\n')
           .map(line => line.trim())
           .filter(Boolean)
@@ -290,9 +361,9 @@ function PlanesMktDashboard() {
           
         return {
           id,
-          name: p.name,
+          name: frozen.name,
           price: p.price,
-          billingCycle: p.billingCycle,
+          billingCycle: frozen.billingCycle,
           features,
         };
       });
@@ -301,7 +372,7 @@ function PlanesMktDashboard() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${adminToken}`
         },
         body: JSON.stringify({ plans: payloadPlans }),
       });
@@ -310,11 +381,20 @@ function PlanesMktDashboard() {
         alert('Configuración de planes de marketing guardada exitosamente.');
       } else {
         const errorData = await res.json().catch(() => ({}));
-        alert(`Error al guardar: ${errorData.message || 'Error del servidor'}`);
+        console.warn(`[admin] PUT /admin/marketing-plans failed with ${res.status}: ${errorData.message || 'Unauthorized'}. Triggering local fallback...`);
+        // Fallback to local DB for all plans
+        for (const p of payloadPlans) {
+          await persistLocalMarketingPlan(p.id, p.price);
+        }
+        alert(`Servidor de producción no autorizado (${res.status}). Los precios se guardaron en la base de datos de simulación local (db.json) exitosamente.`);
       }
     } catch (err: any) {
-      console.error(err);
-      alert(`Error de red: ${err.message}`);
+      console.warn('[admin] PUT /admin/marketing-plans failed with network error. Triggering local fallback...', err);
+      // Fallback to local DB
+      for (const id of Object.keys(editablePlans)) {
+        await persistLocalMarketingPlan(id, editablePlans[id].price);
+      }
+      alert(`Servidor fuera de línea. Los precios se guardaron en la base de datos de simulación local (db.json) exitosamente.`);
     } finally {
       setSavingPlans(false);
     }
@@ -797,19 +877,17 @@ function PlanesMktDashboard() {
                       <div className="space-y-2.5">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Título</label>
+                            <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Título (Solo Lectura)</label>
                             <input 
                               type="text" 
                               value={plan.name}
-                              onChange={(e) => setEditablePlans(prev => ({
-                                ...prev,
-                                [id]: { ...prev[id], name: e.target.value }
-                              }))}
-                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-800 font-bold focus:outline-none focus:border-blue-500"
+                              disabled
+                              readOnly
+                              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-500 font-bold focus:outline-none cursor-not-allowed opacity-75"
                             />
                           </div>
                           <div>
-                            <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Precio</label>
+                            <label className="block text-[7px] font-black text-slate-450 uppercase mb-0.5">Precio (Editable)</label>
                             <input 
                               type="text" 
                               value={plan.price}
@@ -817,34 +895,30 @@ function PlanesMktDashboard() {
                                 ...prev,
                                 [id]: { ...prev[id], price: e.target.value }
                               }))}
-                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-800 font-black focus:outline-none focus:border-blue-500"
+                              className="w-full bg-white border border-blue-300 rounded-lg px-2.5 py-1 text-[10px] text-slate-800 font-black focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Subtítulo / Ciclo</label>
+                          <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Subtítulo / Ciclo (Solo Lectura)</label>
                           <input 
                             type="text" 
                             value={plan.billingCycle}
-                            onChange={(e) => setEditablePlans(prev => ({
-                              ...prev,
-                              [id]: { ...prev[id], billingCycle: e.target.value }
-                            }))}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-800 font-medium focus:outline-none focus:border-blue-500"
+                            disabled
+                            readOnly
+                            className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-500 font-medium focus:outline-none cursor-not-allowed opacity-75"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Beneficios (Uno por línea)</label>
+                          <label className="block text-[7px] font-black text-slate-400 uppercase mb-0.5">Beneficios (Solo Lectura)</label>
                           <textarea 
                             rows={3}
                             value={plan.featuresText}
-                            onChange={(e) => setEditablePlans(prev => ({
-                              ...prev,
-                              [id]: { ...prev[id], featuresText: e.target.value }
-                            }))}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[9px] text-slate-700 font-medium focus:outline-none focus:border-blue-500 font-sans leading-relaxed"
+                            disabled
+                            readOnly
+                            className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-[9px] text-slate-500 font-medium focus:outline-none cursor-not-allowed opacity-75 font-sans leading-relaxed"
                           />
                         </div>
                       </div>

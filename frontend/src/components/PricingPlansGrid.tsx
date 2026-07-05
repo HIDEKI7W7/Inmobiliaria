@@ -87,9 +87,22 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({
         if (res.ok) {
           const data = await res.json();
           setDbPlans(data);
+        } else {
+          throw new Error('Backend responded with non-200 status');
         }
       } catch (err) {
-        console.error('Error fetching db plans:', err);
+        console.warn('Error fetching db plans, falling back to local db.json:', err);
+        try {
+          const localRes = await fetch('/api/local/marketing-plans', { cache: 'no-store' });
+          if (localRes && localRes.ok) {
+            const localData = await localRes.json();
+            if (Array.isArray(localData.plans) && localData.plans.length > 0) {
+              setDbPlans(localData.plans);
+            }
+          }
+        } catch (localErr) {
+          console.error('Local fallback fetch for PricingPlansGrid failed:', localErr);
+        }
       }
     };
     fetchDbPlans();

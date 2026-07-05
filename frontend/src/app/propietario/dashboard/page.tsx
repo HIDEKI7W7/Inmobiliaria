@@ -93,6 +93,64 @@ export default function PropietarioDashboard() {
 
   const [commissionRate, setCommissionRate] = useState(1.5);
 
+  const [planPrices, setPlanPrices] = useState({
+    gratis: 0,
+    contenidos: 69,
+    venta_pro: 199,
+    cierre_garantizado: 1.5
+  });
+
+  useEffect(() => {
+    // 1. Intentar cargar desde localStorage para rapidez
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('propio_global_plan_prices');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed) {
+            setPlanPrices(prev => ({ ...prev, ...parsed }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    
+    // 2. Fetch fresco desde la API
+    const fetchFreshPrices = async () => {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const res = await fetch(`${apiBaseUrl}/marketing-plans`, {
+          cache: 'no-store',
+          next: { revalidate: 0 }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const pricesMap: any = {};
+          data.forEach((p: any) => {
+            const numPrice = parseFloat(p.price);
+            if (!isNaN(numPrice)) {
+              if (p.id === 'plan-gratis' || p.id === 'basico') pricesMap.gratis = numPrice;
+              else if (p.id === 'plan-contenidos' || p.id === 'contenidos') pricesMap.contenidos = numPrice;
+              else if (p.id === 'plan-venta-pro' || p.id === 'venta_pro') pricesMap.venta_pro = numPrice;
+              else if (p.id === 'plan-cierre-garantizado' || p.id === 'cierre_garantizado') pricesMap.cierre_garantizado = numPrice;
+            }
+          });
+          setPlanPrices(prev => {
+            const updated = { ...prev, ...pricesMap };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('propio_global_plan_prices', JSON.stringify(updated));
+            }
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching dynamic plan prices:', err);
+      }
+    };
+    fetchFreshPrices();
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const activeAnnRaw = localStorage.getItem('propio_active_announcement');
@@ -852,8 +910,14 @@ export default function PropietarioDashboard() {
                           isCierre ? 'text-sm' : 'text-2xl'
                         }`}>
                           {isCierre
-                            ? `Comisión: ${commissionRate}% DEL VALOR DE VENTA (TODO INCLUIDO)`
-                            : plan.priceLabel}
+                            ? `Comisión: ${planPrices.cierre_garantizado}% DEL VALOR DE VENTA (TODO INCLUIDO)`
+                            : plan.id === 'basico'
+                              ? 'Gratis /MES'
+                              : plan.id === 'contenidos'
+                                ? `Bs. ${planPrices.contenidos} /MES`
+                                : plan.id === 'venta_pro'
+                                  ? `Bs. ${planPrices.venta_pro} /MES`
+                                  : plan.priceLabel}
                         </span>
                       </div>
 
