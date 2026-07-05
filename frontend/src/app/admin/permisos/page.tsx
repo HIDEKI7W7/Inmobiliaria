@@ -27,6 +27,8 @@ export interface UserPermission {
   nombre: string;
   email: string;
   activo: boolean;
+  isActive: boolean; // Logical ban flag
+  rol: 'ADMINISTRADOR' | 'AGENTE' | 'USUARIO GENERAL';
   modulos: UserPermissionModules;
 }
 
@@ -38,7 +40,88 @@ export interface RoleMatrixRow {
   cliente: boolean;
 }
 
-const MOCK_USERS_PERMISSIONS: UserPermission[] = [];
+const MOCK_USERS_PERMISSIONS: UserPermission[] = [
+  {
+    id: 'usr-1',
+    nombre: 'René Vargas',
+    email: 'rene.vargas@propio.com',
+    activo: true,
+    isActive: true,
+    rol: 'ADMINISTRADOR',
+    modulos: {
+      propiedades: true,
+      agentes: true,
+      prospectos: true,
+      propietarios: true,
+      constructoras: true,
+      contratos: true,
+      ingresos: true,
+      gastos: true,
+      reportes: true,
+      planesMkt: true,
+    }
+  },
+  {
+    id: 'usr-2',
+    nombre: 'Roberto Claros',
+    email: 'roberto.claros@propio.com',
+    activo: true,
+    isActive: true,
+    rol: 'AGENTE',
+    modulos: {
+      propiedades: true,
+      agentes: false,
+      prospectos: true,
+      propietarios: false,
+      constructoras: false,
+      contratos: true,
+      ingresos: false,
+      gastos: false,
+      reportes: true,
+      planesMkt: false,
+    }
+  },
+  {
+    id: 'usr-3',
+    nombre: 'Lucía Arteaga',
+    email: 'lucia.arteaga@propio.com',
+    activo: true,
+    isActive: true,
+    rol: 'AGENTE',
+    modulos: {
+      propiedades: true,
+      agentes: false,
+      prospectos: true,
+      propietarios: false,
+      constructoras: false,
+      contratos: true,
+      ingresos: false,
+      gastos: false,
+      reportes: true,
+      planesMkt: false,
+    }
+  },
+  {
+    id: 'usr-4',
+    nombre: 'Juan Pérez',
+    email: 'juan.perez@propio.com',
+    activo: true,
+    isActive: true,
+    rol: 'USUARIO GENERAL',
+    modulos: {
+      propiedades: true,
+      agentes: false,
+      prospectos: false,
+      propietarios: false,
+      constructoras: false,
+      contratos: false,
+      ingresos: false,
+      gastos: false,
+      reportes: false,
+      planesMkt: false,
+    }
+  }
+];
 
 const ROLE_MATRIX_DATA: RoleMatrixRow[] = [
   {
@@ -169,48 +252,70 @@ function PermisosDashboard() {
   // ==========================================
   // [LOGICA_CRUD_CON_SOFT_DELETE]
   // ==========================================
-  const handleCrearUsuario = (data: { nombre: string; email: string; modulos: UserPermissionModules }) => {
+  const handleCrearUsuario = (data: { nombre: string; email: string; rol: 'ADMINISTRADOR' | 'AGENTE' | 'USUARIO GENERAL'; modulos: UserPermissionModules }) => {
     const nuevo: UserPermission = {
       id: `usr-${Date.now()}`,
       nombre: data.nombre,
       email: data.email,
       activo: true,
+      isActive: true,
+      rol: data.rol,
       modulos: { ...data.modulos },
     };
-    setUsuariosPermisos(prev => [...prev, nuevo]);
+    const updated = [...usuariosPermisos, nuevo];
+    setUsuariosPermisos(updated);
+    localStorage.setItem('propio_admin_users_permissions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('local-storage'));
+    }
+    router.refresh();
   };
 
-  const handleEditarUsuario = (id: string, data: { nombre: string; email: string; modulos: UserPermissionModules }) => {
-    setUsuariosPermisos(prev =>
-      prev.map(u => (u.id === id ? { ...u, nombre: data.nombre, email: data.email, modulos: { ...data.modulos } } : u))
-    );
+  const handleEditarUsuario = (id: string, data: { nombre: string; email: string; rol: 'ADMINISTRADOR' | 'AGENTE' | 'USUARIO GENERAL'; modulos: UserPermissionModules }) => {
+    const updated = usuariosPermisos.map(u => (u.id === id ? { ...u, nombre: data.nombre, email: data.email, rol: data.rol, modulos: { ...data.modulos } } : u));
+    setUsuariosPermisos(updated);
+    localStorage.setItem('propio_admin_users_permissions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('local-storage'));
+    }
+    router.refresh();
   };
 
   const handleAlternarAccesoUsuario = (id: string) => {
-    setUsuariosPermisos(prev =>
-      prev.map(u => {
-        if (u.id !== id) return u;
-        return {
-          ...u,
-          activo: !u.activo,
-        };
-      })
-    );
+    const updated = usuariosPermisos.map(u => {
+      if (u.id !== id) return u;
+      const nextActivo = !u.activo;
+      return {
+        ...u,
+        activo: nextActivo,
+        isActive: nextActivo,
+      };
+    });
+    setUsuariosPermisos(updated);
+    localStorage.setItem('propio_admin_users_permissions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('local-storage'));
+    }
+    router.refresh();
   };
 
   const handleToggleModuloOptimista = (userId: string, moduloKey: keyof UserPermissionModules) => {
-    setUsuariosPermisos(prev =>
-      prev.map(u => {
-        if (u.id !== userId) return u;
-        return {
-          ...u,
-          modulos: {
-            ...u.modulos,
-            [moduloKey]: !u.modulos[moduloKey],
-          },
-        };
-      })
-    );
+    const updated = usuariosPermisos.map(u => {
+      if (u.id !== userId) return u;
+      return {
+        ...u,
+        modulos: {
+          ...u.modulos,
+          [moduloKey]: !u.modulos[moduloKey],
+        },
+      };
+    });
+    setUsuariosPermisos(updated);
+    localStorage.setItem('propio_admin_users_permissions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('local-storage'));
+    }
+    router.refresh();
   };
 
   // Form & Modal states
@@ -218,6 +323,7 @@ function PermisosDashboard() {
   const [editingUser, setEditingUser] = useState<UserPermission | null>(null);
   const [formNombre, setFormNombre] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formRol, setFormRol] = useState<'ADMINISTRADOR' | 'AGENTE' | 'USUARIO GENERAL'>('USUARIO GENERAL');
   const [formModulos, setFormModulos] = useState<UserPermissionModules>({
     propiedades: false,
     agentes: false,
@@ -235,6 +341,7 @@ function PermisosDashboard() {
     setEditingUser(null);
     setFormNombre('');
     setFormEmail('');
+    setFormRol('USUARIO GENERAL');
     setFormModulos({
       propiedades: false,
       agentes: false,
@@ -254,6 +361,7 @@ function PermisosDashboard() {
     setEditingUser(user);
     setFormNombre(user.nombre);
     setFormEmail(user.email);
+    setFormRol(user.rol || 'USUARIO GENERAL');
     setFormModulos({ ...user.modulos });
     setIsModalOpen(true);
   };
@@ -269,12 +377,14 @@ function PermisosDashboard() {
       handleEditarUsuario(editingUser.id, {
         nombre: formNombre,
         email: formEmail,
+        rol: formRol,
         modulos: formModulos,
       });
     } else {
       handleCrearUsuario({
         nombre: formNombre,
         email: formEmail,
+        rol: formRol,
         modulos: formModulos,
       });
     }
@@ -372,13 +482,25 @@ function PermisosDashboard() {
                     >
                       {/* Primera Columna: Caja de Perfil */}
                       <td className="p-3">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-1 items-start">
                           <span className={`font-black uppercase text-xs ${user.activo ? 'text-[#04045E]' : 'text-slate-400 line-through'}`}>
                             {user.nombre}
                           </span>
                           <span className="text-[9px] text-slate-400 font-normal">{user.email}</span>
+                          
+                          {/* Role Badge */}
+                          <span className={`inline-block text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border ${
+                            user.rol === 'ADMINISTRADOR'
+                              ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                              : user.rol === 'AGENTE'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              : 'bg-slate-100 border-slate-250 text-slate-750'
+                          }`}>
+                            {user.rol || 'USUARIO GENERAL'}
+                          </span>
+
                           {!user.activo && (
-                            <span className="inline-block mt-1 text-[8px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md font-black max-w-max uppercase tracking-wider">
+                            <span className="inline-block text-[8px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider">
                               Suspendido (Histórico)
                             </span>
                           )}
@@ -517,7 +639,7 @@ function PermisosDashboard() {
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
                     Nombre Completo
@@ -543,6 +665,20 @@ function PermisosDashboard() {
                     onChange={e => setFormEmail(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-all"
                   />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                    Rol / Nivel Base
+                  </label>
+                  <select
+                    value={formRol}
+                    onChange={e => setFormRol(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
+                  >
+                    <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+                    <option value="AGENTE">AGENTE</option>
+                    <option value="USUARIO GENERAL">USUARIO GENERAL</option>
+                  </select>
                 </div>
               </div>
 

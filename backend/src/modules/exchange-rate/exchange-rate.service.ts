@@ -11,6 +11,33 @@ export class ExchangeRateService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('Inicializando servicio de Tipo de Cambio flotante...');
+
+    // Limpieza completa de alertas de BCB de la base de datos al inicializar
+    try {
+      if (this.prisma.isConnected) {
+        const bcbLogs = await this.prisma.activityLog.findMany({
+          where: {
+            OR: [
+              { text: { contains: 'BCB' } },
+              { text: { contains: 'Banco Central de Bolivia' } }
+            ]
+          }
+        });
+
+        if (bcbLogs.length > 0) {
+          const idsToDelete = bcbLogs.map(log => log.id);
+          await this.prisma.activityLog.deleteMany({
+            where: {
+              id: { in: idsToDelete }
+            }
+          });
+          this.logger.log(`Se eliminaron ${idsToDelete.length} logs de alerta BCB de la base de datos.`);
+        }
+      }
+    } catch (cleanupErr: any) {
+      this.logger.error(`Error al limpiar logs de BCB: ${cleanupErr.message}`);
+    }
+
     // Ejecutar inmediatamente al iniciar
     await this.syncExchangeRate();
     // Programar ejecución todos los días a las 06:00 AM
@@ -54,9 +81,9 @@ export class ExchangeRateService implements OnModuleInit {
    */
   async syncExchangeRate(): Promise<{ rateBuy: number; rateSell: number; source: string }> {
     this.logger.log('Sincronizando tipo de cambio con el Banco Central de Bolivia...');
-    let rateBuy = 6.86;
-    let rateSell = 6.96;
-    let success = false;
+    // Fallback seguro Mars Tech: 9.63 compra / 9.73 venta
+    let rateBuy = 9.63;
+    let rateSell = 9.73;
     const url = 'https://www.bcb.gob.bo/';
 
     try {
@@ -68,49 +95,47 @@ export class ExchangeRateService implements OnModuleInit {
         },
       });
 
-      const html = response.data;
-      // Regex para buscar valores de compra/venta en la página del BCB
-      const buyRegex = /(?:tipo\s+de\s+cambio|compra|dólar|dolar)[\s\S]*?(\d[\.,]\d{2})/i;
-      const sellRegex = /(?:venta)[\s\S]*?(\d[\.,]\d{2})/i;
+      const html = response.data as string;
+
+      // Regex robusta: requiere al menos 2 dígitos antes del decimal para evitar
+      // extraer valores absurdos como 0.55 o 1.75
+      const buyRegex = /(?:compra|tipo\s+de\s+cambio)[^<\d]*(\d{1,2}[.,]\d{2,4})/i;
+      const sellRegex = /(?:venta)[^<\d]*(\d{1,2}[.,]\d{2,4})/i;
 
       const buyMatch = html.match(buyRegex);
       const sellMatch = html.match(sellRegex);
 
-      if (buyMatch && buyMatch[1]) {
-        rateBuy = parseFloat(buyMatch[1].replace(',', '.'));
-        success = true;
-      }
-      if (sellMatch && sellMatch[1]) {
-        rateSell = parseFloat(sellMatch[1].replace(',', '.'));
-        success = true;
-      }
+      const parsedBuy  = buyMatch  ? parseFloat(buyMatch[1].replace(',', '.'))  : null;
+      const parsedSell = sellMatch ? parseFloat(sellMatch[1].replace(',', '.')) : null;
 
-      // Validar rangos realistas para el tipo de cambio oficial en Bolivia (ej. entre 6.00 y 10.00)
-      if (rateBuy < 6.0 || rateBuy > 10.0 || rateSell < 6.0 || rateSell > 10.0) {
+      // Validar rango realista (6.00 – 11.00) antes de aceptar
+      if (parsedBuy  !== null && parsedBuy  >= 6.0 && parsedBuy  <= 11.0) rateBuy  = parsedBuy;
+      if (parsedSell !== null && parsedSell >= 6.0 && parsedSell <= 11.0) rateSell = parsedSell;
+
+      if (rateBuy < 6.0 || rateBuy > 11.0 || rateSell < 6.0 || rateSell > 11.0) {
         throw new Error(`Valores extraídos fuera de rango realista: Compra=${rateBuy}, Venta=${rateSell}`);
       }
 
       this.logger.log(`Tipo de cambio extraído con éxito del BCB: Compra=${rateBuy}, Venta=${rateSell}`);
     } catch (error: any) {
       this.logger.warn(`Fallo al extraer tipo de cambio del BCB: ${error.message || error}`);
+
       // Fallback: usar el último valor almacenado en BD si es válido
       const lastRate = await this.getCurrentRateFromDb();
-      if (lastRate && lastRate.rateBuy >= 6.0 && lastRate.rateBuy <= 10.0 && lastRate.rateSell >= 6.0 && lastRate.rateSell <= 10.0) {
-        rateBuy = lastRate.rateBuy;
+      if (lastRate && lastRate.rateBuy >= 6.0 && lastRate.rateBuy <= 11.0 && lastRate.rateSell >= 6.0 && lastRate.rateSell <= 11.0) {
+        rateBuy  = lastRate.rateBuy;
         rateSell = lastRate.rateSell;
         this.logger.log(`Cargando último tipo de cambio de la BD: Compra=${rateBuy}, Venta=${rateSell}`);
       } else {
-        rateBuy = 6.86;
-        rateSell = 6.96;
-        this.logger.log(`Usando valores fallback por defecto: Compra=${rateBuy}, Venta=${rateSell}`);
+        this.logger.log(`Usando valores fallback Mars Tech: Compra=${rateBuy}, Venta=${rateSell}`);
       }
 
-      // Guardar alerta en los logs de actividad del administrador
-      await this.logActivity(`ALERTA: Falló la sincronización automática con el BCB. Se mantuvo el tipo de cambio (Compra: ${rateBuy} / Venta: ${rateSell}). Detalle: ${error.message || error}`);
+      // Bypassed: do not save activity logs for BCB sync warnings
+      // await this.logActivityDeduped(`ALERTA: Falló la sincronización automática con el BCB. Se mantuvo el tipo de cambio (Compra: ${rateBuy} / Venta: ${rateSell}). Detalle: ${error.message || error}`);
     }
 
-    // Actualizar o crear la configuración global en la BD (solo si es un valor realista)
-    if (rateBuy >= 6.0 && rateBuy <= 10.0 && rateSell >= 6.0 && rateSell <= 10.0) {
+    // Actualizar configuración global en la BD
+    if (rateBuy >= 6.0 && rateBuy <= 11.0 && rateSell >= 6.0 && rateSell <= 11.0) {
       await this.updateRateInDb(rateBuy, rateSell, 'BCB');
     }
 
@@ -122,7 +147,7 @@ export class ExchangeRateService implements OnModuleInit {
    */
   async getCurrentRate(): Promise<{ rateBuy: number; rateSell: number; updatedAt: Date }> {
     const rate = await this.getCurrentRateFromDb();
-    if (rate && rate.rateBuy >= 6.0 && rate.rateBuy <= 10.0 && rate.rateSell >= 6.0 && rate.rateSell <= 10.0) {
+    if (rate && rate.rateBuy >= 6.0 && rate.rateBuy <= 11.0 && rate.rateSell >= 6.0 && rate.rateSell <= 11.0) {
       return {
         rateBuy: rate.rateBuy,
         rateSell: rate.rateSell,
@@ -130,8 +155,8 @@ export class ExchangeRateService implements OnModuleInit {
       };
     }
     return {
-      rateBuy: 6.86,
-      rateSell: 6.96,
+      rateBuy: 9.63,
+      rateSell: 9.73,
       updatedAt: new Date(),
     };
   }
@@ -192,6 +217,29 @@ export class ExchangeRateService implements OnModuleInit {
       await this.prisma.activityLog.create({
         data: { text },
       }).catch((err: any) => this.logger.error(`Error al guardar log de actividad: ${err.message}`));
+    }
+  }
+
+  private async logActivityDeduped(text: string) {
+    this.logger.log(text);
+    if (this.prisma.isConnected) {
+      try {
+        const lastLog = await this.prisma.activityLog.findFirst({
+          orderBy: { createdAt: 'desc' }
+        });
+        if (lastLog && lastLog.text === text) {
+          await this.prisma.activityLog.update({
+            where: { id: lastLog.id },
+            data: { createdAt: new Date() }
+          });
+          return;
+        }
+        await this.prisma.activityLog.create({
+          data: { text }
+        });
+      } catch (err: any) {
+        this.logger.error(`Error al guardar log de actividad deduped: ${err.message}`);
+      }
     }
   }
 }

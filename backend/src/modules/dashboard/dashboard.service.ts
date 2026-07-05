@@ -444,10 +444,16 @@ export class DashboardService {
 
       const percentVerified = totalActiveProps > 0 ? Math.round((verifiedActiveProps / totalActiveProps) * 100) : 100;
       
+      // Filter out BCB and exchange rate logs entirely
+      const cleanLogs = allLogs.filter(log => 
+        !log.text.toLowerCase().includes('bcb') && 
+        !log.text.toLowerCase().includes('tipo de cambio')
+      );
+
       // Filter recent events based on active branch text
       const filteredLogs = branch !== 'TODOS'
-        ? allLogs.filter(log => log.text.toLowerCase().includes(branch.toLowerCase()))
-        : allLogs;
+        ? cleanLogs.filter(log => log.text.toLowerCase().includes(branch.toLowerCase()))
+        : cleanLogs;
 
       const recentEvents = filteredLogs.map((log) => ({
         id: log.id,

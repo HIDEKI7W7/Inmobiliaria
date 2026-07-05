@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -72,7 +72,6 @@ const NAV_ITEMS: { id: Tab; label: string; countKey?: keyof AdminSidebarProps['c
   { id: 'expenses',    label: 'Gastos',       countKey: 'expenses' },
   { id: 'reports',     label: 'Reportes' },
   { id: 'marketing_planes', label: 'Planes de Marketing' },
-  { id: 'config_permissions', label: 'Permisos' },
   { id: 'announcements', label: 'Comunicados' },
   { id: 'colaboraciones', label: 'Colaboraciones' }
 ];
