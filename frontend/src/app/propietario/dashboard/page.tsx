@@ -32,7 +32,7 @@ const PLANS = [
   {
     id: 'contenidos',
     name: 'PLAN CONTENIDOS',
-    priceLabel: 'Bs. 69 /MES',
+    priceLabel: '', // Will be rendered dynamically from planPrices.contenidos
     period: '',
     highlight: false,
     badge: 'MAS RECOMENDADO PARA RENTAS',
@@ -48,7 +48,7 @@ const PLANS = [
   {
     id: 'venta_pro',
     name: 'PLAN VENTA PRO',
-    priceLabel: 'Bs. 199 /MES',
+    priceLabel: '', // Will be rendered dynamically from planPrices.venta_pro
     period: '',
     highlight: true,
     badge: 'MAS RECOMENDADO PARA VENTA',
@@ -65,7 +65,7 @@ const PLANS = [
   {
     id: 'cierre_garantizado',
     name: 'CIERRE GARANTIZADO',
-    priceLabel: 'Comisión: 1.5% DEL VALOR DE VENTA (TODO INCLUIDO)',
+    priceLabel: '', // Will be rendered dynamically from planPrices.cierre_garantizado
     period: '',
     highlight: false,
     badge: 'TODO INCLUIDO',

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { DropdownFilter } from '@/components/ui/DropdownFilter';
+import { ViewDocumentsButton } from '@/components/ui/ViewDocumentsButton';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { propertiesService } from '../../services/properties.service';
@@ -11,7 +12,32 @@ import { paymentsService, Payment } from '../../services/payments.service';
 import { expensesService, Expense } from '../../services/expenses.service';
 import { resolveApiUrl } from '../../utils/resolveApiUrl';
 import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
-import { fetchLocalProperties, fetchLocalContracts, persistContract, deleteLocalProperty, deleteLocalContract, fetchLocalDevelopers, persistLocalDeveloper } from '@/utils/localDb';
+import {
+  fetchLocalProperties,
+  fetchLocalContracts,
+  persistContract,
+  deleteLocalProperty,
+  deleteLocalContract,
+  fetchLocalDevelopers,
+  persistLocalDeveloper,
+  deleteLocalDeveloper,
+  fetchLocalAgents,
+  persistLocalAgent,
+  deleteLocalAgent,
+  fetchLocalLeads,
+  persistLocalLead,
+  deleteLocalLead,
+  fetchLocalOwners,
+  persistLocalOwner,
+  deleteLocalOwner,
+  fetchLocalPayments,
+  persistLocalPayment,
+  deleteLocalPayment,
+  fetchLocalExpenses,
+  persistLocalExpense,
+  deleteLocalExpense,
+  persistProperty
+} from '@/utils/localDb';
 interface Property {
   id: string;
   title: string;
@@ -265,72 +291,153 @@ function AdminConsole() {
     try {
       const token = getToken() || '';
       
-      // ponytail: prevent recursive filename chain ("A - B - C - D") by splitting category from actual filename
-      const baseCleanTitles: Record<string, string> = {
-        FR: "Folio Real Actualizado (Libre Alodial)",
-        CT: "Certificado Catastral Al Día",
-        TS: "Testimonio de Escritura Pública",
-        IM: "Impuestos Municipales Al Día",
-        PU: "Plano de Uso de Suelo Aprobado",
-        OD: "Otros Documentos (Ej. Planos)",
-        CI: "Cédula de Identidad Vigente (CI)"
-      };
-      const cleanPrefix = (baseCleanTitles[activeRow.id] || (activeRow as any).name || activeRow.fileName || 'Documento').split(' - ')[0];
-      const cleanNewName = `${cleanPrefix} - ${file.name.replace(/.*[\\/]/, '')}`;
-      const renamedFile = new File([file], cleanNewName, { type: file.type });
-      
-      const doc = await propertiesService.uploadPropertyDocument(docAuditPropId, renamedFile, token);
-
-      setProperties(prev => prev.map(p => {
-        if (p.id !== docAuditPropId) return p;
+      if (docAuditEntityType === 'contract') {
+        const cleanNewName = `${activeRow.fileName.split(' - ')[0]} - ${file.name.replace(/.*[\\/]/, '')}`;
+        const renamedFile = new File([file], cleanNewName, { type: file.type });
+        const doc = await contractsService.uploadContractDocuments(docAuditPropId, [renamedFile], token);
         
-        const newDoc = {
-          id: doc.id || `doc-manual-${Date.now()}`,
-          name: doc.fileName || renamedFile.name,
-          file: doc.fileUrl || '#',
-          fileUrl: doc.fileUrl || '#',
-          fileType: doc.fileType || file.type,
-          status: 'APPROVED',
-          observations: '',
-          checked: true
+        const docs = await contractsService.getContractDocuments(docAuditPropId, token);
+        const matched = docs.find((d: any) => d.originalName === renamedFile.name) || docs[docs.length - 1];
+        
+        if (matched) {
+          matched.status = 'APPROVED';
+          matched.observations = '';
+          const localList = docs.map((d: any) => d.id === matched.id ? matched : { ...d, status: d.status || 'PENDING' });
+          localStorage.setItem(`propio_contracts_documents_${docAuditPropId}`, JSON.stringify(localList));
+          await apiClient.patchWithAuth(`/contracts/${docAuditPropId}/documents/${matched.id}`, { status: 'APPROVED', observations: '' }, token).catch(() => {});
+        }
+        
+        setContractDocuments(docs);
+        setTimeout(() => {
+          updateDocAuditRow(activeAuditIdx, {
+            file: (matched?.dataBase64 || matched?.fileUrl || '#'),
+            fileUrl: (matched?.fileUrl || matched?.dataBase64 || '#'),
+            fileType: matched?.fileType || file.type,
+            fileName: matched?.originalName || renamedFile.name,
+            status: 'APPROVED',
+            observations: '',
+            saving: false,
+            checked: true
+          });
+        }, 200);
+        alert('Documento de contrato cargado correctamente.');
+      } 
+      else if (docAuditEntityType === 'developer') {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const base64 = event.target?.result as string;
+          const cached = localStorage.getItem(`propio_developer_documents_${docAuditPropId}`);
+          const docs = cached ? JSON.parse(cached) : [];
+          
+          const newDoc = {
+            id: activeRow.id || `dev-doc-${Date.now()}`,
+            name: activeRow.fileName,
+            desc: activeRow.description || 'Documento de constructora.',
+            file: base64,
+            fileUrl: base64,
+            mimeType: file.type,
+            originalName: file.name,
+            fileName: file.name,
+            sizeBytes: file.size,
+            uploadedAt: new Date().toISOString(),
+            status: 'APPROVED',
+            observations: ''
+          };
+          
+          const nextDocs = docs.filter((d: any) => d.id !== activeRow.id);
+          nextDocs.push(newDoc);
+          localStorage.setItem(`propio_developer_documents_${docAuditPropId}`, JSON.stringify(nextDocs));
+          
+          const dev = developers.find(d => d.id === docAuditPropId);
+          if (dev) {
+            const updatedDev = { ...dev, documents: nextDocs };
+            await persistLocalDeveloper(updatedDev);
+          }
+          
+          setTimeout(() => {
+            updateDocAuditRow(activeAuditIdx, {
+              file: base64,
+              fileUrl: base64,
+              fileType: file.type,
+              fileName: file.name,
+              status: 'APPROVED',
+              observations: '',
+              saving: false,
+              checked: true
+            });
+          }, 200);
+          alert('Documento de constructora cargado correctamente.');
         };
-
-        const existingDocs = p.documents ? [...p.documents] : [];
-        const filteredDocs = existingDocs.filter((d: any) => {
-          const searchName = (activeRow as any).name || activeRow.fileName || '';
-          const docNameQuery = searchName.split(' - ')[0].substring(0, 10).toUpperCase();
-          const nameMatch = (docNameQuery && String(d.name || d.fileType || d.fileName || '').toUpperCase().includes(docNameQuery)) ||
-                            String(d.fileType || '').toUpperCase() === activeRow.id.toUpperCase();
-          return !nameMatch;
-        });
-
-        return {
-          ...p,
-          documents: [...filteredDocs, newDoc]
+        reader.readAsDataURL(file);
+      } 
+      else {
+        // Original property upload logic
+        const baseCleanTitles: Record<string, string> = {
+          FR: "Folio Real Actualizado (Libre Alodial)",
+          CT: "Certificado Catastral Al Día",
+          TS: "Testimonio de Escritura Pública",
+          IM: "Impuestos Municipales Al Día",
+          PU: "Plano de Uso de Suelo Aprobado",
+          OD: "Otros Documentos (Ej. Planos)",
+          CI: "Cédula de Identidad Vigente (CI)"
         };
-      }));
+        const cleanPrefix = (baseCleanTitles[activeRow.id] || (activeRow as any).name || activeRow.fileName || 'Documento').split(' - ')[0];
+        const cleanNewName = `${cleanPrefix} - ${file.name.replace(/.*[\\/]/, '')}`;
+        const renamedFile = new File([file], cleanNewName, { type: file.type });
+        
+        const doc = await propertiesService.uploadPropertyDocument(docAuditPropId, renamedFile, token);
 
-      // ponytail: delay update by 200ms to allow NestJS server disk flush before browser iframe requests the file
-      setTimeout(() => {
-        updateDocAuditRow(activeAuditIdx, {
-          file: doc.fileUrl || '#',
-          fileUrl: doc.fileUrl || '#',
-          fileType: doc.fileType || file.type,
-          fileName: doc.fileName || renamedFile.name,
-          status: 'APPROVED',
-          observations: '',
-          saving: false,
-          checked: true
-        });
-      }, 200);
+        setProperties(prev => prev.map(p => {
+          if (p.id !== docAuditPropId) return p;
+          
+          const newDoc = {
+            id: doc.id || `doc-manual-${Date.now()}`,
+            name: doc.fileName || renamedFile.name,
+            file: doc.fileUrl || '#',
+            fileUrl: doc.fileUrl || '#',
+            fileType: doc.fileType || file.type,
+            status: 'APPROVED',
+            observations: '',
+            checked: true
+          };
 
-      try {
-        await apiClient.patchWithAuth<any>(
-          `/properties/${docAuditPropId}/documents/${activeRow.id}`,
-          { status: 'APPROVED', observations: '' },
-          token
-        ).catch(e => console.warn('[DocAudit] error patching status:', e));
-      } catch (_) {}
+          const existingDocs = p.documents ? [...p.documents] : [];
+          const filteredDocs = existingDocs.filter((d: any) => {
+            const searchName = (activeRow as any).name || activeRow.fileName || '';
+            const docNameQuery = searchName.split(' - ')[0].substring(0, 10).toUpperCase();
+            const nameMatch = (docNameQuery && String(d.name || d.fileType || d.fileName || '').toUpperCase().includes(docNameQuery)) ||
+                              String(d.fileType || '').toUpperCase() === activeRow.id.toUpperCase();
+            return !nameMatch;
+          });
+
+          return {
+            ...p,
+            documents: [...filteredDocs, newDoc]
+          };
+        }));
+
+        setTimeout(() => {
+          updateDocAuditRow(activeAuditIdx, {
+            file: doc.fileUrl || '#',
+            fileUrl: doc.fileUrl || '#',
+            fileType: doc.fileType || file.type,
+            fileName: doc.fileName || renamedFile.name,
+            status: 'APPROVED',
+            observations: '',
+            saving: false,
+            checked: true
+          });
+        }, 200);
+
+        try {
+          await apiClient.patchWithAuth<any>(
+            `/properties/${docAuditPropId}/documents/${activeRow.id}`,
+            { status: 'APPROVED', observations: '' },
+            token
+          ).catch(e => console.warn('[DocAudit] error patching status:', e));
+        } catch (_) {}
+        alert('Documento de inmueble cargado correctamente.');
+      }
 
     } catch (err) {
       console.error('Error al cargar documento manual:', err);
@@ -1147,6 +1254,7 @@ function AdminConsole() {
     description?: string;
   };
   const [docAuditOpen, setDocAuditOpen] = useState<boolean>(false);
+  const [docAuditEntityType, setDocAuditEntityType] = useState<'property' | 'contract' | 'developer'>('property');
   const [docAuditPropId, setDocAuditPropId] = useState<string>('');
   const [docAuditPropTitle, setDocAuditPropTitle] = useState<string>('');
   const [docAuditRows, setDocAuditRows] = useState<DocAuditRow[]>([]);
@@ -1971,6 +2079,7 @@ function AdminConsole() {
         etapa: 'Preventa Torre A'
       };
       setDevelopers(prev => [...prev, newDev]);
+      await persistLocalDeveloper(newDev);
       
       // Reset form states
       setNewDevName('');
@@ -2051,6 +2160,7 @@ function AdminConsole() {
         console.warn('Backend update failed, updating local state only:', err);
       }
       
+      await persistLocalDeveloper(editingConstructora);
       setDevelopers(prev => prev.map(d => d.id === editingConstructora.id ? editingConstructora : d));
       alert('Constructora actualizada con éxito.');
       setEditingConstructora(null);
@@ -2069,6 +2179,7 @@ function AdminConsole() {
         console.warn('Backend delete failed, updating local state only:', err);
       }
 
+      await deleteLocalDeveloper(deletingConstructoraId);
       setDevelopers(prev => prev.filter(d => d.id !== deletingConstructoraId));
       alert('Constructora de baja con éxito.');
       setDeletingConstructoraId(null);
@@ -3350,6 +3461,33 @@ function AdminConsole() {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+
+  useEffect(() => {
+    const handleOpenDocs = (e: Event) => {
+      const { entityId, entityType } = (e as CustomEvent).detail;
+      if (entityType === 'property') {
+        const prop = properties.find(p => p.id === entityId);
+        if (prop) {
+          setDocAuditEntityType('property');
+          handleOpenDocAudit(prop.id, prop.title);
+        }
+      } else if (entityType === 'contract') {
+        const contract = contracts.find(c => c.id === entityId);
+        if (contract) {
+          setDocAuditEntityType('contract');
+          handleOpenContractDocAudit(contract);
+        }
+      } else if (entityType === 'developer') {
+        const dev = developers.find(d => d.id === entityId);
+        if (dev) {
+          setDocAuditEntityType('developer');
+          handleOpenDeveloperDocAudit(dev);
+        }
+      }
+    };
+    window.addEventListener('open-entity-docs', handleOpenDocs);
+    return () => window.removeEventListener('open-entity-docs', handleOpenDocs);
+  }, [properties, contracts, developers]);
 
   const handleDownloadDossier = async (propertyId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -4638,6 +4776,7 @@ function AdminConsole() {
           : p
       );
       setProperties(updated);
+      await persistProperty(mapPropertyToNewSchema({ ...editingProperty, ...updatedFields }));
 
       setEditingProperty(null);
       setEditDocumentosAdjuntos([]);
@@ -4728,6 +4867,7 @@ function AdminConsole() {
         p.id === modalPropertyData.id ? finalUpdatedProp : p
       );
       setProperties(updatedProperties as any);
+      await persistProperty(finalUpdatedProp);
 
       // 2. Update owner's properties relation if title changed
       if (selectedProperty && selectedProperty.title !== modalPropertyData.title) {
@@ -4853,6 +4993,166 @@ function AdminConsole() {
       console.error(e);
       setPreviewDocUrl('');
       setAuditDocObservations('');
+    }
+  };
+
+  const handleOpenContractDocAudit = async (cnt: any) => {
+    setDocAuditPropId(cnt.id);
+    setDocAuditPropTitle(`Contrato: ${cnt.id.substring(0, 8).toUpperCase()} - ${cnt.property?.title || cnt.propertyId}`);
+    setDocAuditLoading(true);
+    setDocAuditExpanded(false);
+    setDocAuditOpen(true);
+    setActiveAuditIdx(0);
+    try {
+      const token = getToken() || '';
+      const docs = await contractsService.getContractDocuments(cnt.id, token).catch(() => []);
+      
+      const rigidDocs = [
+        { id: 'CONTRATO_FIRMADO', name: "Contrato de Alquiler Firmado", desc: "Documento legal del contrato firmado por ambas partes.", checked: false, file: null as string | null },
+        { id: 'ADENDA', name: "Adenda o Anexo del Contrato", desc: "Documento de adenda, inventario o garantías adicionales.", checked: false, file: null as string | null },
+        { id: 'BOLETA_GARANTIA', name: "Boleta de Depósito de Garantía", desc: "Comprobante de pago o transferencia del depósito en garantía.", checked: false, file: null as string | null },
+        { id: 'OTROS', name: "Otros Documentos", desc: "Cualquier otro documento o anexo legal adjunto al contrato.", checked: false, file: null as string | null }
+      ];
+
+      rigidDocs.forEach(item => {
+        const match = docs.find((d: any) => 
+          String(d.originalName || d.name || d.fileType || '').toUpperCase().includes(item.name.substring(0, 10).toUpperCase()) ||
+          String(d.fileType || '').toUpperCase() === item.id.toUpperCase()
+        );
+        if (match) {
+          item.checked = true;
+          item.file = match.dataBase64 || match.fileUrl || match.file || null;
+          (item as any).fileType = match.fileType ?? '';
+          (item as any).fileName = match.originalName ?? match.fileName ?? '';
+          (item as any).status = match.status ?? 'APPROVED';
+          (item as any).observations = match.observations ?? '';
+          (item as any).docId = match.id;
+        }
+      });
+
+      docs.forEach((d: any) => {
+        const isRigid = rigidDocs.some(rid => 
+          String(d.fileType || '').toUpperCase() === rid.id.toUpperCase() ||
+          String(d.originalName || d.name || d.fileType || '').toUpperCase().includes(rid.name.substring(0, 10).toUpperCase())
+        );
+        if (!isRigid) {
+          (rigidDocs as any[]).push({
+            id: d.id || `extra-${Date.now()}-${Math.random()}`,
+            name: d.originalName || d.name || 'Documento adicional',
+            desc: 'Documento adicional subido al contrato.',
+            checked: true,
+            file: d.dataBase64 || d.fileUrl || d.file || null,
+            fileType: d.fileType || 'application/pdf',
+            fileName: d.originalName || d.name || 'Documento adicional',
+            status: d.status || 'APPROVED',
+            observations: d.observations || '',
+            docId: d.id
+          });
+        }
+      });
+
+      setDocAuditRows(
+        rigidDocs.map((d: any) => ({
+          id: d.docId || d.id,
+          fileType: d.fileType || d.id,
+          fileName: d.fileName || d.name,
+          fileUrl: d.file || '',
+          status: d.status || 'APPROVED',
+          observations: d.observations || (d.file ? '' : 'No subió ningún documento'),
+          rejectOpen: false,
+          rejectText: d.observations || '',
+          saving: false,
+          checked: d.checked,
+          file: d.file,
+          description: d.desc
+        }))
+      );
+    } catch (e) {
+      console.error(e);
+      setDocAuditRows([]);
+    } finally {
+      setDocAuditLoading(false);
+    }
+  };
+
+  const handleOpenDeveloperDocAudit = async (dev: any) => {
+    setDocAuditPropId(dev.id);
+    setDocAuditPropTitle(`Constructora: ${dev.empresa}`);
+    setDocAuditLoading(true);
+    setDocAuditExpanded(false);
+    setDocAuditOpen(true);
+    setActiveAuditIdx(0);
+    try {
+      const cached = localStorage.getItem(`propio_developer_documents_${dev.id}`);
+      const docs = cached ? JSON.parse(cached) : [];
+
+      const rigidDocs = [
+        { id: 'NIT', name: "Número de Identificación Tributaria (NIT)", desc: "Copia legalizada del NIT de la constructora.", checked: false, file: null as string | null },
+        { id: 'FUNDEMPRESA', name: "Matrícula de Fundempresa / SEPREC", desc: "Matrícula de comercio vigente de la sociedad comercial.", checked: false, file: null as string | null },
+        { id: 'PLANOS', name: "Planos Aprobados de Obra / Proyecto", desc: "Planos municipales de construcción autorizados.", checked: false, file: null as string | null },
+        { id: 'LICENCIA_AMBIENTAL', name: "Licencia o Ficha Ambiental", desc: "Certificado de cumplimiento ambiental del proyecto.", checked: false, file: null as string | null },
+        { id: 'REPRESENTANTE_CI', name: "CI de Representante Legal", desc: "Copia legible de Cédula de Identidad del representante.", checked: false, file: null as string | null },
+        { id: 'OTROS', name: "Otros Requisitos", desc: "Documentos legales complementarios.", checked: false, file: null as string | null }
+      ];
+
+      rigidDocs.forEach(item => {
+        const match = docs.find((d: any) => 
+          String(d.name || d.fileType || '').toUpperCase().includes(item.name.substring(0, 10).toUpperCase()) ||
+          String(d.fileType || '').toUpperCase() === item.id.toUpperCase()
+        );
+        if (match) {
+          item.checked = true;
+          item.file = match.file || match.fileData || match.fileUrl || null;
+          (item as any).fileType = match.fileType ?? '';
+          (item as any).fileName = match.name ?? '';
+          (item as any).status = match.status ?? 'APPROVED';
+          (item as any).observations = match.observations ?? '';
+          (item as any).docId = match.id;
+        }
+      });
+
+      docs.forEach((d: any) => {
+        const isRigid = rigidDocs.some(rid => 
+          String(d.fileType || '').toUpperCase() === rid.id.toUpperCase() ||
+          String(d.name || d.fileType || '').toUpperCase().includes(rid.name.substring(0, 10).toUpperCase())
+        );
+        if (!isRigid) {
+          (rigidDocs as any[]).push({
+            id: d.id || `extra-${Date.now()}-${Math.random()}`,
+            name: d.name || 'Documento adicional',
+            desc: 'Documento adicional subido.',
+            checked: true,
+            file: d.file || d.fileData || d.fileUrl || null,
+            fileType: d.fileType || 'application/pdf',
+            fileName: d.name || 'Documento adicional',
+            status: d.status || 'APPROVED',
+            observations: d.observations || '',
+            docId: d.id
+          });
+        }
+      });
+
+      setDocAuditRows(
+        rigidDocs.map((d: any) => ({
+          id: d.docId || d.id,
+          fileType: d.fileType || d.id,
+          fileName: d.fileName || d.name,
+          fileUrl: d.file || '',
+          status: d.status || 'APPROVED',
+          observations: d.observations || (d.file ? '' : 'No subió ningún documento'),
+          rejectOpen: false,
+          rejectText: d.observations || '',
+          saving: false,
+          checked: d.checked,
+          file: d.file,
+          description: d.desc
+        }))
+      );
+    } catch (e) {
+      console.error(e);
+      setDocAuditRows([]);
+    } finally {
+      setDocAuditLoading(false);
     }
   };
 
@@ -5064,6 +5364,49 @@ function AdminConsole() {
 
   const handleSaveAndClose = async () => {
     if (!docAuditPropId) return;
+
+    if (docAuditEntityType === 'contract') {
+      const updatedDocs = docAuditRows.map(row => ({
+        id: row.id,
+        contractId: docAuditPropId,
+        originalName: row.fileName,
+        fileType: row.fileType,
+        mimeType: row.fileType,
+        sizeBytes: 0,
+        uploadedAt: new Date().toISOString(),
+        status: row.status,
+        observations: row.observations,
+        dataBase64: row.fileUrl
+      }));
+      localStorage.setItem(`propio_contracts_documents_${docAuditPropId}`, JSON.stringify(updatedDocs));
+      setDocAuditOpen(false);
+      return;
+    }
+
+    if (docAuditEntityType === 'developer') {
+      const updatedDocs = docAuditRows.map(row => ({
+        id: row.id,
+        name: row.fileName,
+        desc: row.description,
+        file: row.fileUrl,
+        fileUrl: row.fileUrl,
+        mimeType: row.fileType,
+        originalName: row.fileName,
+        fileName: row.fileName,
+        sizeBytes: 0,
+        uploadedAt: new Date().toISOString(),
+        status: row.status,
+        observations: row.observations
+      }));
+      localStorage.setItem(`propio_developer_documents_${docAuditPropId}`, JSON.stringify(updatedDocs));
+      const dev = developers.find(d => d.id === docAuditPropId);
+      if (dev) {
+        const updatedDev = { ...dev, documents: updatedDocs };
+        await persistLocalDeveloper(updatedDev);
+      }
+      setDocAuditOpen(false);
+      return;
+    }
     
     const invalidRow = docAuditRows.find(row => row.status === 'REJECTED' && !row.rejectText.trim());
     if (invalidRow) {
@@ -6451,19 +6794,7 @@ function AdminConsole() {
                                   </td>
                                   {/* [DOC_AUDIT_SINGLE_BUTTON] — Botón único VER DOCUMENTOS */}
                                   <td className="py-5 px-6">
-                                    <button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleOpenDocAudit(p.id, p.title);
-                                      }}
-                                      className="inline-flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-wider bg-[#0a1931] hover:bg-[#0d2248] px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.97] border border-[#0a1931]/80"
-                                    >
-                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                      </svg>
-                                      Ver Documentos
-                                    </button>
+                                    <ViewDocumentsButton entityId={p.id} entityType="property" />
                                   </td>
                                   <td className="py-5 px-6">
                                     {p.status === 'borrada_por_propietario' ? (
@@ -8189,16 +8520,7 @@ function AdminConsole() {
                                       </button>
 
                                       {/* Ver Documentos */}
-                                      <button
-                                        onClick={() => {
-                                          // ponytail: simple native alert showing documents to audit
-                                          alert(`[AUDITORÍA DE DOCUMENTOS LEGALES - ${dev.empresa}]\n\n1. NIT: ${dev.nit} (Estado: VERIFICADO ✓)\n2. FUNDEMPRESA: Matrícula de Comercio Vigente (Estado: VERIFICADO ✓)\n3. PLANOS DE OBRA: Planos Municipales Aprobados (Estado: VERIFICADO ✓)\n\nLa documentación cumple con todos los requisitos legales para comercialización.`);
-                                        }}
-                                        className="w-7 h-7 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full flex items-center justify-center border border-slate-200/60 shadow-2xs transition-all hover:scale-110 active:scale-90 cursor-pointer"
-                                        title="Ver/Auditar Documentos Legales"
-                                      >
-                                        📁
-                                      </button>
+                                      <ViewDocumentsButton entityId={dev.id} entityType="developer" />
 
                                       {/* WhatsApp */}
                                       <a
@@ -8394,19 +8716,7 @@ function AdminConsole() {
                                 {new Date(cnt.startDate).toLocaleDateString()} - {new Date(cnt.endDate).toLocaleDateString()}
                               </td>
                               <td className="p-4 text-center">
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleOpenDocsModal(cnt);
-                                  }}
-                                  className="inline-flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-wider bg-[#0a1931] hover:bg-[#0d2248] px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.97] border border-[#0a1931]/80"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                  Ver Documentos
-                                </button>
+                                <ViewDocumentsButton entityId={cnt.id} entityType="contract" />
                               </td>
                               <td className="p-4 text-center">
                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
@@ -13305,40 +13615,55 @@ function AdminConsole() {
                           </button>
                         )}
 
-                        {/* Aprobar */}
-                        <button
-                          disabled={activeRow.saving || activeRow.status === 'APPROVED'}
-                          onClick={() => handleDocAuditSaveRow(activeAuditIdx, 'APPROVED')}
-                          className={`inline-flex items-center gap-1 text-[10px] font-black px-4 py-2 rounded-xl transition-all uppercase tracking-wider cursor-pointer ${
-                            activeRow.status === 'APPROVED'
-                              ? 'bg-emerald-100 text-emerald-700 cursor-default'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs hover:scale-105 active:scale-95'
-                          }`}
-                        >
-                          {activeRow.saving ? '⏳' : '✓'} Aprobar Documento
-                        </button>
+                        {/* Aprobar & Rechazar (sólo para propiedades) */}
+                        {docAuditEntityType === 'property' && (
+                          <>
+                            {/* Aprobar */}
+                            <button
+                              disabled={activeRow.saving || activeRow.status === 'APPROVED'}
+                              onClick={() => handleDocAuditSaveRow(activeAuditIdx, 'APPROVED')}
+                              className={`inline-flex items-center gap-1 text-[10px] font-black px-4 py-2 rounded-xl transition-all uppercase tracking-wider cursor-pointer ${
+                                activeRow.status === 'APPROVED'
+                                  ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs hover:scale-105 active:scale-95'
+                              }`}
+                            >
+                              {activeRow.saving ? '⏳' : '✓'} Aprobar Documento
+                            </button>
 
-                        {/* Rechazar */}
-                        {!activeRow.rejectOpen ? (
+                            {/* Rechazar */}
+                            {!activeRow.rejectOpen ? (
+                              <button
+                                disabled={activeRow.saving}
+                                onClick={() => updateDocAuditRow(activeAuditIdx, { rejectOpen: true })}
+                                className="text-[10px] font-bold text-slate-400 hover:text-slate-655 uppercase cursor-pointer"
+                              >
+                                Rechazar
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => updateDocAuditRow(activeAuditIdx, { rejectOpen: false })}
+                                className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase cursor-pointer"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {/* Subir Archivo (sólo para contratos y constructoras) */}
+                        {(docAuditEntityType === 'contract' || docAuditEntityType === 'developer') && (
                           <button
-                            disabled={activeRow.saving}
-                            onClick={() => updateDocAuditRow(activeAuditIdx, { rejectOpen: true })}
-                            className="text-[10px] font-bold text-slate-400 hover:text-slate-655 uppercase cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 text-[10px] font-black border border-emerald-200 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-4 py-2.5 rounded-xl transition-all uppercase tracking-wider cursor-pointer hover:scale-105 active:scale-95 shadow-2xs"
                           >
-                            Rechazar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => updateDocAuditRow(activeAuditIdx, { rejectOpen: false })}
-                            className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase cursor-pointer"
-                          >
-                            Cancelar
+                            📤 SUBIR ARCHIVO
                           </button>
                         )}
                       </div>
 
                       {/* Formulario de Rechazo */}
-                      {activeRow.rejectOpen && (
+                      {docAuditEntityType === 'property' && activeRow.rejectOpen && (
                         <div className="flex gap-2 pt-2 animate-in slide-in-from-top-1 duration-150">
                           <textarea
                             rows={2}
@@ -13356,7 +13681,7 @@ function AdminConsole() {
                           </button>
                         </div>
                       )}
-                      {activeRow.status === 'REJECTED' && (
+                      {docAuditEntityType === 'property' && activeRow.status === 'REJECTED' && (
                         <div className="mt-2 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-between gap-3">
                           <div className="space-y-1">
                             <span className="text-[10px] font-black text-rose-700 uppercase tracking-widest block">Documento Rechazado / Observado</span>

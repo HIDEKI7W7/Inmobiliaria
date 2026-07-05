@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { contractsService, Contract } from '@/services/contracts.service';
-import { apiClient } from '@/utils/apiClient';
+import { apiClient } from '@/services/api.client';
 
 interface ContractAuditModalProps {
   isOpen: boolean;

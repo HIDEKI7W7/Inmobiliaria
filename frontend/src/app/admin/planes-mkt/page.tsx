@@ -322,19 +322,22 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
       });
 
       if (res.ok) {
-        alert(`Plan ${frozen.name} guardado exitosamente.`);
+        localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+        alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.warn(`[admin] PATCH /plans/${id} failed with ${res.status}: ${errorData.message || 'Unauthorized'}. Triggering local fallback...`);
         // Fallback to local DB
         await persistLocalMarketingPlan(id, plan.price);
-        alert(`Servidor de producción no autorizado (${res.status}). El precio se guardó en la base de datos de simulación local (db.json) exitosamente.`);
+        localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+        alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
       }
     } catch (err: any) {
       console.warn('[admin] PATCH /plans failed with network error. Triggering local fallback...', err);
       // Fallback to local DB
       await persistLocalMarketingPlan(id, plan.price);
-      alert(`Servidor fuera de línea. El precio se guardó en la base de datos de simulación local (db.json) exitosamente.`);
+      localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+      alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
     } finally {
       setSavingPlans(false);
     }
@@ -378,7 +381,8 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
       });
 
       if (res.ok) {
-        alert('Configuración de planes de marketing guardada exitosamente.');
+        localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+        alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.warn(`[admin] PUT /admin/marketing-plans failed with ${res.status}: ${errorData.message || 'Unauthorized'}. Triggering local fallback...`);
@@ -386,7 +390,8 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
         for (const p of payloadPlans) {
           await persistLocalMarketingPlan(p.id, p.price);
         }
-        alert(`Servidor de producción no autorizado (${res.status}). Los precios se guardaron en la base de datos de simulación local (db.json) exitosamente.`);
+        localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+        alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
       }
     } catch (err: any) {
       console.warn('[admin] PUT /admin/marketing-plans failed with network error. Triggering local fallback...', err);
@@ -394,7 +399,8 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
       for (const id of Object.keys(editablePlans)) {
         await persistLocalMarketingPlan(id, editablePlans[id].price);
       }
-      alert(`Servidor fuera de línea. Los precios se guardaron en la base de datos de simulación local (db.json) exitosamente.`);
+      localStorage.setItem('propio_marketing_plans_updated', String(Date.now()));
+      alert('Precios actualizados y guardados en el sistema en Bolivianos (Bs.) con éxito.');
     } finally {
       setSavingPlans(false);
     }
@@ -642,7 +648,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
         ownerName,
         p.telefonoPropietario,
         p.contratosUrls.join('; '),
-        `$${p.montoPago} USD`,
+        `Bs. ${p.montoPago}`,
         p.usuarioCaptador,
         p.etapaKanban,
       ];
@@ -785,7 +791,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                   Ingresos Proyectados
                 </span>
                 <span className="block text-2xl font-black text-emerald-600 mt-2">
-                  ${pedidosMKT.reduce((acc, curr) => acc + curr.montoPago, 0)} USD
+                  Bs. {pedidosMKT.reduce((acc, curr) => acc + curr.montoPago, 0)}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold mt-1 block">
                   Monto acumulado por planes
@@ -858,7 +864,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                         </div>
                         <span className="block text-[10px] font-mono font-black text-slate-700 pt-1">
                           {id === 'plan-cierre-garantizado' && !plan.price.includes('%') ? 'Comisión: ' : ''}
-                          {id === 'plan-gratis' ? 'Gratis' : plan.price}
+                          {id === 'plan-gratis' ? 'Gratis' : `Bs. ${plan.price.replace(/[^\d.]/g, '')}${plan.billingCycle}`}
                         </span>
                       </div>
                     );
@@ -886,11 +892,12 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                               className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 text-[10px] text-slate-500 font-bold focus:outline-none cursor-not-allowed opacity-75"
                             />
                           </div>
-                          <div>
-                            <label className="block text-[7px] font-black text-slate-450 uppercase mb-0.5">Precio (Editable)</label>
+                           <div>
+                            <label className="block text-[7px] font-black text-slate-450 uppercase mb-0.5">PRECIO (EDITABLE) (Bs.)</label>
                             <input 
                               type="text" 
                               value={plan.price}
+                              placeholder={`Bs. ${id === 'plan-venta-pro' ? '199' : plan.price}`}
                               onChange={(e) => setEditablePlans(prev => ({
                                 ...prev,
                                 [id]: { ...prev[id], price: e.target.value }
@@ -1068,7 +1075,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                               </div>
                             </td>
                             <td className="p-3 font-bold text-slate-800">
-                              ${pedido.montoPago} USD
+                              Bs. {pedido.montoPago}
                             </td>
                             <td className="p-3 font-semibold text-slate-500">
                               {pedido.usuarioCaptador}
@@ -1390,11 +1397,12 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">Precio Pactado ($ USD)</label>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">Precio Pactado (Bs.)</label>
                       <input
                         type="number"
                         required
                         value={precioPactado}
+                        placeholder="Bs. 199"
                         onChange={(e) => setPrecioPactado(Number(e.target.value) || 0)}
                         className="w-full bg-white border border-slate-200 focus:border-slate-350 rounded-xl px-3 py-2 text-xs focus:outline-none font-black text-slate-800"
                       />

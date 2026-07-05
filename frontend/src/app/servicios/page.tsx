@@ -64,7 +64,33 @@ export default function ServiciosPage() {
       }
     };
     fetchPlans();
+
+    // Re-fetch whenever admin saves prices (cross-tab invalidation via storage event)
+    const onPlanUpdate = (e: StorageEvent) => {
+      if (e.key === 'propio_marketing_plans_updated') fetchPlans();
+    };
+    window.addEventListener('storage', onPlanUpdate);
+    return () => window.removeEventListener('storage', onPlanUpdate);
   }, []);
+
+  const getFreshPrices = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('propio_global_plan_prices');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return {
+            contenidos: parsed.contenidos ?? 69,
+            venta_pro: parsed.venta_pro ?? 199,
+            cierre_garantizado: parsed.cierre_garantizado ?? 1.5,
+          };
+        } catch {}
+      }
+    }
+    return { contenidos: 69, venta_pro: 199, cierre_garantizado: 1.5 };
+  };
+
+  const fresh = getFreshPrices();
 
   const fallbackPlans = [
     {
@@ -83,7 +109,7 @@ export default function ServiciosPage() {
     {
       id: 'plan-contenidos',
       name: 'Plan Contenidos',
-      price: 'Bs. 69',
+      price: `Bs. ${fresh.contenidos}`,
       billingCycle: '/mes',
       badgeText: 'MAS RECOMENDADO PARA RENTAS',
       themeType: 'green',
@@ -98,7 +124,7 @@ export default function ServiciosPage() {
     {
       id: 'plan-venta-pro',
       name: 'Plan Venta Pro',
-      price: 'Bs. 199',
+      price: `Bs. ${fresh.venta_pro}`,
       billingCycle: '/mes',
       badgeText: 'MAS RECOMENDADO PARA VENTA',
       themeType: 'green',
@@ -114,7 +140,7 @@ export default function ServiciosPage() {
     {
       id: 'plan-cierre-garantizado',
       name: 'Cierre Garantizado',
-      price: `Comisión: ${commissionRate}%`,
+      price: `Comisión: ${fresh.cierre_garantizado}%`,
       billingCycle: 'del valor de venta (Todo incluido)',
       badgeText: 'TODO INCLUIDO',
       themeType: 'blue',
