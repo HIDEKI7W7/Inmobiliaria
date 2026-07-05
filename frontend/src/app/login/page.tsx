@@ -235,13 +235,22 @@ export default function LoginPage() {
           }
         }
 
-        // Inyectar credenciales maestras de alta seguridad por defecto
+        // Inyectar credenciales maestras de alta seguridad y antiguas por defecto
         localUsers.push({
           id: 'usr-admin-master',
           name: 'Administrador Principal',
           email: 'admin@propio.bo',
           username: 'admin@propio.bo',
           password: 'M4rs_Tech.2026!Admin',
+          role: 'ADMIN',
+          phone: '',
+        });
+        localUsers.push({
+          id: 'usr-admin-old',
+          name: 'Administrador Demo',
+          email: 'admin@propio.com.bo',
+          username: 'admin@propio.com.bo',
+          password: 'admin123',
           role: 'ADMIN',
           phone: '',
         });
@@ -254,54 +263,22 @@ export default function LoginPage() {
           role: 'AGENTE',
           phone: '',
         });
+        localUsers.push({
+          id: 'usr-agente-old',
+          name: 'Agente Demo',
+          email: 'agent@propio.com.bo',
+          username: 'agent@propio.com.bo',
+          password: 'agent123',
+          role: 'AGENTE',
+          phone: '',
+        });
 
         const emailNormalizado = email.trim().toLowerCase();
         const matchedUser = localUsers.find(
           (u) => u.email?.toLowerCase() === emailNormalizado || u.username?.toLowerCase() === emailNormalizado
         );
 
-        if (matchedUser) {
-          if (matchedUser.password !== password) {
-            setError(t('Credenciales invalidas'));
-            setIsLoading(false);
-            return;
-          }
 
-          const header = window.btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-          const payloadObj = {
-            userId: matchedUser.id,
-            email: matchedUser.email,
-            name: matchedUser.name,
-            whatsappPhone: matchedUser.phone,
-            role: matchedUser.role,
-            onboardingCompleted: true,
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
-          };
-          const payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(payloadObj))));
-          const mockToken = `${header}.${payload}.signature`;
-
-          saveToken(mockToken);
-          setIsLoading(false);
-          setSuccessMsg(`${t("¡Bienvenido, Asesor")} ${matchedUser.name}!`);
-
-          const redirectPath = matchedUser.role === 'ADMIN' ? '/admin/dashboard' : '/agente/dashboard';
-
-          setTimeout(() => {
-            try {
-              router.push(redirectPath);
-              setTimeout(() => {
-                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
-                  window.location.href = redirectPath;
-                }
-              }, 150);
-            } catch (e) {
-              if (typeof window !== 'undefined') {
-                window.location.href = redirectPath;
-              }
-            }
-          }, 1200);
-          return;
-        }
 
         // Standard backend authentication fallback
         const loginRes = await fetch('/api/auth/login', {
