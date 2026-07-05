@@ -4,6 +4,7 @@ import {
   Post,
   Delete,
   Put,
+  Patch,
   Body,
   Param,
   UseGuards,
