@@ -1,0 +1,66 @@
+[
+  {
+    "id": "DEV-303",
+    "name": "Constructora Urubó Premium",
+    "nit": "203948571",
+    "foundedYear": "Fundada en 2015",
+    "logoUrl": "",
+    "representative": "Lic. Mauricio Aponte",
+    "phone": "+591 785 22334",
+    "email": "contacto@urubopremium.bo",
+    "website": "https://urubopremium.bo",
+    "officeZone": "Santa Cruz - Urubó",
+    "officeAddress": "Av. Principal Urubó, Centro Empresarial Torre B, Of. 202",
+    "description": "Líderes en desarrollos exclusivos y condominios campestres de lujo en el Urubó.",
+    "specialties": [
+      "Urbanizaciones Cerradas",
+      "Casas de Lujo",
+      "Departamentos Premium"
+    ],
+    "stock": 24,
+    "commissionScheme": "3% Neto",
+    "stage": "Pre-venta"
+  },
+  {
+    "id": "DEV-302",
+    "name": "Torres Equipetrol S.A.",
+    "nit": "304958672",
+    "foundedYear": "Fundada en 2018",
+    "logoUrl": "",
+    "representative": "Arq. Valeria Justiniano",
+    "phone": "+591 760 11223",
+    "email": "vjustiniano@equipetrolsa.bo",
+    "website": "https://equipetrolsa.bo",
+    "officeZone": "Santa Cruz - Equipetrol",
+    "officeAddress": "Barrio Equipetrol, Calle 9 Oeste #45",
+    "description": "Edificaciones vanguardistas y sustentables en el corazón corporativo de Santa Cruz.",
+    "specialties": [
+      "Edificios de Oficinas",
+      "Departamentos de Lujo"
+    ],
+    "stock": 35,
+    "commissionScheme": "4% Compartido",
+    "stage": "En Construcción"
+  },
+  {
+    "id": "DEV-301",
+    "name": "Inmobiliaria Las Palmas S.R.L.",
+    "nit": "405968783",
+    "foundedYear": "Fundada en 2008",
+    "logoUrl": "",
+    "representative": "Ing. Fernando Justiniano",
+    "phone": "+591 708 33445",
+    "email": "fjustiniano@laspalmas.bo",
+    "website": "https://laspalmas.bo",
+    "officeZone": "Santa Cruz - Las Palmas",
+    "officeAddress": "Av. Iberica #789, Condominio Las Palmas",
+    "description": "Desarrollos familiares de alta seguridad y confort en la zona sur-oeste.",
+    "specialties": [
+      "Casas Familiares",
+      "Condominios Cerrados"
+    ],
+    "stock": 15,
+    "commissionScheme": "3.5% Neto",
+    "stage": "Entregado"
+  }
+]
