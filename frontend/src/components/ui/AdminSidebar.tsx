@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentUser, removeToken } from '@/utils/session';
+import { useAgents } from '@/context/AgentContext';
 
 export type Tab =
   | 'dashboard'
@@ -16,7 +17,9 @@ export type Tab =
   | 'expenses'
   | 'reports'
   | 'marketing_planes'
-  | 'config_permissions';
+  | 'config_permissions'
+  | 'announcements'
+  | 'colaboraciones';
 
 interface AdminSidebarProps {
   activeTab: Tab;
@@ -52,7 +55,9 @@ const ICONS: Record<Tab, JSX.Element> = {
   expenses: <Icon d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />,
   reports: <Icon d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
   marketing_planes: <Icon d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" d2="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />,
-  config_permissions: <Icon d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+  config_permissions: <Icon d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />,
+  announcements: <Icon d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />,
+  colaboraciones: <Icon d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
 };
 
 const NAV_ITEMS: { id: Tab; label: string; countKey?: keyof AdminSidebarProps['counts'] }[] = [
@@ -66,8 +71,10 @@ const NAV_ITEMS: { id: Tab; label: string; countKey?: keyof AdminSidebarProps['c
   { id: 'payments',    label: 'Ingresos',     countKey: 'payments' },
   { id: 'expenses',    label: 'Gastos',       countKey: 'expenses' },
   { id: 'reports',     label: 'Reportes' },
-  { id: 'marketing_planes', label: 'Planes MKT' },
-  { id: 'config_permissions', label: 'Permisos' }
+  { id: 'marketing_planes', label: 'Planes de Marketing' },
+  { id: 'config_permissions', label: 'Permisos' },
+  { id: 'announcements', label: 'Comunicados' },
+  { id: 'colaboraciones', label: 'Colaboraciones' }
 ];
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -76,10 +83,30 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   counts,
 }) => {
   const router = useRouter();
+  const { agents } = useAgents();
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState('admin');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const [expandedGroups, setExpandedGroups] = useState({
+    gestioInmobiliaria: true,
+    operacionesFinanzas: true,
+    administracion: true,
+  });
+
+  const isGroupActive = (group: 'gestioInmobiliaria' | 'operacionesFinanzas' | 'administracion') => {
+    if (group === 'gestioInmobiliaria') {
+      return ['properties', 'owners', 'developers', 'agents', 'prospects'].includes(activeTab);
+    }
+    if (group === 'operacionesFinanzas') {
+      return ['contracts', 'payments', 'expenses', 'colaboraciones'].includes(activeTab);
+    }
+    if (group === 'administracion') {
+      return ['dashboard', 'reports', 'marketing_planes', 'config_permissions', 'announcements'].includes(activeTab);
+    }
+    return false;
+  };
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -93,14 +120,36 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     }
   }, []);
 
+  // Auto-expand category containing the activeTab
+  useEffect(() => {
+    if (['properties', 'owners', 'developers', 'agents', 'prospects'].includes(activeTab)) {
+      setExpandedGroups(prev => ({ ...prev, gestioInmobiliaria: true }));
+    } else if (['contracts', 'payments', 'expenses'].includes(activeTab)) {
+      setExpandedGroups(prev => ({ ...prev, operacionesFinanzas: true }));
+    } else if (['dashboard', 'reports', 'marketing_planes', 'config_permissions', 'announcements'].includes(activeTab)) {
+      setExpandedGroups(prev => ({ ...prev, administracion: true }));
+    }
+  }, [activeTab]);
+
   const handleLogout = () => {
     removeToken();
     router.push('/');
   };
 
   const handleNav = (tab: Tab) => {
-    if (onTabChange) {
-      onTabChange(tab);
+    if (tab === 'marketing_planes') {
+      router.push('/admin/planes-mkt');
+    } else if (tab === 'announcements') {
+      router.push('/admin/comunicados');
+    } else {
+      if (pathname?.includes('/admin/planes-mkt') || pathname?.includes('/admin/comunicados')) {
+        localStorage.setItem('propio_admin_active_tab', tab);
+        router.push('/admin');
+      } else {
+        if (onTabChange) {
+          onTabChange(tab);
+        }
+      }
     }
     setIsMobileOpen(false);
   };
@@ -109,6 +158,72 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     const nextVal = !isCollapsed;
     setIsCollapsed(nextVal);
     localStorage.setItem('admin_sidebar_collapsed', String(nextVal));
+  };
+
+  const renderCategoryHeader = (
+    label: string, 
+    groupKey: 'gestioInmobiliaria' | 'operacionesFinanzas' | 'administracion'
+  ) => {
+    if (isCollapsed && !isMobileOpen) return null;
+    
+    const hasActiveChild = isGroupActive(groupKey);
+
+    return (
+      <button
+        onClick={() => setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+        className={`w-full flex items-center px-3.5 py-2 mt-4 mb-1 text-[10px] font-black uppercase tracking-[0.15em] transition-colors cursor-pointer select-none rounded-lg hover:bg-white/[0.03] text-left ${
+          hasActiveChild ? 'text-white' : 'text-white/40'
+        }`}
+      >
+        <span>{label}</span>
+      </button>
+    );
+  };
+
+  const renderNavItem = (item: typeof NAV_ITEMS[number]) => {
+    const isActive = activeTab === item.id;
+    const count = item.countKey === 'agents' ? agents.length : (item.countKey ? counts[item.countKey] : undefined);
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleNav(item.id)}
+        title={isCollapsed ? item.label : undefined}
+        className={`
+          group w-full flex items-center rounded-xl text-[11px] font-semibold tracking-wide
+          transition-all duration-200 relative h-9 cursor-pointer
+          ${isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-3.5'}
+          ${isActive
+            ? 'bg-white/[0.07] text-white shadow-sm font-black'
+            : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }
+        `}
+      >
+        {isActive && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#b9fa3c] rounded-r-full" />
+        )}
+
+        <span className={`transition-colors duration-200 shrink-0 ${isActive ? 'text-[#b9fa3c]' : 'text-slate-500 group-hover:text-slate-350'}`}>
+          {ICONS[item.id]}
+        </span>
+
+        {(!isCollapsed || isMobileOpen) && (
+          <span className="ml-3 flex-grow text-left truncate transition-opacity duration-300">{item.label}</span>
+        )}
+
+        {count !== undefined && (!isCollapsed || isMobileOpen) && (
+          <span className={`
+            text-[8px] font-black px-1.5 py-0.5 rounded-md min-w-[18px] text-center tabular-nums transition-all
+            ${isActive
+              ? 'bg-[#b9fa3c]/20 text-[#b9fa3c]'
+              : 'bg-white/8 text-slate-400 group-hover:text-white/60'
+            }
+          `}>
+            {count}
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -132,11 +247,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 flex flex-col h-full
+          fixed inset-y-0 left-0 z-50 flex flex-col h-full shrink-0 select-none
           bg-[#04045E] border-r border-white/5
           shadow-2xl shadow-black/20
           transition-all duration-300 ease-in-out
-          md:static md:translate-x-0 md:z-auto md:shadow-none
+          md:static md:translate-x-0 md:z-auto md:shadow-none md:shrink-0
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
           ${isCollapsed ? 'w-64 md:w-16' : 'w-64'}
         `}
@@ -183,52 +298,37 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         )}
 
         <nav className={`flex-grow px-3 pb-4 space-y-1 overflow-y-auto ${isCollapsed ? 'md:px-2 pt-2' : 'pt-1'}`}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeTab === item.id;
-            const count = item.countKey ? counts[item.countKey] : undefined;
+          {/* Categoría 1: GESTIÓN INMOBILIARIA */}
+          {renderCategoryHeader("🏠 GESTIÓN INMOBILIARIA", "gestioInmobiliaria")}
+          <div className={`transition-all duration-300 overflow-hidden ${
+            (isCollapsed && !isMobileOpen) || expandedGroups.gestioInmobiliaria 
+              ? 'max-h-96 opacity-100' 
+              : 'max-h-0 opacity-0'
+          } space-y-1`}>
+            {NAV_ITEMS.filter(item => ['properties', 'owners', 'developers', 'agents', 'prospects'].includes(item.id)).map(renderNavItem)}
+          </div>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item.id)}
-                title={isCollapsed ? item.label : undefined}
-                className={`
-                  group w-full flex items-center rounded-xl text-[11px] font-semibold tracking-wide
-                  transition-all duration-200 relative h-9
-                  ${isCollapsed ? 'md:justify-center px-0' : 'px-3.5'}
-                  ${isActive
-                    ? 'bg-white/[0.07] text-white shadow-sm font-black'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }
-                `}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#b9fa3c] rounded-r-full" />
-                )}
+          {/* Categoría 2: OPERACIONES Y FINANZAS */}
+          {renderCategoryHeader("📊 OPERACIONES Y FINANZAS", "operacionesFinanzas")}
+          <div className={`transition-all duration-300 overflow-hidden ${
+            (isCollapsed && !isMobileOpen) || expandedGroups.operacionesFinanzas 
+              ? 'max-h-96 opacity-100' 
+              : 'max-h-0 opacity-0'
+          } space-y-1`}>
+            {NAV_ITEMS.filter(item => ['contracts', 'payments', 'expenses', 'colaboraciones'].includes(item.id)).map(renderNavItem)}
+          </div>
 
-                <span className={`transition-colors duration-200 shrink-0 ${isActive ? 'text-[#b9fa3c]' : 'text-slate-500 group-hover:text-slate-350'}`}>
-                  {ICONS[item.id]}
-                </span>
-
-                {(!isCollapsed || isMobileOpen) && (
-                  <span className="ml-3 flex-grow text-left truncate transition-opacity duration-300">{item.label}</span>
-                )}
-
-                {count !== undefined && (!isCollapsed || isMobileOpen) && (
-                  <span className={`
-                    text-[8px] font-black px-1.5 py-0.5 rounded-md min-w-[18px] text-center tabular-nums transition-all
-                    ${isActive
-                      ? 'bg-[#b9fa3c]/20 text-[#b9fa3c]'
-                      : 'bg-white/8 text-slate-400 group-hover:text-white/60'
-                    }
-                  `}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {/* Categoría 3: ADMINISTRACIÓN */}
+          {renderCategoryHeader("📈 ADMINISTRACIÓN", "administracion")}
+          <div className={`transition-all duration-300 overflow-hidden ${
+            (isCollapsed && !isMobileOpen) || expandedGroups.administracion 
+              ? 'max-h-96 opacity-100' 
+              : 'max-h-0 opacity-0'
+          } space-y-1`}>
+            {NAV_ITEMS.filter(item => ['dashboard', 'reports', 'marketing_planes', 'config_permissions', 'announcements'].includes(item.id)).map(renderNavItem)}
+          </div>
         </nav>
+
 
         <div className={`shrink-0 p-4 border-t border-white/5 bg-[#030352]/40 ${isCollapsed ? 'md:p-2' : ''}`}>
           <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5 ${isCollapsed ? 'md:p-1 md:justify-center' : ''}`}>

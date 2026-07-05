@@ -10,133 +10,313 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { propertiesService } from '../../../services/properties.service';
 import { Property } from '../../../components/modules/properties/PropertyCard';
-import { getCurrentUser } from '@/utils/session';
-
-const ATTRIBUTES_BY_CATEGORY = {
-  Interiores: ['Aire Acondicionado', 'Calefacción', 'Cocina Equipada', 'Roperos Empotrados', 'Amoblado', 'Termotanque', 'Suite Master', 'Dependencias de Servicio'],
-  Exteriores: ['Jardín', 'Churrasquera/Parrillero', 'Terraza', 'Balcón', 'Patio', 'Piscina Privada'],
-  Parqueos: ['Parqueo Techado', 'Parqueo de Visitas', 'Garaje con Portón Eléctrico', 'Baulera'],
-  Seguridad: ['Seguridad 24/7', 'Cerco Eléctrico', 'Cámaras de Vigilancia', 'Alarma', 'Conserjería'],
-  'Áreas Comunes': ['Salón de Eventos', 'Gimnasio', 'Piscina Común', 'Canchas Deportivas', 'Parque Infantil', 'Sauna'],
-  Sostenibilidad: ['Calefón Solar', 'Paneles Solares', 'Iluminación LED', 'Sistema de Reciclaje de Agua']
-};
+import { getCurrentUser, getToken } from '@/utils/session';
+import { WHATSAPP_LINK } from '@/utils/whatsapp';
+import PropertyFormFields, { ATTRIBUTES_BY_CATEGORY } from '../../../components/modules/properties/PropertyFormFields';
 
 const PLANS = [
   {
     id: 'basico',
-    name: 'Plan Básico',
-    price: 0,
-    period: 'gratis',
+    name: 'PLAN GRATUITO',
+    priceLabel: 'Gratis /MES',
+    period: '',
     highlight: false,
+    badge: '',
+    badgeDark: false,
     features: [
       { text: '1 publicación activa', included: true },
       { text: 'Fotos básicas (hasta 5)', included: true },
       { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Verificación legal documental', included: false },
-      { text: 'Posicionamiento destacado', included: false },
     ],
   },
   {
-    id: 'estandar',
-    name: 'Plan Estándar',
-    price: 250,
-    period: 'mes',
+    id: 'contenidos',
+    name: 'PLAN CONTENIDOS',
+    priceLabel: 'Bs. 69 /MES',
+    period: '',
     highlight: false,
+    badge: 'MAS RECOMENDADO PARA RENTAS',
+    badgeDark: false,
     features: [
-      { text: '3 publicaciones activas', included: true },
-      { text: 'Fotos y video estándar', included: true },
+      { text: '1 propiedad', included: true },
+      { text: 'Fotos + Video optimizado', included: true },
       { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Sello de verificación documental', included: true },
-      { text: 'Posicionamiento destacado', included: false },
+      { text: 'Mapa interactivo con radar', included: true },
+      { text: 'Alquiler de letrero físico', included: true },
     ],
   },
   {
-    id: 'profesional',
-    name: 'Plan Profesional',
-    price: 490,
-    period: 'mes',
+    id: 'venta_pro',
+    name: 'PLAN VENTA PRO',
+    priceLabel: 'Bs. 199 /MES',
+    period: '',
     highlight: true,
-    badge: 'Recomendado',
+    badge: 'MAS RECOMENDADO PARA VENTA',
+    badgeDark: false,
     features: [
-      { text: '10 publicaciones activas', included: true },
-      { text: 'Fotos HD + video premium', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Sello de verificación Sello Oro', included: true },
-      { text: 'Posicionamiento destacado en mapa', included: true },
+      { text: '1 propiedad', included: true },
+      { text: 'Dron + Fotos Profesionales', included: true },
+      { text: 'Sello Oro + Mapa Premium', included: true },
+      { text: 'Alquiler de letrero físico', included: true },
+      { text: 'Estadísticas Avanzadas de Visitas', included: true },
+      { text: 'PUBLICIDAD PRIORITARIA', included: true },
     ],
   },
   {
-    id: 'elite',
-    name: 'Plan Elite',
-    price: 990,
-    period: 'mes',
+    id: 'cierre_garantizado',
+    name: 'CIERRE GARANTIZADO',
+    priceLabel: 'Comisión: 1.5% DEL VALOR DE VENTA (TODO INCLUIDO)',
+    period: '',
     highlight: false,
-    badge: 'Todo incluido',
+    badge: 'TODO INCLUIDO',
+    badgeDark: true,
     features: [
-      { text: 'Publicaciones ilimitadas', included: true },
-      { text: 'Fotos, video + tour virtual 360°', included: true },
-      { text: 'Contacto prioritario directo', included: true },
-      { text: 'Sello de verificación Sello Oro', included: true },
-      { text: 'Campañas de Marketing dedicadas', included: true },
+      { text: 'Gestión completa por Agente Experto', included: true },
+      { text: 'Visitas y Negociación delegadas', included: true },
+      { text: 'Alquiler de letrero físico', included: true },
+      { text: 'Auditoría Legal y Notarial', included: true },
     ],
   },
 ];
 
 export default function PropietarioDashboard() {
   const router = useRouter();
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('owner');
 
+  // Paginación y Rol
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const [isMoreLoading, setIsMoreLoading] = useState(false);
+
+  const [commissionRate, setCommissionRate] = useState(1.5);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const activeAnnRaw = localStorage.getItem('propio_active_announcement');
+      if (activeAnnRaw) {
+        try {
+          const ann = JSON.parse(activeAnnRaw);
+          const sec = ann.secciones?.find((s: any) => s.titulo.toLowerCase().includes('comisión') || s.titulo.toLowerCase().includes('comision') || s.titulo.toLowerCase().includes('comisión base'));
+          if (sec && sec.vinetas && sec.vinetas[0]) {
+            const match = sec.vinetas[0].match(/(\d+(\.\d+)?)\s*%/);
+            if (match && match[1]) {
+              setCommissionRate(parseFloat(match[1]));
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing active announcement for commission rate:', e);
+        }
+      }
+    }
+  }, []);
+
   // Estados del modal de edición
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [editingProperty, setEditingProperty] = useState<any | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCurrency, setEditCurrency] = useState('BOB');
   const [editPriceBOB, setEditPriceBOB] = useState('');
   const [editPriceUSD, setEditPriceUSD] = useState('');
-  const [editExchangeRate, setEditExchangeRate] = useState('6.96');
+  const [editExchangeRate, setEditExchangeRate] = useState('9.76');
   const [editLandArea, setEditLandArea] = useState('');
   const [editBuiltArea, setEditBuiltArea] = useState('');
   const [editZona, setEditZona] = useState('');
   const [editAttributes, setEditAttributes] = useState<Record<string, boolean>>({});
   const [editImages, setEditImages] = useState<string[]>([]);
+  const [editDocuments, setEditDocuments] = useState<any[]>([]);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const packagedFormData = {
+    title: editTitle,
+    description: editDescription,
+    currency: editCurrency,
+    exchangeRate: editExchangeRate,
+    priceBOB: editPriceBOB,
+    priceUSD: editPriceUSD,
+    minPrice: editingProperty?.minPrice ? String(editingProperty.minPrice) : '',
+    offerType: editingProperty?.offerType || 'VENTA',
+    type: editingProperty?.type || 'DEPARTAMENTO',
+    landArea: editLandArea,
+    builtArea: editBuiltArea,
+    rooms: editingProperty?.rooms ? String(editingProperty.rooms) : '3',
+    bathrooms: editingProperty?.bathrooms ? String(editingProperty.bathrooms) : '2',
+    location: editingProperty?.location || 'Cochabamba',
+    zona: editZona,
+    address: editingProperty?.address || '',
+    latitude: editingProperty?.latitude || -17.3895,
+    longitude: editingProperty?.longitude || -66.1568,
+  };
+
+  const handleFormFieldsChange = (updates: Partial<typeof packagedFormData>) => {
+    if (updates.title !== undefined) setEditTitle(updates.title);
+    if (updates.description !== undefined) setEditDescription(updates.description);
+    if (updates.currency !== undefined) setEditCurrency(updates.currency);
+    if (updates.exchangeRate !== undefined) setEditExchangeRate(String(updates.exchangeRate));
+    if (updates.priceBOB !== undefined) setEditPriceBOB(String(updates.priceBOB));
+    if (updates.priceUSD !== undefined) setEditPriceUSD(String(updates.priceUSD));
+    if (updates.landArea !== undefined) setEditLandArea(String(updates.landArea));
+    if (updates.builtArea !== undefined) setEditBuiltArea(String(updates.builtArea));
+    if (updates.zona !== undefined) setEditZona(updates.zona);
+    
+    if (editingProperty) {
+      setEditingProperty({
+        ...editingProperty,
+        ...updates
+      } as any);
+    }
+  };
+
+  const documentsChecklist = {
+    hasFolioReal: !!editingProperty?.hasFolioReal,
+    hasCatastro: !!editingProperty?.hasCatastro,
+    hasTestimonio: !!editingProperty?.hasTestimonio,
+    hasImpuestosAlDia: !!editingProperty?.hasImpuestosAlDia,
+    hasPlanoUsoSuelo: !!editingProperty?.hasPlanoUsoSuelo,
+    hasCI: !!editingProperty?.hasCI,
+  };
+
+  const handleUpdateDocuments = (updates: Partial<typeof documentsChecklist>) => {
+    if (editingProperty) {
+      setEditingProperty({
+        ...editingProperty,
+        ...updates
+      });
+    }
+  };
+
+  const loadProperties = async (targetPage: number, append = false) => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      if (append) {
+        setIsMoreLoading(true);
+      } else {
+        setLoading(true);
+      }
+      
+      // 1. Obtener del backend de la API (si corresponde)
+      let backendProps: any[] = [];
+      try {
+        const res = await propertiesService.getOwnerProperties(token, targetPage, 6);
+        backendProps = res.data || [];
+      } catch (_) {}
+
+      // 2. Obtener de la API central local (db.json)
+      let localCreated: any[] = [];
+      try {
+        const localPropsRes = await fetch('/api/local/properties').then(r => r.json());
+        localCreated = localPropsRes?.properties || [];
+      } catch (err) {
+        console.warn('Error fetching local properties from central DB:', err);
+        // Fallback a localStorage
+        try {
+          const raw = localStorage.getItem('propio_custom_created_properties');
+          if (raw) {
+            localCreated = JSON.parse(raw) || [];
+          }
+        } catch (_) {}
+      }
+
+      // Filtrar de forma estricta por el id del propietario actual y excluir eliminadas
+      const currentUser = getCurrentUser();
+      const currentOwnerId = currentUser?.userId || currentUser?.name || currentUser?.email?.split('@')[0] || 'owner';
+      const filteredLocal = localCreated.filter((p: any) => 
+        p && p.ownerId === currentOwnerId && p.status !== 'borrada_por_propietario'
+      );
+
+      // Combinar los datos
+      const combined = [...filteredLocal, ...backendProps].filter(p => p.status !== 'borrada_por_propietario');
+      
+      // Eliminar duplicados
+      const uniqueMap = new Map();
+      combined.forEach(p => {
+        if (p && p.id) {
+          uniqueMap.set(p.id, p);
+        }
+      });
+      const uniqueProps = Array.from(uniqueMap.values());
+
+      if (append) {
+        setProperties(prev => {
+          const unique = new Map();
+          [...prev, ...uniqueProps].forEach(p => unique.set(p.id, p));
+          return Array.from(unique.values());
+        });
+      } else {
+        setProperties(uniqueProps);
+      }
+      setHasNextPage(false);
+      setPage(targetPage);
+    } catch (error) {
+      console.error('Error al cargar propiedades del propietario:', error);
+    } finally {
+      setLoading(false);
+      setIsMoreLoading(false);
+    }
+  };
+
+  // Hook de montaje obligatorio para forzar re-hidratación en el ciclo de vida inicial
+  useEffect(() => {
+    const rehydrateFromCentralDb = async () => {
+      try {
+        const res = await fetch('/api/local/properties');
+        if (!res.ok) return;
+        const data = await res.json();
+        const centralProps = data?.properties || [];
+        
+        const currentUser = getCurrentUser();
+        const currentOwnerId = currentUser?.userId || currentUser?.name || currentUser?.email?.split('@')[0] || 'owner';
+        
+        // Filtrar de forma estricta por el id del propietario actual y excluir eliminadas
+        const ownerProps = centralProps.filter((p: any) => 
+          p && p.ownerId === currentOwnerId && p.status !== 'borrada_por_propietario'
+        );
+        
+        setProperties(ownerProps);
+      } catch (err) {
+        console.error('[Lifecycle] Error re-hydrating dashboard from central DB:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    rehydrateFromCentralDb();
+  }, []);
 
   useEffect(() => {
     // Guard de autenticación
     const user = getCurrentUser();
     if (!user) {
-      router.replace('/login?redirect=/propietario/dashboard');
-      return;
+      const timer = setTimeout(() => {
+        if (!getCurrentUser()) {
+          router.replace('/login?redirect=/propietario/dashboard');
+        } else {
+          const u = getCurrentUser();
+          if (u) {
+            setUserName((u as any).name || (u as any).email?.split('@')[0] || 'owner');
+            setUserRole(u.role);
+            loadProperties(1, false);
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timer);
     }
     if (user.role !== 'PROPIETARIO' && user.role !== 'ADMIN') {
       router.replace('/');
       return;
     }
     setUserName((user as any).name || (user as any).email?.split('@')[0] || 'owner');
+    setUserRole(user.role);
 
-    // Cargar propiedades
-    const loadProperties = async () => {
-      try {
-        setLoading(true);
-        const allProperties = await propertiesService.getProperties({ verifiedOnly: false });
-        const ownerProperties = allProperties.filter(
-          (p: any) =>
-            p.ownerId === user.userId ||
-            (user.userId === 'owner-1' &&
-              (p.ownerId === 'owner-1' || p.id === '1' || p.id === '4' || String(p.id).startsWith('prop-')))
-        );
-        setProperties(ownerProperties);
-      } catch (error) {
-        console.error('Error al cargar propiedades del propietario:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProperties();
+    loadProperties(1, false);
   }, [router]);
+
+  const handleLoadMore = () => {
+    loadProperties(page + 1, true);
+  };
 
   const handleLogout = async () => {
     try {
@@ -158,7 +338,24 @@ export default function PropietarioDashboard() {
     }
     try {
       const token = localStorage.getItem('propio_token') || '';
-      await propertiesService.deleteProperty(id, token);
+      await propertiesService.deleteProperty(id, token).catch(() => {});
+
+      // Persistir soft-delete si es una propiedad personalizada del usuario
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('propio_custom_created_properties');
+        if (raw) {
+          try {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const updatedList = list.map(p => 
+                p.id === id ? { ...p, status: 'borrada_por_propietario' } : p
+              );
+              localStorage.setItem('propio_custom_created_properties', JSON.stringify(updatedList));
+            }
+          } catch (_) {}
+        }
+      }
+
       setProperties(prev => prev.filter(p => p.id !== id));
       alert('Anuncio retirado del catálogo público con éxito.');
     } catch (error) {
@@ -200,18 +397,19 @@ export default function PropietarioDashboard() {
     setEditTitle(prop.title || '');
     setEditDescription(parsed.cleanDesc || '');
     setEditCurrency(prop.currency || 'BOB');
-    setEditPriceBOB(String(prop.priceBob || (prop.price * 6.96)));
-    setEditPriceUSD(String(prop.price || (prop.priceBob / 6.96)));
-    setEditExchangeRate('6.96');
+    setEditPriceBOB(String(prop.priceBob || (prop.price * 9.76)));
+    setEditPriceUSD(String(prop.price || (prop.priceBob / 9.76)));
+    setEditExchangeRate('9.76');
     setEditLandArea(parsed.landArea);
     setEditBuiltArea(parsed.builtArea);
     setEditZona(parsed.zona);
     setEditAttributes(attrsMap);
     setEditImages(prop.imageUrl ? [prop.imageUrl] : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80']);
+    setEditDocuments(prop.documents || []);
   };
 
   const handlePriceChange = (val: string, type: 'BOB' | 'USD' | 'RATE' | 'CURRENCY') => {
-    const rate = parseFloat(editExchangeRate) || 6.96;
+    const rate = parseFloat(editExchangeRate) || 9.76;
     if (type === 'BOB') {
       setEditPriceBOB(val);
       setEditPriceUSD(val ? (parseFloat(val) / rate).toFixed(2) : '');
@@ -220,7 +418,7 @@ export default function PropietarioDashboard() {
       setEditPriceBOB(val ? (parseFloat(val) * rate).toFixed(2) : '');
     } else if (type === 'RATE') {
       setEditExchangeRate(val);
-      const rateNum = parseFloat(val) || 6.96;
+      const rateNum = parseFloat(val) || 9.76;
       if (editCurrency === 'USD' && editPriceUSD) {
         setEditPriceBOB((parseFloat(editPriceUSD) * rateNum).toFixed(2));
       }
@@ -249,6 +447,70 @@ export default function PropietarioDashboard() {
     setEditImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingProperty || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png'
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Formato no soportado. Por favor sube archivos PDF, Word (.doc/.docx) o imágenes (JPG/PNG).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('El archivo supera el tamaño máximo de 10 MB.');
+      return;
+    }
+
+    try {
+      setIsUploadingDoc(true);
+      const token = localStorage.getItem('propio_token') || '';
+      const doc = await propertiesService.uploadPropertyDocument(editingProperty.id, file, token);
+      setEditDocuments(prev => [...prev, doc]);
+      
+      setProperties(prev =>
+        prev.map(p =>
+          p.id === editingProperty.id
+            ? { ...p, documents: [...(p.documents || []), doc] }
+            : p
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error al subir el archivo: ${err.message || 'Error de red'}`);
+    } finally {
+      setIsUploadingDoc(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!editingProperty) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar este documento?')) return;
+    try {
+      const token = localStorage.getItem('propio_token') || '';
+      await propertiesService.deletePropertyDocument(docId, token);
+      setEditDocuments(prev => prev.filter(d => d.id !== docId));
+      
+      setProperties(prev =>
+        prev.map(p =>
+          p.id === editingProperty.id
+            ? { ...p, documents: (p.documents || []).filter((d: any) => d.id !== docId) }
+            : p
+        )
+      );
+    } catch (err: any) {
+      console.error(err);
+      alert('Ocurrió un error al eliminar el documento.');
+    }
+  };
+
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProperty) return;
@@ -265,14 +527,47 @@ export default function PropietarioDashboard() {
         title: editTitle,
         description: editDescription + attrsText + areaText + zonaText,
         price: parseFloat(editPriceUSD) || 0,
-        priceBob: parseFloat(editPriceBOB) || 0,
         currency: editCurrency,
         area: parseFloat(editBuiltArea) || parseFloat(editLandArea) || 0,
         imageUrl: editImages[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
+        rooms: editingProperty.rooms ? parseInt(editingProperty.rooms) : 3,
+        bathrooms: editingProperty.bathrooms ? parseInt(editingProperty.bathrooms) : 2,
+        location: editingProperty.location,
+        address: editingProperty.address,
+        offerType: editingProperty.offerType,
+        type: editingProperty.type,
+        latitude: parseFloat(editingProperty.latitude as any) || -17.3895,
+        longitude: parseFloat(editingProperty.longitude as any) || -66.1568,
+        hasFolioReal: !!editingProperty.hasFolioReal,
+        hasCatastro: !!editingProperty.hasCatastro,
+        hasTestimonio: !!editingProperty.hasTestimonio,
+        hasImpuestosAlDia: !!editingProperty.hasImpuestosAlDia,
+        hasPlanoUsoSuelo: !!editingProperty.hasPlanoUsoSuelo,
+        hasCI: !!editingProperty.hasCI,
+        minPrice: editingProperty.minPrice ? parseFloat(editingProperty.minPrice as any) : null,
+        status: 'pendiente', // Bloqueo de auto-publicación: degradar a pendiente al editar
+        verified: false,
+        isVerified: false,
+        documentsList: editingProperty.documentsList || [],
+        documents: editingProperty.documents || []
       };
 
       const token = localStorage.getItem('propio_token') || '';
       await propertiesService.updateProperty(editingProperty.id, updatedFields, token);
+
+      // Persistir el cambio y estado degradado en propio_custom_created_properties
+      try {
+        const raw = localStorage.getItem('propio_custom_created_properties');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const updatedList = list.map(p => 
+              p.id === editingProperty.id ? { ...p, ...updatedFields } : p
+            );
+            localStorage.setItem('propio_custom_created_properties', JSON.stringify(updatedList));
+          }
+        }
+      } catch (_) {}
 
       // Modificar en la lista local para reflejar el cambio de inmediato
       setProperties(prev =>
@@ -284,7 +579,7 @@ export default function PropietarioDashboard() {
       );
 
       setEditingProperty(null);
-      alert('Anuncio actualizado con éxito.');
+      alert('Anuncio actualizado con éxito. Pasará a revisión del administrador.');
     } catch (err) {
       console.error(err);
       alert('Ocurrió un error al guardar los cambios.');
@@ -318,7 +613,7 @@ export default function PropietarioDashboard() {
           <div className="flex gap-3 text-xs">
             <Link
               href="/propietario/nuevo"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 !bg-[#D4FF00] hover:!bg-[#c2eb00] !text-slate-900 font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm"
             >
               + Publicar Inmueble
             </Link>
@@ -403,8 +698,9 @@ export default function PropietarioDashboard() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {properties.map((property: any) => (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {properties.map((property: any) => (
                 <div
                   key={property.id}
                   className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md hover:border-slate-300 transition-all duration-200"
@@ -415,13 +711,24 @@ export default function PropietarioDashboard() {
                       alt={property.title}
                       className="w-full h-full object-cover"
                     />
-                    {property.verified ? (
+                    {property.status === 'APROBADO' && (
                       <span className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow">
-                        🏆 Sello Oro
+                        ✨ APROBADO
                       </span>
-                    ) : (
+                    )}
+                    {property.status === 'RECHAZADO' && (
+                      <span className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                        ❌ RECHAZADO
+                      </span>
+                    )}
+                    {property.status === 'OBSERVADO' && (
                       <span className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow">
-                        ⚖️ En Validación
+                        ⚠️ OBSERVADO
+                      </span>
+                    )}
+                    {(!property.status || property.status === 'PENDIENTE' || property.status === 'NUEVA_PUBLICACION') && (
+                      <span className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                        ⏳ PENDIENTE
                       </span>
                     )}
                   </div>
@@ -448,9 +755,9 @@ export default function PropietarioDashboard() {
                       <div>
                         <p className="text-[9px] text-slate-400 font-bold uppercase">Precio</p>
                         <p className="text-base font-black text-[#04045E]">
-                          {(property.priceBob || (property.price * 6.96)).toLocaleString('es-BO')} Bs.
+                          {(property.priceBob || (property.price * 9.76)).toLocaleString('es-BO')} Bs.
                           <span className="text-[10px] text-slate-400 font-medium ml-1.5">
-                            (~ ${(property.price || (property.priceBob / 6.96)).toLocaleString('en-US')} USD)
+                            (~ USD {Math.round((property.price || property.priceBob || 0) / 9.76).toLocaleString()})
                           </span>
                         </p>
                       </div>
@@ -462,10 +769,10 @@ export default function PropietarioDashboard() {
                           Editar Anuncio
                         </button>
                         <button
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-[11px] font-bold text-red-650 rounded-xl transition-all"
+                          className="px-3 py-1.5 !bg-red-50 hover:!bg-red-100 border border-red-200 text-[11px] font-bold !text-red-600 rounded-xl transition-all"
                           onClick={() => handleStopPublishing(property.id)}
                         >
-                          dejar de publicar
+                          DEJAR DE PUBLICAR
                         </button>
                         <button
                           className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-650 rounded-xl transition-all"
@@ -479,11 +786,25 @@ export default function PropietarioDashboard() {
                 </div>
               ))}
             </div>
-          )}
+
+            {hasNextPage && (
+              <div className="flex justify-center pt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isMoreLoading}
+                  className="px-6 py-3 bg-[#b9fa3c] text-[#04045E] hover:brightness-95 hover:scale-[1.02] active:scale-95 text-xs font-black uppercase rounded-xl transition-all disabled:opacity-50"
+                >
+                  {isMoreLoading ? 'Cargando...' : 'Cargar más inmuebles 🔄'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
         </div>
 
         {/* SECCIÓN DE MONETIZACIÓN: PLANES DE SUSCRIPCIÓN */}
-        <section className="pt-16 border-t border-slate-200 mt-16 space-y-8">
+        {userRole === 'PROPIETARIO' && (
+          <section className="pt-16 border-t border-slate-200 mt-16 space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-black text-[#04045E] uppercase tracking-wide">
               Elige tu plan ideal
@@ -494,72 +815,85 @@ export default function PropietarioDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-            {PLANS.map((plan) => (
-              <div 
-                key={plan.id}
-                className={`relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 bg-white border ${
-                  plan.highlight
-                    ? 'border-2 border-[#b9fa3c] shadow-xl scale-[1.02] z-10'
-                    : 'border-slate-200 shadow-sm hover:shadow-md'
-                }`}
-              >
-                {plan.badge && (
-                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest ${
-                    plan.highlight ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-[#04045E] text-white'
-                  }`}>
-                    {plan.badge}
-                  </div>
-                )}
-                
-                <div className="flex-1 flex flex-col justify-between space-y-6">
-                  <div>
-                    <h3 className="font-bold text-sm text-[#04045E] uppercase tracking-wide mb-2">
-                      {plan.name}
-                    </h3>
-                    
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-2xl font-black text-[#04045E]">
-                        {plan.price === 0 ? 'Gratis' : `Bs. ${plan.price}`}
-                      </span>
-                      {plan.price > 0 && <span className="text-[10px] text-slate-400">/{plan.period}</span>}
+            {PLANS.map((plan) => {
+              const isCierre = plan.id === 'cierre_garantizado';
+              const isHighlighted = plan.id === 'contenidos' || plan.id === 'venta_pro';
+
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 bg-white ${
+                    isCierre
+                      ? 'border-2 border-[#04045E] shadow-md'
+                      : isHighlighted
+                        ? 'border-2 border-[#b9fa3c] shadow-xl' + (plan.id === 'venta_pro' ? ' scale-[1.02] z-10' : '')
+                        : 'border border-slate-200 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  {/* Badge flotante */}
+                  {plan.badge && (
+                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                      plan.badgeDark
+                        ? 'bg-[#04045E] text-white'
+                        : 'bg-[#b9fa3c] text-[#04045E]'
+                    }`}>
+                      {plan.badge}
+                    </div>
+                  )}
+
+                  <div className="flex-1 flex flex-col justify-between space-y-6 mt-2">
+                    <div>
+                      <h3 className="font-black text-sm text-[#04045E] uppercase tracking-wide mb-2">
+                        {plan.name}
+                      </h3>
+
+                      <div className="mb-4">
+                        <span className={`font-black text-[#04045E] leading-tight ${
+                          isCierre ? 'text-sm' : 'text-2xl'
+                        }`}>
+                          {isCierre
+                            ? `Comisión: ${commissionRate}% DEL VALOR DE VENTA (TODO INCLUIDO)`
+                            : plan.priceLabel}
+                        </span>
+                      </div>
+
+                      <ul className="space-y-2 pt-3 border-t border-slate-100">
+                        {plan.features.map((f, i) => (
+                          <li key={i} className="flex items-center gap-2 text-[10px] text-slate-800 font-semibold">
+                            <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 text-[8px] bg-emerald-50 text-emerald-600 font-bold">
+                              ✓
+                            </span>
+                            {f.text}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
 
-                    <ul className="space-y-2 pt-3 border-t border-slate-100">
-                      {plan.features.map((f, i) => (
-                        <li key={i} className={`flex items-center gap-2 text-[10px] ${
-                          f.included ? 'text-slate-800 font-semibold' : 'text-slate-350 line-through'
-                        }`}>
-                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 text-[8px] ${
-                            f.included ? 'bg-emerald-50 text-emerald-600 font-bold' : 'bg-slate-50 text-slate-300'
-                          }`}>
-                            {f.included ? '✓' : '–'}
-                          </span>
-                          {f.text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="pt-4">
-                    <button
-                      onClick={() => {
-                        const text = encodeURIComponent(`Hola Propio, me interesa contratar el ${plan.name} de la plataforma.`);
-                        window.open(`https://wa.me/59171234567?text=${text}`, '_blank');
-                      }}
-                      className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-sm ${
-                        plan.highlight
-                          ? 'bg-[#b9fa3c] text-[#04045E] hover:brightness-95'
-                          : 'bg-[#04045E] text-white hover:bg-[#04045E]/90'
-                      }`}
-                    >
-                      {plan.price === 0 ? 'Comenzar Gratis' : 'Contratar Plan'}
-                    </button>
+                    <div className="pt-4">
+                      <button
+                        onClick={() => { window.open(WHATSAPP_LINK, '_blank'); }}
+                        className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-sm ${
+                          plan.id === 'basico'
+                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : isCierre
+                              ? 'bg-[#04045E] text-white hover:bg-[#04045E]/90'
+                              : 'bg-[#b9fa3c] text-[#04045E] hover:brightness-95'
+                        }`}
+                      >
+                        {plan.id === 'basico'
+                          ? 'COMENZAR GRATIS'
+                          : isCierre
+                            ? 'CONTRATAR CIERRE GARANTIZADO'
+                            : 'CONTRATAR PLAN'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
+        )}
 
       </main>
 
@@ -579,172 +913,23 @@ export default function PropietarioDashboard() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-6">
-              {/* Título */}
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Título Comercial</label>
-                <input
-                  type="text"
-                  required
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+              <div className="overflow-y-auto max-h-[65vh] pr-2 space-y-6">
+                <PropertyFormFields
+                  formData={packagedFormData}
+                  onChange={handleFormFieldsChange}
+                  selectedAttributes={editAttributes}
+                  onToggleAttribute={toggleAttribute}
+                  documents={documentsChecklist}
+                  onUpdateDocuments={handleUpdateDocuments}
+                  isEditMode={true}
+                  uploadedDocuments={editDocuments}
+                  onUploadDocument={handleUploadDocument}
+                  onDeleteDocument={handleDeleteDocument}
+                  isUploadingDoc={isUploadingDoc}
+                  images={editImages}
+                  onAddImage={handleAddImage}
+                  onRemoveImage={handleRemoveImage}
                 />
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Descripción</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-[#04045E] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
-                />
-              </div>
-
-              {/* Precios y Conversión */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Moneda</label>
-                    <select
-                      value={editCurrency}
-                      onChange={(e) => handlePriceChange(e.target.value, 'CURRENCY')}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm"
-                    >
-                      <option value="BOB">Bolivianos (Bs.)</option>
-                      <option value="USD">Dólares (USD)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Tipo de Cambio</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editExchangeRate}
-                      onChange={(e) => handlePriceChange(e.target.value, 'RATE')}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Precio (Bs.)</label>
-                    <input
-                      type="number"
-                      value={editPriceBOB}
-                      onChange={(e) => handlePriceChange(e.target.value, 'BOB')}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Precio (USD)</label>
-                    <input
-                      type="number"
-                      value={editPriceUSD}
-                      onChange={(e) => handlePriceChange(e.target.value, 'USD')}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Superficies */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Sup. Terreno (m²)</label>
-                  <input
-                    type="number"
-                    value={editLandArea}
-                    onChange={(e) => setEditLandArea(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm text-center"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Sup. Construida (m²)</label>
-                  <input
-                    type="number"
-                    value={editBuiltArea}
-                    onChange={(e) => setEditBuiltArea(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm text-center"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold tracking-wider uppercase text-[#04045E] mb-1.5">Zona / Barrio</label>
-                  <input
-                    type="text"
-                    value={editZona}
-                    onChange={(e) => setEditZona(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-sm text-center"
-                  />
-                </div>
-              </div>
-
-              {/* Atributos */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#04045E] border-b pb-1">Modificar Atributos de Valor</h4>
-                <div className="max-h-48 overflow-y-auto space-y-4 pr-2">
-                  {Object.entries(ATTRIBUTES_BY_CATEGORY).map(([category, items]) => (
-                    <div key={category} className="space-y-1">
-                      <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block">{category}</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {items.map(item => {
-                          const isChecked = !!editAttributes[item];
-                          return (
-                            <button
-                              type="button"
-                              key={item}
-                              onClick={() => toggleAttribute(item)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium text-left border transition-all flex items-center justify-between ${
-                                isChecked
-                                  ? 'bg-[#b9fa3c]/10 border-[#b9fa3c] text-[#04045E] font-bold'
-                                  : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350 text-slate-650'
-                              }`}
-                            >
-                              <span>{item}</span>
-                              {isChecked && <span>✓</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Galería y Fotos */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#04045E]">Galería de Fotos del Anuncio</h4>
-                  <button
-                    type="button"
-                    onClick={handleAddImage}
-                    className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#04045E] bg-slate-100 hover:bg-slate-200 border px-3 py-1.5 rounded-xl transition-all"
-                  >
-                    + Agregar Foto
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border">
-                  {editImages.map((img, idx) => (
-                    <div key={idx} className="relative h-20 bg-slate-200 rounded-lg overflow-hidden group">
-                      <img src={img} alt={`Anuncio ${idx + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-700 opacity-80 group-hover:opacity-100 transition-opacity"
-                        title="Eliminar foto"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  {editImages.length === 0 && (
-                    <p className="col-span-full text-[10px] text-slate-400 font-bold uppercase text-center py-4">Sin fotos. Sube al menos una foto.</p>
-                  )}
-                </div>
               </div>
 
               {/* Botones */}

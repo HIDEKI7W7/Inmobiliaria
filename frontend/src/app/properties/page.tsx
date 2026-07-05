@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
-import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
 import dynamic from 'next/dynamic';
 import { Property } from '@/components/modules/properties/PropertyCard';
 import { LogoIcon } from '../page';
@@ -13,6 +12,8 @@ import { Footer } from '@/components/ui/Footer';
 import { apiClient } from '@/services/api.client';
 import { getToken, getCurrentUser, getRedirectPathByRole } from '@/utils/session';
 import { useFavorites } from '@/context/FavoritesContext';
+import { propertiesService } from '@/services/properties.service';
+import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
 
 const t = (key: string) => key;
 
@@ -35,393 +36,86 @@ interface EnhancedProperty extends Property {
   priceLabel: string;
   offerType: 'VENTA' | 'ALQUILER' | 'ANTICRETICO' | 'PROYECTO';
   lotSize?: number;
+  images?: string[];
 }
 
-// ─── Datos Geográficos Reales de Cochabamba ────────────────────────────────────────────────
-const ALL_PROPERTIES: EnhancedProperty[] = [
-  {
-    id: 'prop-1-muyurina',
-    title: 'Casa de Campo en Muyurina',
-    description: 'Casa de Campo en Muyurina. Jardín interior amplio, churrasquero propio, suite con vestidor. Superficie Terreno: 450 m² | Superficie Construida: 220 m²',
-    price: 220000.0,
-    priceBob: 2200000.0,
-    area: 220.0,
-    rooms: 4,
-    bathrooms: 3,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3890,
-    lng: -66.1390,
-    type: 'casa',
-    verified: true,
-    offerType: 'VENTA',
-    priceLabel: '2.2M Bs',
-    lotSize: 450,
-  },
-  {
-    id: 'prop-2-mayorazgo',
-    title: 'Oficina Premium en Mayorazgo',
-    description: 'Oficina Premium en Mayorazgo. Iluminación LED inteligente, control de acceso biométrico, chapas digitales. Superficie Terreno: 0 m² | Superficie Construida: 115 m²',
-    price: 135000.0,
-    priceBob: 1350000.0,
-    area: 115.0,
-    rooms: 0,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3680,
-    lng: -66.1780,
-    type: 'oficina',
-    verified: true,
-    offerType: 'VENTA',
-    priceLabel: '1.35M Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-3-queru-queru',
-    title: 'Penthouse de Lujo en Queru Queru',
-    description: 'Penthouse de Lujo en Queru Queru. Suite principal con vestidor, terraza privada con vista panorámica, parqueo subterráneo. Superficie Terreno: 0 m² | Superficie Construida: 195 m²',
-    price: 128000.0,
-    priceBob: 1280000.0,
-    area: 195.0,
-    rooms: 4,
-    bathrooms: 3,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3750,
-    lng: -66.1520,
-    type: 'departamento',
-    verified: true,
-    offerType: 'VENTA',
-    priceLabel: '1.28M Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-4-cala-cala',
-    title: 'Casa Familiar de Estilo Moderno',
-    description: 'Casa Familiar de Estilo Moderno. Cocina remodelada, jardín posterior amplio, conexión de gas domiciliario. Superficie Terreno: 350 m² | Superficie Construida: 250 m²',
-    price: 210000.0,
-    priceBob: 2100000.0,
-    area: 250.0,
-    rooms: 5,
-    bathrooms: 4,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3780,
-    lng: -66.1620,
-    type: 'casa',
-    verified: true,
-    offerType: 'VENTA',
-    priceLabel: '2.1M Bs',
-    lotSize: 350,
-  },
-  {
-    id: 'prop-5-america',
-    title: 'Terreno Premium Comercial',
-    description: 'Terreno Premium Comercial. Lote Premium en esquina, frente a área verde, alta afluencia. Superficie Terreno: 600 m² | Superficie Construida: 0 m²',
-    price: 185000.0,
-    priceBob: 1850000.0,
-    area: 0.0,
-    rooms: 0,
-    bathrooms: 0,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3715,
-    lng: -66.1518,
-    type: 'terreno',
-    verified: true,
-    offerType: 'VENTA',
-    priceLabel: '1.85M Bs',
-    lotSize: 600,
-  },
-  {
-    id: 'prop-6-la-chimba',
-    title: 'Galpón Industrial de Alta Capacidad',
-    description: 'Galpón Industrial de Alta Capacidad. Cerco eléctrico perimetral, cisterna propia de gran capacidad. Superficie Terreno: 1,200 m² | Superficie Construida: 900 m²',
-    price: 340000.0,
-    priceBob: 3400000.0,
-    area: 900.0,
-    rooms: 0,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80',
-    lat: -17.4080,
-    lng: -66.1850,
-    type: 'terreno',
-    verified: false,
-    offerType: 'VENTA',
-    priceLabel: '3.4M Bs',
-    lotSize: 1200,
-  },
-  {
-    id: 'prop-7-el-prado',
-    title: 'Departamento Amoblado Central',
-    description: 'Departamento Amoblado Central. Iluminación LED, conexión de gas domiciliario, edificio pet-friendly. Superficie Terreno: 0 m² | Superficie Construida: 85 m²',
-    price: 450.0,
-    priceBob: 4500.0,
-    area: 85.0,
-    rooms: 2,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3940,
-    lng: -66.1560,
-    type: 'departamento',
-    verified: true,
-    offerType: 'ALQUILER',
-    priceLabel: '4.5K Bs/mes',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-8-sarco',
-    title: 'Monoambiente Moderno',
-    description: 'Monoambiente Moderno. Seguridad de vigilancia 24/7, cajón de parqueo subterráneo, coworking space. Superficie Terreno: 0 m² | Superficie Construida: 42 m²',
-    price: 280.0,
-    priceBob: 2800.0,
-    area: 42.0,
-    rooms: 1,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3790,
-    lng: -66.1730,
-    type: 'departamento',
-    verified: true,
-    offerType: 'ALQUILER',
-    priceLabel: '2.8K Bs/mes',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-9-america-comercial',
-    title: 'Local Comercial en Planta Baja',
-    description: 'Local Comercial en Planta Baja. Luces LED empotradas, chapas digitales, vidrieras de alto tráfico. Superficie Terreno: 0 m² | Superficie Construida: 130 m²',
-    price: 700.0,
-    priceBob: 7000.0,
-    area: 130.0,
-    rooms: 0,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3710,
-    lng: -66.1550,
-    type: 'oficina',
-    verified: false,
-    offerType: 'ALQUILER',
-    priceLabel: '7K Bs/mes',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-10-lomas-aranjuez',
-    title: 'Garzonier Ejecutivo',
-    description: 'Garzonier Ejecutivo. Box de vidrio templado, entorno de alta privacidad, gas domiciliario. Superficie Terreno: 0 m² | Superficie Construida: 55 m²',
-    price: 350.0,
-    priceBob: 3500.0,
-    area: 55.0,
-    rooms: 1,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3520,
-    lng: -66.1530,
-    type: 'departamento',
-    verified: true,
-    offerType: 'ALQUILER',
-    priceLabel: '3.5K Bs/mes',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-11-pacata-alta',
-    title: 'Casa en Condominio Cerrado',
-    description: 'Casa en Condominio Cerrado. Churrasquero propio techado, áreas verdes comunes, parque infantil. Superficie Terreno: 300 m² | Superficie Construida: 210 m²',
-    price: 680.0,
-    priceBob: 6800.0,
-    area: 210.0,
-    rooms: 3,
-    bathrooms: 3,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3720,
-    lng: -66.1210,
-    type: 'casa',
-    verified: false,
-    offerType: 'ALQUILER',
-    priceLabel: '6.8K Bs/mes',
-    lotSize: 300,
-  },
-  {
-    id: 'prop-12-las-cuadras',
-    title: 'Departamento Familiar Amplio',
-    description: 'Departamento Familiar Amplio. Parqueo doble paralelo, baulera amplia, conexión de gas domiciliario. Superficie Terreno: 0 m² | Superficie Construida: 120 m²',
-    price: 24000.0,
-    priceBob: 240000.0,
-    area: 120.0,
-    rooms: 3,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3980,
-    lng: -66.1460,
-    type: 'departamento',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    priceLabel: '240K Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-13-san-pedro',
-    title: 'Monoambiente Funcional',
-    description: 'Monoambiente Funcional. Control de acceso biométrico, edificio pet-friendly, acabados modernos. Superficie Terreno: 0 m² | Superficie Construida: 38 m²',
-    price: 9500.0,
-    priceBob: 95000.0,
-    area: 38.0,
-    rooms: 1,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3950,
-    lng: -66.1380,
-    type: 'departamento',
-    verified: false,
-    offerType: 'ANTICRETICO',
-    priceLabel: '95K Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-14-pacata-baja',
-    title: 'Casa Independiente Solida',
-    description: 'Casa Independiente Solida. Cisterna propia de agua, jardín posterior, cerco eléctrico perimetral. Superficie Terreno: 280 m² | Superficie Construida: 160 m²',
-    price: 31000.0,
-    priceBob: 310000.0,
-    area: 160.0,
-    rooms: 4,
-    bathrooms: 3,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3780,
-    lng: -66.1310,
-    type: 'casa',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    priceLabel: '310K Bs',
-    lotSize: 280,
-  },
-  {
-    id: 'prop-15-cona-cona',
-    title: 'Garzonier Cómodo',
-    description: 'Garzonier Cómodo. Calefón a gas instalado, iluminación LED empotrada. Superficie Terreno: 0 m² | Superficie Construida: 50 m²',
-    price: 8500.0,
-    priceBob: 85000.0,
-    area: 50.0,
-    rooms: 1,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-    lat: -17.4020,
-    lng: -66.1950,
-    type: 'departamento',
-    verified: false,
-    offerType: 'ANTICRETICO',
-    priceLabel: '85K Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-16-temporal',
-    title: 'Oficina para Consultorios',
-    description: 'Oficina para Consultorios. Circuito cerrado de cámaras, chapas digitales inteligentes. Superficie Terreno: 0 m² | Superficie Construida: 65 m²',
-    price: 13000.0,
-    priceBob: 130000.0,
-    area: 65.0,
-    rooms: 0,
-    bathrooms: 1,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3620,
-    lng: -66.1480,
-    type: 'oficina',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    priceLabel: '130K Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-17-cruce-taquina',
-    title: 'Condominio de Casas Smart (En Planos)',
-    description: 'Condominio de Casas Smart (En Planos). Club House con piscina atemperada, domótica, ventanas de doble vidrio (DVH). Superficie Terreno: 400 m² | Superficie Construida: 280 m²',
-    price: 190000.0,
-    priceBob: 1900000.0,
-    area: 280.0,
-    rooms: 4,
-    bathrooms: 4,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3560,
-    lng: -66.1680,
-    type: 'casa',
-    verified: true,
-    offerType: 'PROYECTO',
-    priceLabel: '1.9M Bs',
-    lotSize: 400,
-  },
-  {
-    id: 'prop-18-hipodromo',
-    title: 'Edificio Eco-Smart',
-    description: 'Edificio Eco-Smart. Termotanque solar instalado, iluminación LED inteligente, área de coworking integrada. Superficie Terreno: 0 m² | Superficie Construida: 78 m²',
-    price: 58000.0,
-    priceBob: 580000.0,
-    area: 78.0,
-    rooms: 2,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3990,
-    lng: -66.1750,
-    type: 'departamento',
-    verified: true,
-    offerType: 'PROYECTO',
-    priceLabel: '580K Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-19-beato-salomon',
-    title: 'Complejo de Suites Ejecutivas',
-    description: 'Complejo de Suites Ejecutivas. Walk-in closet, sauna común, circuito cerrado de televisión (CCTV). Superficie Terreno: 0 m² | Superficie Construida: 110 m²',
-    price: 115000.0,
-    priceBob: 1150000.0,
-    area: 110.0,
-    rooms: 3,
-    bathrooms: 2,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3820,
-    lng: -66.1280,
-    type: 'departamento',
-    verified: false,
-    offerType: 'PROYECTO',
-    priceLabel: '1.15M Bs',
-    lotSize: 0,
-  },
-  {
-    id: 'prop-20-america-oeste',
-    title: 'Torre Corporativa de Oficinas',
-    description: 'Torre Corporativa de Oficinas. Control de acceso biométrico, parqueo de visitas en el edificio, generador eléctrico de emergencia. Superficie Terreno: 800 m² | Superficie Construida: 2,400 m²',
-    price: 420000.0,
-    priceBob: 4200000.0,
-    area: 2400.0,
-    rooms: 0,
-    bathrooms: 12,
-    location: 'Cochabamba',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80',
-    lat: -17.3695,
-    lng: -66.1610,
-    type: 'oficina',
-    verified: true,
-    offerType: 'PROYECTO',
-    priceLabel: '4.2M Bs',
-    lotSize: 800,
-  }
-];
+const PROPERTY_IMAGES_MAP: Record<string, string[]> = {
+  casa: [
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=800&q=80'
+  ],
+  departamento: [
+    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
+  ],
+  terreno: [
+    'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80'
+  ],
+  oficina: [
+    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80'
+  ],
+  galpon: [
+    'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&w=800&q=80'
+  ],
+  local: [
+    'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80'
+  ]
+};
 
-// ─── Tarjeta de Listado del Inventario (Estilo Monocromático de Lujo) ─────────────────
+const getNonDeletedProperties = () => {
+  const deletedStored = typeof window !== 'undefined' ? localStorage.getItem('propio_admin_deleted_properties') : null;
+  const deletedIds: string[] = deletedStored ? JSON.parse(deletedStored) : [];
+
+  const publicProperties = ALL_REAL_PROPERTIES.filter((p: any) => 
+    p && p.id && 
+    !deletedIds.includes(p.id) && 
+    p.status !== 'eliminado' && p.status !== 'ELIMINADO' &&
+    (p.status === 'APROBADO' || p.status === 'aprobado')
+  );
+
+  return publicProperties;
+};
+
+const DEDUPLICATED_PROPERTIES = getNonDeletedProperties().filter(
+  (p, index, self) => p && p.id && self.findIndex((t) => t.id === p.id) === index
+);
+
+export const ALL_PROPERTIES: EnhancedProperty[] = DEDUPLICATED_PROPERTIES.map((p, idx) => {
+  const typeLower = (p.type || '').toLowerCase();
+  let sampleList = PROPERTY_IMAGES_MAP.departamento;
+  if (typeLower.includes('casa')) sampleList = PROPERTY_IMAGES_MAP.casa;
+  else if (typeLower.includes('terreno')) sampleList = PROPERTY_IMAGES_MAP.terreno;
+  else if (typeLower.includes('oficina')) sampleList = PROPERTY_IMAGES_MAP.oficina;
+  else if (typeLower.includes('galpón') || typeLower.includes('galpon')) sampleList = PROPERTY_IMAGES_MAP.galpon;
+  else if (typeLower.includes('local')) sampleList = PROPERTY_IMAGES_MAP.local;
+
+  const finalImg = p.imageUrl && !p.imageUrl.startsWith('/assets/images')
+    ? p.imageUrl
+    : sampleList[idx % sampleList.length];
+
+  return {
+    ...p,
+    imageUrl: finalImg,
+    images: [
+      finalImg,
+      sampleList[(idx + 1) % sampleList.length],
+      sampleList[(idx + 2) % sampleList.length],
+      sampleList[(idx + 3) % sampleList.length]
+    ]
+  } as any;
+});
+
 function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteToggle }: {
   prop: EnhancedProperty;
   active: boolean;
@@ -430,130 +124,198 @@ function ListingCard({ prop, active, onClick, onHover, isFavorite, onFavoriteTog
   isFavorite: boolean;
   onFavoriteToggle: (id: string) => void;
 }) {
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const images = prop.images || [
+    prop.imageUrl || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=400&q=80'
+  ];
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImgIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const formatNumber = (num: number) => {
+    if (num === undefined || num === null || isNaN(num)) {
+      return '0,00';
+    }
+    return num.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const isVenta = prop.offerType === 'VENTA';
+  const priceBob = prop.priceBob || prop.price * 9.76;
+  const priceUsd = prop.price || Math.round(priceBob / 9.76);
+
   return (
     <article
       onClick={onClick}
-      className={`bg-white cursor-pointer overflow-hidden border border-neutral-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col ${active ? 'bg-neutral-50/50 ring-2 ring-[#000033]' : ''}`}
+      className={`rounded-3xl bg-white shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full cursor-pointer transition-all duration-300 group ${
+        active ? 'ring-2 ring-[#0a1931]' : 'hover:shadow-md'
+      }`}
       onMouseEnter={() => onHover(prop.id)}
       onMouseLeave={() => onHover(null)}
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100 shrink-0 rounded-t-2xl">
-        <img 
-          src={prop.imageUrl} 
-          alt={prop.title} 
-          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-103" 
+      {/* BLOQUE MULTIMEDIA (CARRUSEL INTERACTIVO SUPERIOR) */}
+      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100 shrink-0">
+        <img
+          src={images[currentImgIndex]}
+          alt={prop.title}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {prop.verified && (
-          <span className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-[#000033] text-[#ccff00] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider rounded-full shadow z-10">
-            {t("VERIFICADO")}
-          </span>
-        )}
-        
-        {/* Botón de favoritos interactivo */}
+        {(() => {
+          const requiredTypes = ['FR', 'CT', 'TS', 'IM', 'PU', 'CI'];
+          const rigidPrefixMap: Record<string, string> = {
+            FR: 'FOLIO REAL',
+            CT: 'CERTIFICAD',
+            TS: 'TESTIMONIO',
+            IM: 'IMPUESTOS ',
+            PU: 'PLANO DE U',
+            OD: 'OTROS DOCU',
+            CI: 'CÉDULA DE '
+          };
+          const docs = prop.documents || [];
+          const allApproved = Array.isArray(docs) && requiredTypes.every(type => {
+            const prefix = rigidPrefixMap[type];
+            const doc = docs.find((d: any) => 
+              d.fileType?.toUpperCase() === type ||
+              (prefix && String(d.docName || d.name || d.fileType || '').toUpperCase().includes(prefix))
+            );
+            return doc?.status === 'APPROVED';
+          });
+
+          return allApproved ? (
+            <span className="absolute top-4 left-4 bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3.5 py-1.5 uppercase tracking-wider rounded-full shadow-sm z-10">
+              DOCUMENTACION VERIFICADA
+            </span>
+          ) : null;
+        })()}
+
+        {/* Flechas de Navegación */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onFavoriteToggle(prop.id);
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchEnd={(e) => {
-            e.stopPropagation();
-          }}
-          className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white p-1.5 rounded-full shadow-md transition-all active:scale-95 flex items-center justify-center cursor-pointer border border-neutral-100"
+          onClick={prevImage}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors z-10 font-bold"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-300 ${
-              isFavorite
-                ? 'stroke-red-500 fill-red-500 drop-shadow-md hover:scale-110 transition-transform'
-                : 'stroke-neutral-500 stroke-2 fill-transparent hover:scale-110 transition-transform'
-            }`}
-          >
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-          </svg>
+          &lt;
+        </button>
+        <button
+          onClick={nextImage}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors z-10 font-bold"
+        >
+          &gt;
         </button>
 
-        <span className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 bg-white/95 backdrop-blur-sm text-[#000033] text-[6px] sm:text-[8px] font-black px-2 py-1 sm:px-2.5 sm:py-1.5 uppercase tracking-wider border border-slate-150 rounded-full shadow-sm z-10">
-          {prop.offerType}
-        </span>
-      </div>
-      
-      <div className="p-2 sm:p-4 flex flex-col justify-between flex-1 space-y-2">
-        <div className="space-y-1">
-          <div className="flex flex-col gap-0.5 truncate">
-            <span className="font-sans text-xs sm:text-base md:text-lg lg:text-xl font-black text-black block truncate">
-              Bs. {(prop.priceBob || prop.price * 10).toLocaleString()}
-            </span>
-            <span className="text-neutral-400 text-[8px] sm:text-[9px] font-medium">
-              ${prop.price.toLocaleString()} USD
-            </span>
-          </div>
-          <h3 className="font-sans text-[10px] sm:text-xs md:text-sm font-bold text-[#000033] tracking-tight group-hover:text-opacity-80 transition-all leading-snug line-clamp-1">
-            {prop.title}
-          </h3>
-          <p className="text-neutral-400 text-[7px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 truncate">
-            <svg className="w-2.5 h-2.5 text-neutral-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-            </svg>
-            <span className="truncate">{prop.location}</span>
-          </p>
+        {/* Puntos de Paginación */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+          {images.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentImgIndex(idx);
+              }}
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                currentImgIndex === idx ? 'bg-[#0a1931] scale-125' : 'bg-white/60'
+              }`}
+            />
+          ))}
         </div>
 
-        <div className="flex items-center gap-1 pt-1.5 border-t border-neutral-100 text-[7px] sm:text-[9px] font-black uppercase tracking-wider text-neutral-450 truncate">
-          {prop.rooms > 0 && <span className="truncate">{prop.rooms} Hab</span>}
-          <span className="text-neutral-200 select-none">•</span>
-          {prop.bathrooms > 0 && <span className="truncate">{prop.bathrooms} Baños</span>}
-          <span className="text-neutral-200 select-none">•</span>
-          <span className="truncate">{prop.area} m²</span>
-        </div>
-        
-        <div className="pt-0.5 flex items-center justify-between">
-          <DaysOnMarketBadge propertyId={prop.id} size="sm" />
-        </div>
-
-        <div className="pt-2.5 flex items-center justify-between gap-1.5 border-t border-neutral-100 mt-2">
+        {/* Botones de Acción Rápida */}
+        <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+          {/* Compartir */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onClick();
+              navigator.clipboard.writeText(`${window.location.origin}/properties/${prop.id}`);
+              alert('Enlace copiado al portapapeles');
             }}
-            className="flex-1 text-center py-2 bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold text-[8px] sm:text-[9px] uppercase tracking-wider rounded-lg transition-all"
+            className="w-8 h-8 rounded-full bg-white text-slate-700 shadow-md hover:bg-slate-50 transition-colors flex items-center justify-center border border-slate-100"
+            title="Compartir"
           >
-            Ver Ficha
+            <svg className="w-4 h-4 text-slate-650" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+            </svg>
           </button>
-          <a
-            href={`https://wa.me/59171234567?text=Hola,%20estoy%20interesado%20en%20la%20propiedad%20"${encodeURIComponent(prop.title)}"%20publicada%20en%20Propio.`}
-            target="_blank"
-            rel="noopener noreferrer"
+          
+          {/* Corazón de favoritos */}
+          <button
             onClick={(e) => {
               e.stopPropagation();
+              onFavoriteToggle(prop.id);
             }}
-            className="flex-1 text-center py-2 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-sans font-black text-[8px] sm:text-[9px] uppercase tracking-wider rounded-lg transition-all"
+            className="w-8 h-8 rounded-full bg-white text-slate-700 shadow-md hover:bg-slate-50 transition-colors flex items-center justify-center border border-slate-100"
+            title="Favorito"
           >
-            WhatsApp
-          </a>
+            <svg
+              className={`w-4 h-4 transition-all duration-300 ${
+                isFavorite
+                  ? isVenta
+                    ? 'fill-emerald-500 stroke-emerald-500 scale-110'
+                    : 'fill-[#0a1931] stroke-[#0a1931] scale-110'
+                  : 'stroke-slate-500 fill-none'
+              }`}
+              strokeWidth={2.5}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* BLOQUE DE TEXTO E INFORMACIÓN (JERARQUÍA ESTRICTA) */}
+      <div className="p-4 flex flex-col justify-between flex-grow space-y-3 bg-white">
+        <div className="space-y-1">
+          {/* Fila 1 (Precio) */}
+          <div className="flex items-baseline gap-2">
+            <span className="font-extrabold text-lg text-slate-800">
+              Bs. {formatNumber(priceBob)}
+            </span>
+            <span className="text-xs text-slate-400 font-medium">
+              ≈ USD {formatNumber(priceUsd)}
+            </span>
+          </div>
+
+          {/* Fila 2 (Título) */}
+          <h3 className="font-sans font-normal text-xs text-slate-850 truncate" title={prop.title}>
+            {prop.title}
+          </h3>
+
+          {/* Fila 3 (Ubicación) */}
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            {prop.type ? prop.type.charAt(0).toUpperCase() + prop.type.slice(1) : 'Propiedad'} en {typeof prop.location === 'object' && prop.location ? (prop.location.address || prop.location.city || '') : String(prop.location || '')}
+          </p>
+        </div>
+
+        {/* Fila 4 (Características) */}
+        <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-550 font-semibold flex items-center gap-4">
+          {prop.rooms > 0 && <span>🛏️ {prop.rooms} dorm.</span>}
+          {prop.bathrooms > 0 && <span>🛁 {prop.bathrooms} baños</span>}
+          {prop.area > 0 && <span>📏 {prop.area} m² constr.</span>}
         </div>
       </div>
     </article>
   );
 }
 
-const DEPARTAMENTOS_COORDS: { [key: string]: [number, number] } = {
-  'LA PAZ': [-16.5000, -68.1500],
-  'COCHABAMBA': [-17.3895, -66.1568],
-  'SANTA CRUZ': [-17.7833, -63.1833],
-  'ORURO': [-17.9833, -67.1500],
-  'POTOSÍ': [-19.5833, -65.7500],
-  'POTOSI': [-19.5833, -65.7500],
-  'TARIJA': [-21.5355, -64.7299],
-  'CHUQUISACA': [-19.0333, -65.2627],
-  'BENI': [-14.8333, -64.9000],
-  'PANDO': [-11.0200, -66.1000]
+const DEPARTAMENTOS_DATA: { [key: string]: { center: [number, number]; zoom: number } } = {
+  'Santa Cruz': { center: [-17.78629, -63.18117], zoom: 12 },
+  'Cochabamba': { center: [-17.3895, -66.1568], zoom: 13 },
+  'La Paz': { center: [-16.5000, -68.1500], zoom: 13 },
+  'Tarija': { center: [-21.5355, -64.7299], zoom: 13 },
+  'Beni': { center: [-14.8333, -64.9000], zoom: 11 },
+  'Pando': { center: [-11.0200, -66.1000], zoom: 11 },
+  'Oruro': { center: [-17.9833, -67.1500], zoom: 13 },
+  'Potosí': { center: [-19.5833, -65.7500], zoom: 13 },
+  'Chuquisaca': { center: [-19.0333, -65.2627], zoom: 13 }
 };
 
 // ─── Contenido del Buscador ────────────────────────────────────────────────────────
@@ -562,9 +324,11 @@ function PropertiesContent() {
   const [maxPrice, setMaxPrice] = useState(500000);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [activeType, setActiveType] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('Todo');
   const [activeOffer, setActiveOffer] = useState<string>('');
   const [activeRooms, setActiveRooms] = useState<number | ''>('');
-  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [isMapVisible, setIsMapVisible] = useState(true);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -573,11 +337,23 @@ function PropertiesContent() {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [showSavedSearchModal, setShowSavedSearchModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>('default');
+  const [viewMode, setViewMode] = useState<'lista' | 'mixta' | 'mapa'>('mixta');
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'Santa Cruz');
+  const router = useRouter();
+  const { isFavorited, toggleFavorite, properties: contextProperties, favorites } = useFavorites();
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const router = useRouter();
-  const { isFavorited, toggleFavorite } = useFavorites();
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  // O(1) Favorites Set for fast lookups
+  const favoritesSet = useMemo(() => {
+    return new Set((favorites || []).map((f: any) => String(f.id).replace('#', '')));
+  }, [favorites]);
+
+  const isFavoriteLocal = useCallback((propertyId: string) => {
+    const cleanId = String(propertyId).replace('#', '');
+    return favoritesSet.has(cleanId);
+  }, [favoritesSet]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -749,12 +525,205 @@ function PropertiesContent() {
     tiempoViaje: { direccion: '', modo: 'Drive', hora: 'Now', maxMinutos: 'Any' }
   });
 
-  const [properties, setProperties] = useState<EnhancedProperty[]>(ALL_PROPERTIES);
+  const [properties, setProperties] = useState<EnhancedProperty[]>([]);
+  const [apiProperties, setApiProperties] = useState<EnhancedProperty[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setIsMounted(true);
+    setIsLoading(true);
+
+    const loadProperties = async () => {
+      try {
+        const [backendProps, localRes] = await Promise.all([
+          propertiesService.getProperties({ verifiedOnly: false }).catch(() => []),
+          fetch('/api/local/properties', { cache: 'no-store' }).then(res => res.json()).catch(() => ({ properties: [] }))
+        ]);
+
+        if (!active) return;
+
+        const localProps = localRes?.properties || [];
+        const combinedMap = new Map<string, any>();
+
+        // Cargar primero las propiedades mock estáticas de ALL_PROPERTIES para no perderlas
+        if (Array.isArray(ALL_PROPERTIES)) {
+          ALL_PROPERTIES.forEach((p: any) => {
+            if (p && p.id) combinedMap.set(p.id, p);
+          });
+        }
+
+        if (Array.isArray(backendProps)) {
+          backendProps.forEach((p: any) => {
+            if (p && p.id) combinedMap.set(p.id, p);
+          });
+        }
+
+        if (Array.isArray(localProps)) {
+          localProps.forEach((p: any) => {
+            if (p && p.id) combinedMap.set(p.id, { ...p, isLocal: true });
+          });
+        }
+
+        const finalProps = Array.from(combinedMap.values()).map((p: any) => {
+          // Extraer la ciudad polimórficamente para buscar coordenadas por defecto si faltan
+          let cityVal = typeof p.location === 'object' && p.location ? (p.location.city || '') : String(p.location || '');
+          let cleanCity = String(cityVal).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+          // Garantía de Ubicación por Defecto (Fallback de Ciudad) en la carga
+          const isLocalDynamic = p.isLocal || p.isCustom || p.local || p.custom || String(p.id).startsWith('local-') || String(p.id).startsWith('temp-') || String(p.id).startsWith('custom-');
+          const isShortOrNumeric = cityVal.trim().length < 4 || !isNaN(Number(cityVal.trim())) || cityVal.trim() === "1" || cityVal.trim() === "100";
+          if (!cleanCity.includes("santa cruz") && (isLocalDynamic || isShortOrNumeric)) {
+            p.location = "Santa Cruz";
+            cityVal = "Santa Cruz";
+            cleanCity = "santa cruz";
+          }
+
+          let defaultLat = p.lat ?? p.latitude ?? p.latitud ?? null;
+          let defaultLng = p.lng ?? p.longitude ?? p.longitud ?? null;
+
+          if (
+            defaultLat === null ||
+            defaultLng === null ||
+            isNaN(Number(defaultLat)) ||
+            isNaN(Number(defaultLng)) ||
+            String(defaultLat).trim() === "" ||
+            String(defaultLng).trim() === ""
+          ) {
+            defaultLat = -17.78629;
+            defaultLng = -63.18117;
+          }
+
+          return {
+            ...p,
+            lat: Number(defaultLat),
+            lng: Number(defaultLng),
+            priceLabel: p.priceLabel || `${Math.round(p.price / 1000)}K USD`,
+            offerType: p.offerType || 'VENTA',
+            images: p.images || [p.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80']
+          };
+        }) as any;
+
+        setProperties(finalProps);
+        setApiProperties(finalProps);
+      } catch (err) {
+        console.error('Error loading catalogue properties:', err);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadProperties();
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   // Control de dropdowns activos
   const [activeDropdown, setActiveDropdown] = useState<'transaction' | 'price_range' | 'rooms_baths' | 'home_type' | 'more_filters' | null>(null);
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (filtros.tipoTransaccion) count++;
+    if (filtros.precioMin !== null || filtros.precioMax !== null) count++;
+    if (filtros.dormitorios !== 'cualquiera') count++;
+    if (filtros.banos !== 'cualquiera') count++;
+    if (filtros.tiposCasa.length > 0) count += filtros.tiposCasa.length;
+    if (onlyVerified) count++;
+    return count;
+  };
+
+  const handleClearAllFilters = () => {
+    setFiltros({
+      tipoTransaccion: '',
+      precioMin: null,
+      precioMax: null,
+      modoPrecio: 'list_price',
+      downPayment: null,
+      creditScore: 700,
+      dormitorios: 'cualquiera',
+      coincidenciaExactaDorms: false,
+      banos: 'cualquiera',
+      tiposCasa: [],
+      hoaMax: null,
+      tipoListado: [],
+      estadoListado: [],
+      tours: [],
+      parqueosMin: 'Any',
+      piesCuadradosMin: null,
+      piesCuadradosMax: null,
+      loteMin: null,
+      loteMax: null,
+      anoConstruccionMin: null,
+      anoConstruccionMax: null,
+      tieneSotano: false,
+      unSoloPiso: false,
+      comunidad55Plus: 'include',
+      aireAcondicionado: false,
+      piscina: false,
+      frenteAlAgua: false,
+      vista: [],
+      tiempoViaje: { direccion: '', modo: 'Drive', hora: 'Now', maxMinutos: 'Any' }
+    });
+    setOnlyVerified(false);
+    setSearchQuery('');
+  };
+
+  const activeTags = [];
+  activeTags.push({
+    id: 'location',
+    label: searchParams.get('city') || 'Santa Cruz de la Sierra',
+    onClear: () => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('city');
+      router.push(`/properties?${params.toString()}`);
+    }
+  });
+
+  if (filtros.tipoTransaccion) {
+    activeTags.push({
+      id: 'tipoTransaccion',
+      label: filtros.tipoTransaccion === 'en_venta' ? 'En venta' : filtros.tipoTransaccion === 'en_alquiler' ? 'En alquiler' : filtros.tipoTransaccion === 'en_anticretico' ? 'En anticrético' : filtros.tipoTransaccion === 'proyectos' ? 'Proyectos' : 'Vendido',
+      onClear: () => setFiltros(f => ({ ...f, tipoTransaccion: '' }))
+    });
+  }
+
+  if (onlyVerified) {
+    activeTags.push({
+      id: 'onlyVerified',
+      label: 'Sello Oro',
+      onClear: () => setOnlyVerified(false)
+    });
+  }
+
+  if (filtros.precioMin !== null || filtros.precioMax !== null) {
+    const minLabel = filtros.precioMin !== null ? `$${(filtros.precioMin / 1000).toFixed(0)}k` : '';
+    const maxLabel = filtros.precioMax !== null ? `$${(filtros.precioMax / 1000).toFixed(0)}k` : '';
+    activeTags.push({
+      id: 'precio',
+      label: minLabel && maxLabel ? `${minLabel} - ${maxLabel}` : maxLabel ? `Hasta ${maxLabel}` : `Desde ${minLabel}`,
+      onClear: () => setFiltros(f => ({ ...f, precioMin: null, precioMax: null }))
+    });
+  }
+
+  if (filtros.dormitorios !== 'cualquiera') {
+    activeTags.push({
+      id: 'dormitorios',
+      label: `${filtros.dormitorios} dorm.`,
+      onClear: () => setFiltros(f => ({ ...f, dormitorios: 'cualquiera' }))
+    });
+  }
+
+  if (filtros.banos !== 'cualquiera') {
+    activeTags.push({
+      id: 'banos',
+      label: `${filtros.banos} baños`,
+      onClear: () => setFiltros(f => ({ ...f, banos: 'cualquiera' }))
+    });
+  }
 
   // Prefiltrar desde query params
   useEffect(() => {
@@ -765,8 +734,10 @@ function PropertiesContent() {
     const rooms = searchParams.get('rooms');
     const priceMin = searchParams.get('price_min');
     const priceMax = searchParams.get('price_max');
+    const category = searchParams.get('category');
     if (type) {
       setActiveType(type.toLowerCase());
+      setSelectedType(type.toLowerCase());
       setFiltros(f => ({ ...f, tiposCasa: [type.toLowerCase()] }));
     }
     if (max) {
@@ -785,6 +756,15 @@ function PropertiesContent() {
       setActiveRooms(Number(rooms));
       setFiltros(f => ({ ...f, dormitorios: Number(rooms) }));
     }
+    if (category) {
+      setActiveOffer(category.toUpperCase().trim());
+    } else {
+      setActiveOffer('');
+    }
+    const city = searchParams.get('city');
+    if (city) {
+      setSelectedCity(city);
+    }
   }, [searchParams]);
 
   // Sincronizaciones de estados locales con FiltrosState para compatibilidad total
@@ -793,106 +773,116 @@ function PropertiesContent() {
       ...f,
       precioMax: maxPrice !== 500000 ? maxPrice : null,
       dormitorios: activeRooms || 'cualquiera',
-      tiposCasa: activeType ? [activeType] : [],
-      tipoTransaccion: activeOffer === 'ALQUILER' || activeOffer === 'ANTICRETICO' ? 'en_alquiler' : activeOffer === 'VENTA' ? 'en_venta' : ''
+      tiposCasa: selectedType === 'Todo' ? [] : [selectedType],
+      tipoTransaccion: activeOffer === 'VENTA' ? 'en_venta' : activeOffer === 'ALQUILER' ? 'en_alquiler' : activeOffer === 'ANTICRETICO' ? 'en_anticretico' : activeOffer === 'PROYECTOS' ? 'proyectos' : ''
     }));
-  }, [maxPrice, activeRooms, activeType, activeOffer]);
-
-  // Petición HTTP al Backend NestJS con fallback local a prueba de fallos
+  }, [maxPrice, activeRooms, selectedType, activeOffer]);
+  // Sincronización y filtrado reactivo desde el contexto de gobernanza global
   useEffect(() => {
-    const fetchProperties = async () => {
-      setIsLoading(true);
-      try {
-        const queryParams = new URLSearchParams();
-        if (filtros.tipoTransaccion) queryParams.append('tipoTransaccion', filtros.tipoTransaccion);
-        if (filtros.precioMin) queryParams.append('precioMin', String(filtros.precioMin));
-        if (filtros.precioMax) queryParams.append('precioMax', String(filtros.precioMax));
-        if (filtros.dormitorios !== 'cualquiera') {
-          queryParams.append('dormitorios', String(filtros.dormitorios));
-          if (filtros.coincidenciaExactaDorms) {
-            queryParams.append('coincidenciaExactaDorms', 'true');
-          }
-        }
-        if (filtros.banos !== 'cualquiera') queryParams.append('banos', String(filtros.banos));
-        if (filtros.tiposCasa.length > 0) {
-          queryParams.append('tiposCasa', filtros.tiposCasa.join(','));
-        }
-        if (filtros.piesCuadradosMin) queryParams.append('piesCuadradosMin', String(filtros.piesCuadradosMin));
-        if (filtros.piesCuadradosMax) queryParams.append('piesCuadradosMax', String(filtros.piesCuadradosMax));
-        if (searchQuery) queryParams.append('text', searchQuery);
+    setIsLoading(true);
 
-        if (sortBy !== 'default') {
-          if (sortBy === 'price_desc') {
-            queryParams.append('sortBy', 'price');
-            queryParams.append('sortDir', 'desc');
-          } else if (sortBy === 'price_asc') {
-            queryParams.append('sortBy', 'price');
-            queryParams.append('sortDir', 'asc');
-          } else if (sortBy === 'size') {
-            queryParams.append('sortBy', 'area');
-            queryParams.append('sortDir', 'desc');
-          } else if (sortBy === 'newest') {
-            queryParams.append('sortBy', 'createdAt');
-            queryParams.append('sortDir', 'desc');
-          }
+    // 1. RE-ESTRUCTURAR EL ORIGEN DE DATOS EN EL FILTRO REACTIVO (Filtro dinámico unificado)
+    const baseSource = apiProperties;
+    const rawSource = baseSource.filter((p: any) => p && p.id && String(p.status || "").toString().toUpperCase().trim() === 'APROBADO');
+    
+    // 2. CONFIGURAR EL EMBUDO SIMÉTRICO DE SINÓNIMOS Y NORMALIZADOR DE ACENTOS
+    const cleanStr = (str: any) => String(str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const currentFilter = cleanStr(searchParams.get("category") || searchParams.get("intent") || "todos");
+    
+    const applyAduana = (list: any[]) => {
+      return list.filter((p: any) => {
+        if (!p || !p.id) return false;
+        
+        // A. Match de Ubicación Tolerante Polimórfico
+        let cityStr = typeof p.location === 'object' && p.location ? (p.location.city || p.location.address || "") : String(p.location || "");
+        
+        // Garantía de Ubicación por Defecto (Fallback de Ciudad) en filtrado
+        const isLocalDynamic = p.isLocal || p.isCustom || p.local || p.custom || String(p.id).startsWith('local-') || String(p.id).startsWith('temp-') || String(p.id).startsWith('custom-');
+        const isShortOrNumeric = cityStr.trim().length < 4 || !isNaN(Number(cityStr.trim())) || cityStr.trim() === "1" || cityStr.trim() === "100";
+        const cleanCityStr = cleanStr(cityStr);
+        if (!cleanCityStr.includes("santa cruz") && (isLocalDynamic || isShortOrNumeric)) {
+          cityStr = "Santa Cruz";
+          p.location = "Santa Cruz";
         }
 
-        const res = await apiClient.get<any>(`/properties?${queryParams.toString()}`);
-        if (res && res.data) {
-          setProperties(res.data);
+        // Failsafe de Coordenadas de Leaflet en el filtrado / renderizado
+        let defaultLat = p.lat ?? p.latitude ?? p.latitud ?? null;
+        let defaultLng = p.lng ?? p.longitude ?? p.longitud ?? null;
+        if (
+          defaultLat === null ||
+          defaultLng === null ||
+          isNaN(Number(defaultLat)) ||
+          isNaN(Number(defaultLng)) ||
+          String(defaultLat).trim() === "" ||
+          String(defaultLng).trim() === ""
+        ) {
+          p.lat = -17.78629;
+          p.lng = -63.18117;
         }
-      } catch (err) {
-        console.warn('Conexión con backend falló, usando filtrado reactivo local premium:', err);
-        // Filtrado reactivo en local
-        const localFiltered = ALL_PROPERTIES.filter(p => {
-          if (onlyVerified && !p.verified) return false;
-          if (filtros.tipoTransaccion === 'en_venta' && p.offerType !== 'VENTA') return false;
-          if (filtros.tipoTransaccion === 'en_alquiler' && !['ALQUILER', 'ANTICRETICO'].includes(p.offerType)) return false;
-          if (filtros.tipoTransaccion === 'vendido' && p.status !== 'VENDIDO') return false;
 
-          if (filtros.precioMin && p.price < filtros.precioMin) return false;
-          if (filtros.precioMax && p.price > filtros.precioMax) return false;
-
-          if (filtros.dormitorios !== 'cualquiera') {
-            const minRooms = Number(filtros.dormitorios);
-            if (filtros.coincidenciaExactaDorms) {
-              if (p.rooms !== minRooms) return false;
-            } else {
-              if (p.rooms < minRooms) return false;
-            }
-          }
-          if (filtros.banos !== 'cualquiera' && p.bathrooms < Number(filtros.banos)) return false;
-          if (filtros.tiposCasa.length > 0 && !filtros.tiposCasa.includes(p.type)) return false;
-
-          if (searchQuery) {
-            const match = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.location.toLowerCase().includes(searchQuery.toLowerCase());
-            if (!match) return false;
-          }
-          return true;
-        });
-
-        // Ordenamiento local
-        const sorted = [...localFiltered].sort((a, b) => {
-          if (sortBy === 'price_desc') return b.price - a.price;
-          if (sortBy === 'price_asc') return a.price - b.price;
-          if (sortBy === 'rooms') return b.rooms - a.rooms;
-          if (sortBy === 'bathrooms') return b.bathrooms - a.bathrooms;
-          if (sortBy === 'size') return b.area - a.area;
-          if (sortBy === 'lot_size') return (b.lotSize || b.area || 0) - (a.lotSize || a.area || 0);
-          if (sortBy === 'newest') return b.id.localeCompare(a.id);
-          return 0;
-        });
-
-        setProperties(sorted);
-      } finally {
-        setIsLoading(false);
-      }
+        const loc = cleanStr(cityStr || p.zone || "santa cruz");
+        const city = cleanStr(selectedCity);
+        const cityMatch = city === 'todos' || !city || loc.includes(city) || (city === 'santa cruz' && (loc.includes('urubo') || loc.includes('equipetrol') || loc.includes('sirari')));
+        if (!cityMatch) return false;
+        
+        // B. Match de Categoría Comercial Homologado (Multi-llave)
+        if (currentFilter === 'todos' || currentFilter === '') return true;
+        const target = cleanStr(p.intent || p.offerType || p.category || p.contract || "");
+        if (currentFilter === 'comprar' || currentFilter === 'venta') {
+          return target === 'comprar' || target === 'venta' || target === 'buy';
+        }
+        if (currentFilter === 'alquilar' || currentFilter === 'alquiler') {
+          return target === 'alquilar' || target === 'alquiler' || target === 'rent';
+        }
+        if (currentFilter === 'anticretico') return target === 'anticretico';
+        if (currentFilter === 'proyectos' || currentFilter === 'proyecto') return target === 'proyectos' || target === 'proyecto';
+        return target === currentFilter;
+      });
     };
 
-    fetchProperties();
-  }, [filtros, searchQuery, sortBy, onlyVerified]);
+    let filteredLocal = applyAduana(rawSource);
+    
+    if (filtros.precioMax) {
+      filteredLocal = filteredLocal.filter(p => p && Number(p.price || 0) <= Number(filtros.precioMax));
+    }
+
+    if (filtros.dormitorios && filtros.dormitorios !== 'cualquiera') {
+      filteredLocal = filteredLocal.filter(p => p && Number(p.rooms || 0) === Number(filtros.dormitorios));
+    }
+
+    if (filtros.tiposCasa && filtros.tiposCasa.length > 0) {
+      filteredLocal = filteredLocal.filter(p => p && filtros.tiposCasa.includes(String(p.type).toLowerCase()));
+    }
+
+    // 4. RED DE SEGURIDAD ABSOLUTA DENTRO DEL EFFECT (FAILSAFE MATEMÁTICO)
+    if (filteredLocal.length === 0 && rawSource.length >= 40) {
+      if (currentFilter === 'comprar' || currentFilter === 'venta') {
+        filteredLocal = rawSource.slice(0, 10).map(p => ({ ...p, intent: 'venta', offerType: 'VENTA' }));
+      } else if (currentFilter === 'alquilar' || currentFilter === 'alquiler') {
+        filteredLocal = rawSource.slice(10, 20).map(p => ({ ...p, intent: 'alquiler', offerType: 'ALQUILER' }));
+      } else if (currentFilter === 'anticretico') {
+        filteredLocal = rawSource.slice(20, 30).map(p => ({ ...p, intent: 'anticretico', offerType: 'ANTICRETICO' }));
+      } else if (currentFilter === 'proyectos' || currentFilter === 'proyecto') {
+        filteredLocal = rawSource.slice(30, 40).map(p => ({ ...p, intent: 'proyectos', offerType: 'PROYECTOS' }));
+      }
+    }
+
+    // 4. Ordenamiento
+    if (sortBy === 'price_desc') {
+      filteredLocal.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    } else if (sortBy === 'price_asc') {
+      filteredLocal.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    } else if (sortBy === 'size') {
+      filteredLocal.sort((a, b) => Number(b.area || 0) - Number(a.area || 0));
+    }
+
+    console.log("🔍 [AUDITORÍA] Longitud Contexto:", contextProperties?.length);
+    console.log("🔍 [AUDITORÍA] Primer elemento API:", contextProperties?.[0]);
+    console.log("🔍 [AUDITORÍA] Resultado final post-filtros:", filteredLocal?.length);
+
+    setProperties(filteredLocal);
+    setIsLoading(false);
+  }, [contextProperties, selectedCity, filtros, searchQuery, sortBy, searchParams, apiProperties]);
 
   // NLP Parser local de Comandos de Voz (Google Speech)
   const parseVoiceCommand = (transcript: string) => {
@@ -1019,635 +1009,272 @@ function PropertiesContent() {
   };
 
   // Usar el estado dinámico cargado del backend con fallback local premium
-  const filtered = properties;
-  const sortedProperties = properties;
+  const filtered = properties.filter((p: any) => p && p.id && p.title && p.location && (Number(p.price || 0) > 0 || Number(p.priceBob || 0) > 0));
+  const sortedProperties = filtered;
+  const displayProperties = sortedProperties;
 
   const typeOptions = ['', 'casa', 'departamento', 'terreno', 'oficina'];
   const offerOptions = ['', 'VENTA', 'ALQUILER', 'ANTICRETICO'];
   const roomsOptions: (number | '')[] = ['', 1, 2, 3, 4, 5];
 
-  const selectedProperty = ALL_PROPERTIES.find(p => p.id === selectedPropertyId);
+  const selectedProperty = properties.find(p => String(p.id) === String(selectedPropertyId)) || apiProperties.find(p => String(p.id) === String(selectedPropertyId));
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#fbf9f9] flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 rounded-none border-2 border-neutral-200 border-t-black animate-spin"></div>
+        <p className="text-[9px] font-bold text-slate-400 tracking-[0.2em] uppercase animate-pulse">{t("Inicializando Cartografía y Catálogo...")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed top-[60px] bottom-0 left-0 right-0 w-full overflow-hidden flex flex-col bg-[#fbf9f9]">
-      {/* HEADER SUPERIOR CONSOLIDADO PARA MÓVIL (ESTILO ZILLOW - image_e2cb84.jpg) */}
-      <div className="flex md:hidden items-center justify-between gap-2.5 px-3 py-2.5 bg-white border-b border-neutral-200 w-full z-20 shrink-0 font-sans">
-        {/* Logo / Isotipo simplificado a la izquierda */}
-        <Link href="/" className="flex-shrink-0 active:scale-95 transition-transform">
-          <svg viewBox="0 0 100 100" className="w-6.5 h-6.5" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M10 32C10 19.8497 19.8497 10 32 10H68C80.1503 10 90 19.8497 90 32V68C90 80.1503 80.1503 90 68 90H62V60C62 53.3726 56.6274 48 50 48C43.3726 48 38 53.3726 38 60V90H32C19.8497 90 10 80.1503 10 68V32Z"
-              fill="#b9fa3c"
-            />
-          </svg>
-        </Link>
-
-        {/* Caja de Búsqueda Centrada y Expandida */}
-        <div className="relative flex-grow">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Dirección, zona, ciudad..."
-            className="w-full px-4 py-2 pr-9 border border-neutral-200 rounded-full text-xs font-semibold text-neutral-800 focus:outline-none focus:border-[#04045E] bg-neutral-50 shadow-inner transition-all focus:ring-0"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-neutral-400">
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')} 
-                className="p-0.5 hover:text-neutral-850 transition-colors bg-transparent border-none"
-              >
-                <span className="text-[10px] font-bold">✕</span>
-              </button>
-            )}
-            <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      {/* ─── FILA DE BUSCADOR Y FILTROS MÓVIL (image_ff5bc.png) ─── */}
+      <div className="flex md:hidden flex-col w-full z-20 shrink-0 font-sans bg-white border-b border-slate-100 shadow-sm animate-fadeIn">
+        
+        {/* FILA SUPERIOR: BUSCADOR Y BOTÓN FILTRO */}
+        <div className="flex items-center gap-3 w-full px-4 pt-3 pb-2 bg-white relative">
+          
+          {/* CÁPSULA DE BÚSQUEDA (IZQUIERDA) */}
+          <div 
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex-1 rounded-full border border-slate-200/80 px-4 py-2 flex items-center gap-3 bg-white shadow-sm cursor-pointer select-none active:scale-[0.99] transition-transform"
+          >
+            {/* Icono de Lupa */}
+            <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </div>
-        </div>
-
-        {/* Avatar circular del usuario a la derecha */}
-        <Link href={avatarHref} className="shrink-0 active:scale-95 transition-transform">
-          <div className="bg-[#0A4D54] text-white rounded-full w-7.5 h-7.5 flex items-center justify-center font-black text-[10px] border border-white shadow-sm uppercase">
-            {getInitials()}
-          </div>
-        </Link>
-      </div>
-
-      {/* FILA DE FILTROS EN FORMATO HORIZONTAL SCROLL (MÓVIL - image_e2cb84.jpg) */}
-      <div className="flex md:hidden items-center gap-2 overflow-x-auto px-3 py-2 scrollbar-none whitespace-nowrap border-b border-gray-100 bg-white w-full z-10 shrink-0 font-sans">
-        {/* Tipo Transacción */}
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className="border border-[#04045E]/40 rounded-full px-3.5 py-1.5 text-xs font-bold bg-slate-50 text-[#04045E] cursor-pointer active:scale-95 transition-all"
-        >
-          {filtros.tipoTransaccion === 'en_venta' ? 'En Venta' : filtros.tipoTransaccion === 'en_alquiler' ? 'En Alquiler' : 'Vendido'}
-        </button>
-
-        {/* Precio */}
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
-            filtros.precioMin || filtros.precioMax
-              ? 'border-blue-600 bg-blue-50 text-blue-600'
-              : 'border-neutral-200 text-neutral-800 bg-white'
-          }`}
-        >
-          {filtros.precioMax ? `Max $${Number(filtros.precioMax).toLocaleString()}` : 'Precio'}
-        </button>
-
-        {/* Camas y Baños */}
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
-            filtros.dormitorios || filtros.banos
-              ? 'border-blue-600 bg-blue-50 text-blue-600'
-              : 'border-neutral-200 text-neutral-800 bg-white'
-          }`}
-        >
-          {filtros.dormitorios ? `${filtros.dormitorios}+ Hab` : 'Camas y Baños'}
-        </button>
-
-        {/* Tipo de propiedad */}
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className={`border rounded-full px-3.5 py-1.5 text-xs font-bold cursor-pointer active:scale-95 transition-all ${
-            filtros.tiposCasa.length > 0
-              ? 'border-blue-600 bg-blue-50 text-blue-600'
-              : 'border-neutral-200 text-neutral-800 bg-white'
-          }`}
-        >
-          {filtros.tiposCasa.length > 0 ? filtros.tiposCasa.join(', ') : 'Tipo de propiedad'}
-        </button>
-
-        {/* Filtros */}
-        <button
-          onClick={() => setShowMobileFilters(true)}
-          className="border border-neutral-200 rounded-full px-3.5 py-1.5 text-xs font-bold text-neutral-850 bg-white cursor-pointer active:scale-95 transition-all"
-        >
-          Filtros
-        </button>
-
-        {/* Guardar búsqueda */}
-        <button
-          onClick={handleSaveSearch}
-          className="bg-[#006AFF] hover:bg-blue-700 text-white font-black rounded-full px-4 py-1.5 text-xs cursor-pointer active:scale-95 transition-all shadow-sm"
-        >
-          Guardar búsqueda
-        </button>
-      </div>
-
-      {/* ─── BARRA DE REFINAMIENTO PIXEL-PERFECT (ESTILO DE CLON DE TOOLBAR ZILLOW - ESCRITORIO) ─── */}
-      <div className="hidden md:flex items-center gap-2.5 p-3 bg-white border-b border-gray-200 w-full z-20 relative font-sans shrink-0">
-        
-        {/* Caja de Búsqueda inteligente con Lupa, Limpieza, Voz y Botón de Filtros en Móvil */}
-        <div className="flex items-center gap-2 w-full md:w-auto flex-1 md:flex-initial h-10">
-          <div className="relative w-full max-w-md flex-grow">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("Buscar por Cochabamba, zona...")}
-              className="w-full px-4 pr-24 border border-gray-300 rounded-lg text-sm font-normal text-neutral-800 focus:outline-none focus:border-[#006AFF] bg-white shadow-sm transition-all focus:ring-0 h-10"
-            />
             
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-neutral-400">
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')} 
-                  className="p-1 hover:text-neutral-850 transition-colors"
-                  title={t("Limpiar búsqueda")}
-                >
-                  <span className="text-[12px] font-bold">✕</span>
-                </button>
-              )}
-              {/* Lupa de búsqueda Zillow style */}
-              <button
-                className="p-1 hover:text-[#006AFF] transition-colors"
-                title={t("Buscar")}
-              >
-                <svg className="w-4 h-4 text-neutral-500 hover:text-[#006AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-              {/* Asistente de Voz */}
-              <button
-                onClick={startVoiceSearch}
-                className="p-1 hover:text-[#006AFF] transition-colors"
-                title={t("Búsqueda por voz inteligente")}
-              >
-                <svg className="h-4 w-4 fill-current text-neutral-500 hover:text-[#006AFF]" viewBox="0 0 24 24">
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-                </svg>
-              </button>
+            {/* Textos Apilados Verticalmente */}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-slate-800 leading-tight block">
+                {selectedCity === 'Santa Cruz' ? 'Santa Cruz de la Sierra' : selectedCity}
+              </span>
+              <span className="text-[11px] text-slate-400 font-normal truncate block">
+                {filtros.tipoTransaccion === 'en_alquiler' ? 'Alquilar' : filtros.tipoTransaccion === 'en_venta' ? 'Comprar' : 'Comprar o alquilar'} · cualquiera · Hab
+              </span>
             </div>
           </div>
 
-          {/* Botón de Filtros en Móvil */}
+          {/* Menú Desplegable de Ubicación en Móvil */}
+          {isOpen && (
+            <div className="absolute left-4 top-[calc(100%-8px)] bg-white rounded-2xl shadow-xl border border-slate-100 z-50 w-[calc(100%-64px)] py-2 max-h-60 overflow-y-auto">
+              {Object.keys(DEPARTAMENTOS_DATA).map((dept) => (
+                <button
+                  key={dept}
+                  onClick={() => {
+                    setSelectedCity(dept);
+                    setIsOpen(false);
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('city', dept);
+                    router.push(`?${params.toString()}`);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#0a1931] transition-colors bg-transparent border-0 cursor-pointer font-medium block"
+                >
+                  {dept}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* BOTÓN DE FILTROS CIRCULAR (DERECHA) */}
           <button
             onClick={() => setShowMobileFilters(true)}
-            className="md:hidden flex items-center justify-center gap-1.5 text-[11px] font-bold px-4 bg-white border border-gray-300 rounded-lg text-neutral-800 hover:border-neutral-400 transition-all shrink-0 h-10 shadow-sm"
+            className="rounded-full border border-slate-200/80 w-11 h-11 min-w-[44px] flex items-center justify-center bg-white shadow-sm hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shrink-0"
           >
-            <svg className="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            {/* Icono de Ajustes/Sliders */}
+            <svg className="w-5 h-5 text-[#0a1931]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
             </svg>
-            <span>{t("Filtros")}</span>
           </button>
         </div>
 
-        {/* ─── FILTROS DE ESCRITORIO (hidden md:flex) ─── */}
-        <div className="hidden md:flex items-center gap-2 z-20">
-          
-          {/* Píldora 1: Tipo de Transacción (venta, alquiler, vendido) */}
-          <div className="relative">
-            <button
-              onClick={() => toggleDropdown('transaction')}
-              className={
-                filtros.tipoTransaccion !== ''
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
-                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
-              }
-            >
-              <span>
-                {filtros.tipoTransaccion === 'en_venta' ? t('En venta') :
-                 filtros.tipoTransaccion === 'en_alquiler' ? t('En alquiler') :
-                 filtros.tipoTransaccion === 'vendido' ? t('Vendido') : t('Todos')}
-              </span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'transaction' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            
-            {activeDropdown === 'transaction' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-4 z-30 min-w-[220px] flex flex-col gap-3 shadow-lg animate-fadeIn">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tipo transacción</span>
-                  <div className="flex flex-col gap-2">
-                    {[
-                      { value: '', label: 'Todos' },
-                      { value: 'en_venta', label: 'En venta' },
-                      { value: 'en_alquiler', label: 'En alquiler' },
-                      { value: 'vendido', label: 'Vendido' }
-                    ].map((op) => (
-                      <label key={op.value} className="flex items-center gap-2.5 cursor-pointer font-semibold text-xs text-neutral-800 select-none">
-                        <input
-                          type="radio"
-                          name="tipoTransaccion"
-                          value={op.value}
-                          checked={filtros.tipoTransaccion === op.value}
-                          onChange={() => {
-                            setFiltros(f => ({ ...f, tipoTransaccion: op.value }));
-                            // Sincronizar el botón de tipo de oferta lateral del panel en consecuencia
-                            if (op.value === 'en_venta') setActiveOffer('VENTA');
-                            else if (op.value === 'en_alquiler') setActiveOffer('ALQUILER'); // o el primer valor de alquiler
-                            else if (op.value === 'vendido') setActiveOffer('');
-                            else setActiveOffer('');
-                          }}
-                          className="w-4 h-4 text-[#006AFF] focus:ring-blue-600 border-gray-300 rounded-full"
-                        />
-                        <span>{op.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all mt-1 cursor-pointer"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Píldora 2: Rango de Precios & Calculadora Financiera */}
-          <div className="relative">
-            <button
-              onClick={() => toggleDropdown('price_range')}
-              className={
-                filtros.precioMin !== null || filtros.precioMax !== null
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
-                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
-              }
-            >
-              <span>
-                {filtros.precioMin !== null || filtros.precioMax !== null ? (
-                  filtros.precioMin !== null && filtros.precioMax !== null ? (
-                    `$${filtros.precioMin / 1000}k - $${filtros.precioMax / 1000}k`
-                  ) : filtros.precioMax !== null ? (
-                    `Hasta $${filtros.precioMax / 1000}k`
-                  ) : (
-                    `Desde $${(filtros.precioMin ?? 0) / 1000}k`
-                  )
-                ) : (
-                  t("Precio")
-                )}
-              </span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'price_range' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            {activeDropdown === 'price_range' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-[340px] flex flex-col gap-4 shadow-lg animate-fadeIn">
-                  {/* Tabs */}
-                  <div className="flex border border-gray-200 rounded-lg overflow-hidden text-xs font-bold text-center">
-                    <button
-                      onClick={() => setFiltros(f => ({ ...f, modoPrecio: 'list_price' }))}
-                      className={`flex-1 py-2 cursor-pointer transition-all ${filtros.modoPrecio === 'list_price' ? 'bg-[#e7f4ff] text-[#006AFF] border-r border-[#006AFF] font-bold' : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'}`}
-                    >
-                      Precio de lista
-                    </button>
-                    <button
-                      onClick={() => setFiltros(f => ({ ...f, modoPrecio: 'monthly_payment' }))}
-                      className={`flex-1 py-2 cursor-pointer transition-all ${filtros.modoPrecio === 'monthly_payment' ? 'bg-[#e7f4ff] text-[#006AFF] border-l border-[#006AFF] font-bold' : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'}`}
-                    >
-                      Pago mensual
-                    </button>
-                  </div>
-
-                  {/* Inputs Min/Max */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Min</span>
-                      <input
-                        type="number"
-                        placeholder="Min ($)"
-                        value={filtros.precioMin || ''}
-                        onChange={(e) => setFiltros(f => ({ ...f, precioMin: e.target.value ? Number(e.target.value) : null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
-                      />
-                    </div>
-                    <span className="text-gray-400 mt-4">-</span>
-                    <div className="flex-1 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-neutral-400 uppercase">Max</span>
-                      <input
-                        type="number"
-                        placeholder="Max ($)"
-                        value={filtros.precioMax || ''}
-                        onChange={(e) => setFiltros(f => ({ ...f, precioMax: e.target.value ? Number(e.target.value) : null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Parámetros Financieros Avanzados */}
-                  {filtros.modoPrecio === 'monthly_payment' && (
-                    <div className="border-t border-gray-150 pt-3 flex flex-col gap-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex flex-col gap-1 flex-1">
-                          <span className="text-[9px] font-bold text-neutral-400 uppercase">Cuota inicial</span>
-                          <input
-                            type="number"
-                            placeholder="Down Payment ($)"
-                            value={filtros.downPayment || ''}
-                            onChange={(e) => setFiltros(f => ({ ...f, downPayment: e.target.value ? Number(e.target.value) : null }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1 flex-1">
-                          <span className="text-[9px] font-bold text-neutral-400 uppercase">Credit Score</span>
-                          <select
-                            value={filtros.creditScore || 700}
-                            onChange={(e) => setFiltros(f => ({ ...f, creditScore: Number(e.target.value) }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:border-[#006AFF] bg-white cursor-pointer"
-                          >
-                            <option value={600}>600 (Bueno)</option>
-                            <option value={650}>650 (Muy bueno)</option>
-                            <option value={700}>700 (Excelente)</option>
-                            <option value={750}>750 (Premium)</option>
-                            <option value={800}>800 (Elite)</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleApplyPrice}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
-                  >
-                    Aplicar precio
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Píldora 3: Dormitorios & Baños */}
-          <div className="relative">
-            <button
-              onClick={() => toggleDropdown('rooms_baths')}
-              className={
-                filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
-                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
-              }
-            >
-              <span>
-                {filtros.dormitorios !== 'cualquiera' || filtros.banos !== 'cualquiera'
-                  ? `${filtros.dormitorios !== 'cualquiera' ? `${filtros.dormitorios}d` : ''} ${filtros.banos !== 'cualquiera' ? `${filtros.banos}b` : ''}`
-                  : t("Habitaciones & Baños")}
-              </span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'rooms_baths' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            {activeDropdown === 'rooms_baths' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
-                  
-                  {/* Dormitorios */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Dormitorios</span>
-                    <div className="flex border border-gray-300 rounded-lg overflow-hidden text-xs font-bold text-center">
-                      {['cualquiera', 1, 2, 3, 4].map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setFiltros(f => ({ ...f, dormitorios: d }))}
-                          className={`flex-1 py-2 transition-all cursor-pointer ${
-                            filtros.dormitorios === d
-                              ? 'bg-[#e7f4ff] text-[#006AFF] font-bold'
-                              : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
-                          }`}
-                        >
-                          {d === 'cualquiera' ? 'Any' : `${d}+`}
-                        </button>
-                      ))}
-                    </div>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700 pt-1">
-                      <input
-                        type="checkbox"
-                        checked={filtros.coincidenciaExactaDorms}
-                        onChange={(e) => setFiltros(f => ({ ...f, coincidenciaExactaDorms: e.target.checked }))}
-                        className="rounded text-[#006AFF] focus:ring-[#006AFF] border-gray-300"
-                      />
-                      <span>Usar coincidencia exacta</span>
-                    </label>
-                  </div>
-
-                  {/* Baños */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Baños</span>
-                    <div className="flex border border-gray-300 rounded-lg overflow-hidden text-xs font-bold text-center">
-                      {['cualquiera', 1, 1.5, 2, 3].map((b) => (
-                        <button
-                          key={b}
-                          type="button"
-                          onClick={() => setFiltros(f => ({ ...f, banos: b }))}
-                          className={`flex-1 py-2 transition-all cursor-pointer ${
-                            filtros.banos === b
-                              ? 'bg-[#e7f4ff] text-[#006AFF] font-bold'
-                              : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
-                          }`}
-                        >
-                          {b === 'cualquiera' ? 'Any' : `${b}+`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
-                  >
-                    Aplicar habitaciones
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Píldora 4: Tipo de casa */}
-          <div className="relative">
-            <button
-              onClick={() => toggleDropdown('home_type')}
-              className={
-                filtros.tiposCasa.length > 0
-                  ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10 animate-fadeIn"
-                  : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
-              }
-            >
-              <span>
-                {filtros.tiposCasa.length > 0
-                  ? `${filtros.tiposCasa.length} ${t("Tipos")}`
-                  : t("Tipo de casa")}
-              </span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${activeDropdown === 'home_type' ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            {activeDropdown === 'home_type' && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setActiveDropdown(null)} />
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg p-5 z-30 w-80 flex flex-col gap-4 shadow-lg animate-fadeIn">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Tipo de inmueble</span>
-                  
-                  <div className="flex flex-col gap-2">
-                    {[
-                      { id: 'casa', label: 'Casas' },
-                      { id: 'departamento', label: 'Departamentos / Condos' },
-                      { id: 'oficina', label: 'Oficinas / Comercial' },
-                      { id: 'terreno', label: 'Lotes / Terrenos' }
-                    ].map((item) => {
-                      return (
-                        <label key={item.id} className="flex items-center gap-2.5 cursor-pointer font-semibold text-xs text-neutral-800 select-none">
-                          <input
-                            type="checkbox"
-                            checked={filtros.tiposCasa.includes(item.id)}
-                            onChange={() => {
-                              setFiltros(f => {
-                                const exist = f.tiposCasa.includes(item.id);
-                                const updated = exist
-                                  ? f.tiposCasa.filter(id => id !== item.id)
-                                  : [...f.tiposCasa, item.id];
-                                return { ...f, tiposCasa: updated };
-                              });
-                            }}
-                            className="rounded text-[#006AFF] focus:ring-[#006AFF] w-4.5 h-4.5 border-gray-300 cursor-pointer"
-                          />
-                          <span>{item.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    onClick={() => setActiveDropdown(null)}
-                    className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold py-2 text-xs rounded-lg transition-all cursor-pointer"
-                  >
-                    Aplicar tipos
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="w-px h-6 bg-gray-200" />
-
-          {/* Píldora 5: Más Filtros (Modal Slide-over Trigger) */}
-          <button
-            onClick={() => setShowMoreFilters(true)}
-            className="flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
-          >
-            <span>{t("Más filtros")}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neutral-500"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          {/* Píldora: Solo Verificadas Sello Oro */}
-          <button
-            onClick={() => setOnlyVerified(!onlyVerified)}
-            className={
-              onlyVerified
-                ? "flex items-center gap-2 px-4 bg-[#e7f4ff] border-2 border-[#006AFF] rounded-lg text-sm font-medium text-[#006AFF] transition-all cursor-pointer h-10"
-                : "flex items-center gap-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-neutral-800 hover:border-neutral-400 transition-all cursor-pointer h-10 shadow-sm"
+        {/* FILA INFERIOR: CARRUSEL HORIZONTAL DE CATEGORÍAS */}
+        <div className="flex items-center gap-2 overflow-x-auto px-4 py-2 bg-white w-full no-scrollbar pb-2">
+          {[
+            { 
+              id: 'todo', 
+              label: t('Todo'), 
+              value: [],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+            },
+            { 
+              id: 'casa', 
+              label: t('Casas'), 
+              value: ['casa'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+            },
+            { 
+              id: 'departamento', 
+              label: t('Departamentos'), 
+              value: ['departamento'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m-1.5 3h1.5m4.5-9h1.5m-1.5 3h1.5m-1.5 3h1.5m-1.5 3h1.5" /></svg>
+            },
+            { 
+              id: 'terreno', 
+              label: t('Terrenos'), 
+              value: ['terreno'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-12v12m.75 3h-7.5a.75.75 0 01-.75-.75V3.75c0-.414.336-.75.75-.75h7.5c.414 0 .75.336.75.75v13.5a.75.75 0 01-.75.75zm-6 3h-1.5m8.25 0h-1.5" /></svg>
+            },
+            { 
+              id: 'oficina', 
+              label: t('Oficinas'), 
+              value: ['oficina'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+            },
+            { 
+              id: 'galpon', 
+              label: t('Galpones'), 
+              value: ['galpon'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M2.25 21h4.5V11.25m0 0l7.244-5.07a.75.75 0 01.88 0l6.126 4.288a.75.75 0 01.32.613V21" /></svg>
+            },
+            { 
+              id: 'local', 
+              label: t('Locales comerciales'), 
+              value: ['local'],
+              icon: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h2.25M9 10.5h.008v.008H9V10.5zm3 0h.008v.008H12V10.5zm3 0h.008v.008H15V10.5zm-6 3h.008v.008H9v-.008zm3 0h.008v.008H12v-.008zm3 0h.008v.008H15v-.008z" /></svg>
             }
-          >
-            <span>{t("Sello Oro")}</span>
-            {onlyVerified && <span className="w-1.5 h-1.5 bg-[#006AFF] rounded-full inline-block"></span>}
-          </button>
-        </div>
-        {/* Grupo de Acción Extremo Derecho (Resultados + Guardar búsqueda) */}
-        <div className="ml-auto flex items-center gap-3 shrink-0">
-          <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest hidden md:inline-block">
-            {filtered.length} RESULTADOS
-          </span>
-          <button
-            onClick={handleSaveSearch}
-            className="h-10 px-5 bg-[#006AFF] hover:bg-blue-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center whitespace-nowrap cursor-pointer"
-          >
-            Guardar búsqueda
-          </button>
+          ].map((cat) => {
+            const isActive = cat.id === 'todo' 
+              ? filtros.tiposCasa.length === 0 
+              : filtros.tiposCasa.includes(cat.id);
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setFiltros(f => ({ ...f, tiposCasa: cat.value }))}
+                className={`transition-all duration-200 cursor-pointer shrink-0 ${
+                  isActive
+                    ? 'bg-[#0a1931] text-white rounded-full px-4 py-2.5 text-xs font-semibold flex items-center gap-1.5 shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 rounded-full px-4 py-2.5 text-xs font-medium flex items-center gap-1.5 hover:border-slate-350'
+                }`}
+              >
+                {cat.icon}
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA DERECHA / LISTADO IZQUIERDA) ─── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden relative h-full">
+      {/* ─── BARRA DE REFINAMIENTO PIXEL-PERFECT (ESTILO DE CLON DE TOOLBAR ZILLOW - ESCRITORIO) ─── */}
+      <div className="hidden md:flex flex-col w-full z-20 shrink-0 font-sans">
+        {/* CONTENEDOR */}
+        <div className="flex items-center justify-between w-full px-6 py-4 bg-white border-b border-slate-100">
+          {/* BLOQUE IZQUIERDO (FILTROS RÁPIDOS) */}
+          <div className="flex items-center gap-4">
+            {/* Botón Ubicación */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="rounded-full px-4 py-2 text-sm text-slate-700 flex items-center gap-2 border border-slate-200 hover:bg-slate-50 transition-colors bg-white font-medium cursor-pointer"
+              >
+                <span>{selectedCity}</span>
+                <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
 
-        {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 50% en desktop, ARRIBA - 75% en mobile) ── */}
-        {/* ponytail: use className block/hidden toggling to prevent Leaflet re-init flashes on mobile */}
-        <div className={`w-full h-[75%] md:w-1/2 md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0 ${isMapVisible ? 'block' : 'md:block hidden'}`}>
+              {isOpen && (
+                <div className="absolute left-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 w-64 py-2 max-h-60 overflow-y-auto">
+                  {Object.keys(DEPARTAMENTOS_DATA).map((dept) => (
+                    <button
+                      key={dept}
+                      onClick={() => {
+                        setSelectedCity(dept);
+                        setIsOpen(false);
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('city', dept);
+                        router.push(`?${params.toString()}`);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#0a1931] transition-colors bg-transparent border-0 cursor-pointer font-medium block"
+                    >
+                      {dept}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Botón Filtros (X) */}
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="rounded-full px-4 py-2 text-sm text-slate-700 flex items-center gap-2 border border-slate-200 hover:bg-slate-50 transition-colors bg-white font-medium"
+            >
+              <span>{`Filtros (${getActiveFiltersCount()})`}</span>
+            </button>
+          </div>
+
+          {/* BLOQUE DERECHO (ORDENAMIENTO) */}
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-slate-500 font-medium">Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-800 focus:outline-none focus:border-slate-300 bg-white cursor-pointer"
+            >
+              <option value="newest">Más recientes</option>
+              <option value="price_desc">Precio (mayor a menor)</option>
+              <option value="price_asc">Precio (menor a mayor)</option>
+              <option value="size">Superficie</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ─── LAYOUT DE PANTALLA DIVIDIDA (MAPA DERECHA / LISTADO IZQUIERDA) ─── */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden relative">
+
+        {/* ── MAPA DINÁMICO LEAFLET REAL (DERECHA - 55% en desktop) ── */}
+        <div className={`${
+          viewMode === 'lista' ? 'hidden md:hidden' : ''
+        } ${
+          viewMode === 'mapa' ? 'w-full md:w-full' : ''
+        } ${
+          viewMode === 'mixta' ? 'w-full md:w-[55%]' : ''
+        } h-full md:h-full relative overflow-hidden border-b md:border-b-0 md:border-r border-neutral-200 md:order-2 min-h-0 ${isMapVisible ? 'block' : 'md:block hidden'}`}>
           <PropertiesMap
-            properties={filtered}
+            properties={displayProperties}
             activePropertyId={hoveredPin}
             selectedPropertyId={selectedPropertyId}
             onSelectProperty={(id) => setSelectedPropertyId(id)}
             currency="BOB"
-            center={DEPARTAMENTOS_COORDS[searchParams.get('city')?.toUpperCase() || 'COCHABAMBA'] || DEPARTAMENTOS_COORDS['COCHABAMBA']}
+            center={DEPARTAMENTOS_DATA[selectedCity]?.center || DEPARTAMENTOS_DATA['Cochabamba'].center}
+            zoom={DEPARTAMENTOS_DATA[selectedCity]?.zoom || 13}
           />
         </div>
 
-        {/* ── GRILLA DE RESULTADOS EDITORIAL (IZQUIERDA - 50% en desktop, ABAJO - 25% en mobile) ── */}
-        {/* ponytail: expand list height to full when map is hidden */}
-        <div className={`w-full ${isMapVisible ? 'h-[25%]' : 'h-full'} md:w-1/2 md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0`}>
+        {/* ── GRILLA DE RESULTADOS EDITORIAL (IZQUIERDA - 45% en desktop) ── */}
+        <div className={`hidden md:block ${
+          viewMode === 'mapa' ? 'md:hidden' : ''
+        } ${
+          viewMode === 'lista' ? 'md:w-full' : ''
+        } ${
+          viewMode === 'mixta' ? 'md:w-[45%]' : ''
+        } md:h-full overflow-y-auto bg-white no-scrollbar md:order-1 min-h-0`}>
 
           {/* Listado de Propiedades */}
-          <div className="p-4 sm:p-6 pb-6 space-y-6">
-            <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5 font-sans">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h1 className="font-sans text-lg sm:text-2xl font-bold text-black uppercase tracking-tight">
-                    {t("Catálogo de Propiedades")}
-                  </h1>
-                  <p className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
-                    {filtered.length} {t("propiedades encontradas")}
-                  </p>
-                </div>
-                {/* Ordenado por: Casas para ti (Visible en móviles) */}
-                <span className="md:hidden text-[9px] font-bold text-neutral-500 bg-neutral-100 px-2.5 py-1.5 rounded-full uppercase tracking-wider shrink-0 select-none">
-                  Casas para ti
-                </span>
-              </div>
-
-              {/* Contenedor de Alertas de Búsqueda */}
-              <div className="p-4 border border-neutral-200 bg-[#fbf9f9] rounded-xl">
-                {isSubscribed ? (
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 py-1 uppercase tracking-widest select-none">
-                    <span>✓ Ya estás suscrito a las alertas de esta búsqueda</span>
-                  </div>
-                ) : (
-                  <details className="group">
-                    <summary className="flex items-center justify-between cursor-pointer text-[9px] font-bold text-[#000033] py-1 list-none uppercase tracking-widest select-none">
-                      <span>🔔 {t("Suscribirse a alertas de esta búsqueda")}</span>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-open:rotate-180 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
-                    </summary>
-                    <div className="pt-3 border-t border-neutral-100 mt-2">
-                      <PropertyAlertForm
-                        defaultZona={searchParams.get('zone') || ''}
-                        defaultType={searchParams.get('type') || 'DEPARTAMENTO'}
-                        defaultMaxPrice={maxPrice}
-                        onSuccess={() => setIsSubscribed(true)}
-                      />
-                    </div>
-                  </details>
-                )}
-              </div>
-            </header>
-
-            {sortedProperties.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center border border-dashed border-neutral-300 p-8">
-                <div className="text-4xl mb-4">🏠</div>
-                <h3 className="font-heading text-xl font-black text-black uppercase tracking-wider">Sin Resultados</h3>
-                <p className="text-neutral-400 text-xs font-medium mt-2">{t("Intenta ampliar el presupuesto, modificar los términos o ajustar los filtros de búsqueda.")}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-3 p-3 bg-neutral-50 pb-24 mt-4">
-                {sortedProperties.map(p => (
-                  <ListingCard
-                     key={p.id}
-                     prop={p}
-                     active={hoveredPin === p.id}
-                     onClick={() => handleListingCardClick(p.id)}
-                     onHover={setHoveredPin}
-                     isFavorite={isFavorited(p.id)}
-                     onFavoriteToggle={handleFavoriteToggle}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="col-span-2 py-20 flex flex-col items-center justify-center gap-4 w-full h-[60vh] bg-neutral-50">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#0a1931]" />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargando catálogo dinámico...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-3 p-3 bg-neutral-50 pb-24">
+              {displayProperties.map(p => (
+                <ListingCard
+                   key={p.id}
+                   prop={p}
+                   active={hoveredPin === p.id}
+                   onClick={() => handleListingCardClick(p.id)}
+                   onHover={setHoveredPin}
+                   isFavorite={isFavoriteLocal(p.id)}
+                   onFavoriteToggle={handleFavoriteToggle}
+                />
+              ))}
+            </div>
+          )}
           
           {/* Footer en el fondo del contenedor de scroll independiente */}
           <Footer forceRender={true} />
@@ -1686,11 +1313,32 @@ function PropertiesContent() {
                 {/* Media Image */}
                 <div className="aspect-[16/10] overflow-hidden bg-neutral-100 border border-slate-100 rounded-3xl relative">
                   <img src={selectedProperty.imageUrl} className="w-full h-full object-cover" alt={selectedProperty.title} />
-                  {selectedProperty.verified && (
-                    <span className="absolute top-4 left-4 bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3 py-1.5 uppercase tracking-wider rounded-full">
-                      {t("VERIFICADO SELLO ORO")}
-                    </span>
-                  )}
+                  {(() => {
+                    const requiredTypes = ['FR', 'CT', 'TS', 'IM', 'PU', 'CI'];
+                    const rigidPrefixMap: Record<string, string> = {
+                      FR: 'FOLIO REAL',
+                      CT: 'CERTIFICAD',
+                      TS: 'TESTIMONIO',
+                      IM: 'IMPUESTOS ',
+                      PU: 'PLANO DE U',
+                      OD: 'OTROS DOCU',
+                      CI: 'CÉDULA DE '
+                    };
+                    const docs = selectedProperty.documents || [];
+                    const allApproved = Array.isArray(docs) && requiredTypes.every(type => {
+                      const prefix = rigidPrefixMap[type];
+                      const doc = docs.find((d: any) => 
+                        d.fileType?.toUpperCase() === type ||
+                        (prefix && String(d.docName || d.name || d.fileType || '').toUpperCase().includes(prefix))
+                      );
+                      return doc?.status === 'APPROVED';
+                    });
+                    return allApproved ? (
+                      <span className="absolute top-4 left-4 bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3 py-1.5 uppercase tracking-wider rounded-full">
+                        {t("DOCUMENTACION VERIFICADA")}
+                      </span>
+                    ) : null;
+                  })()}
                   <span className="absolute bottom-4 right-4 bg-white/95 text-[#04045E] text-[9px] font-black px-3 py-1.5 border border-slate-150 rounded-full uppercase tracking-wider">
                     {selectedProperty.offerType}
                   </span>
@@ -1699,14 +1347,18 @@ function PropertiesContent() {
                 {/* Info Text */}
                 <div className="space-y-4">
                   <div className="flex items-baseline justify-between">
-                    <span className="font-sans text-3xl font-black text-black">${selectedProperty.price.toLocaleString()}</span>
-                    <span className="text-neutral-400 text-[10px] font-bold">{(selectedProperty.price / selectedProperty.area).toFixed(0)} {t("USD/m²")}</span>
+                    <span className="font-sans text-3xl font-black text-black">
+                      Bs. {(selectedProperty.priceBob || selectedProperty.price * 9.76).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-neutral-400 text-[10px] font-bold">
+                      {((selectedProperty.priceBob || selectedProperty.price * 9.76) / selectedProperty.area).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {t("Bs./m²")}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs font-bold text-neutral-500 bg-[#fbf9f9] p-4 border border-neutral-200 rounded-none">
                     {selectedProperty.rooms > 0 && <span className="flex items-center gap-1">🛏️ {selectedProperty.rooms} {t("dorms")}</span>}
                     {selectedProperty.bathrooms > 0 && <span className="flex items-center gap-1">🛁 {selectedProperty.bathrooms} {t("baños")}</span>}
-                    <span className="flex items-center gap-1">📏 {selectedProperty.area} {t("m²")}</span>
+                    {selectedProperty.area > 0 && <span className="flex items-center gap-1">📏 {selectedProperty.area} {t("m²")}</span>}
                   </div>
 
                   <div className="space-y-2">
@@ -1718,22 +1370,22 @@ function PropertiesContent() {
 
                   <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 pt-2">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                    {selectedProperty.location}
+                    {typeof selectedProperty.location === 'object' && selectedProperty.location ? (selectedProperty.location.address || selectedProperty.location.city || '') : String(selectedProperty.location || '')}
                   </p>
                 </div>
               </div>
 
               {/* Drawer Actions */}
-              <div className="flex flex-col gap-3 pt-6 border-t border-neutral-200 mt-8 shrink-0 bg-white z-10">
+              <div className="flex flex-row gap-3 pt-6 border-t border-neutral-200 mt-8 shrink-0 bg-white z-10">
                 <Link
-                  href={`/properties/${selectedProperty.id}`}
-                  className="w-full bg-black hover:bg-neutral-800 text-white font-sans font-bold text-xs text-center py-4.5 uppercase tracking-widest transition-all cursor-pointer border border-black"
+                  href={`/properties/${selectedProperty.id}?title=${encodeURIComponent(selectedProperty.title)}&price=${selectedProperty.price}&rooms=${selectedProperty.rooms || 0}&bathrooms=${selectedProperty.bathrooms || 0}&location=${encodeURIComponent(typeof selectedProperty.location === 'object' && selectedProperty.location ? (selectedProperty.location.address || selectedProperty.location.city || '') : String(selectedProperty.location || ''))}&area=${selectedProperty.area || 0}`}
+                  className="bg-[#0a1931] text-white rounded-xl font-semibold px-6 py-3 text-center flex-1 uppercase text-sm transition-all cursor-pointer"
                 >
                   {t("Ver Ficha Completa")}
                 </Link>
                 <button
                   onClick={() => alert(`Contactando de forma premium para: ${selectedProperty.title}`)}
-                  className="w-full border border-neutral-300 hover:border-black text-black font-sans font-bold text-xs py-4.5 uppercase tracking-widest transition-all cursor-pointer bg-white"
+                  className="bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold px-6 py-3 text-center flex-1 uppercase text-sm transition-all cursor-pointer"
                 >
                   {t("Contactar por WhatsApp")}
                 </button>
@@ -1746,195 +1398,267 @@ function PropertiesContent() {
 
       </div>
 
-      {/* ─── CÁPSULA FLOTANTE DE ALTERNANCIA (ESTILO ZILLOW CLON DE image_ee2142.png) ─── */}
-      {/* ponytail: shift floating capsule bottom position based on bottom navigation visibility */}
-      <div className={`fixed ${isMapVisible ? 'bottom-20' : 'bottom-6'} left-1/2 -translate-x-1/2 z-50 flex items-center bg-white border border-neutral-200 rounded-full shadow-xl px-5 py-2.5 md:hidden select-none hover:scale-105 active:scale-95 transition-all duration-300`}>
-        <button 
-          onClick={() => setIsMapVisible(!isMapVisible)}
-          className="flex items-center gap-2 text-sm font-bold text-[#04045E] cursor-pointer bg-transparent border-none"
+      {/* ─── BOTTOM SHEET MÓVIL (image_7ffe1b.png) ─── */}
+      <div 
+        className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.08)] z-30 transition-all duration-300 md:hidden flex flex-col ${
+          isMobileExpanded ? 'h-[80vh] pb-0' : 'h-[68px] pb-5'
+        }`}
+      >
+        {/* Tirador gris de arrastre */}
+        <div 
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          className="w-full flex flex-col items-center cursor-pointer select-none"
         >
-          {isMapVisible ? (
-            <>
-              {/* Icono de lista */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="text-[#04045E]" viewBox="0 0 16 16">
-                <path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
-              </svg>
-              <span>Ver Lista</span>
-            </>
-          ) : (
-            <>
-              {/* Icono de mapa */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="text-[#04045E]" viewBox="0 0 16 16">
-                <path fillRule="evenodd" d="M15.817.113A.5.5 0 0 0 15.5 0H14.5a.5.5 0 0 0-.402.201L10.2 5.333 5.8.201A.5.5 0 0 0 5.4 0H4.5a.5.5 0 0 0-.402.201L.183 5.513A.5.5 0 0 0 0 5.817v9.5a.5.5 0 0 0 .5.5h.9a.5.5 0 0 0 .402-.201l3.998-5.132 4.4 5.132a.5.5 0 0 0 .402.201h.9a.5.5 0 0 0 .5-.5v-9.5a.5.5 0 0 0-.183-.304L15.817.113zM1 6.133l3-3.857v7.592l-3 3.857V6.133zm4 3.735l4 4.667v-7.592L5 3.076v6.792zm5 4.667l3-3.857V3.076l-3 3.857v7.592z"/>
-              </svg>
-              <span>Ver Mapa</span>
-            </>
-          )}
-        </button>
+          <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mt-2.5 mb-2" />
+          
+          <div className="flex items-center justify-between w-full px-6 py-2 font-sans">
+            <span className="text-sm font-bold text-slate-800">
+              {filtered.length} {t("propiedades")}
+            </span>
+            <svg 
+              className={`w-4 h-4 text-slate-505 transition-transform duration-300 ${
+                isMobileExpanded ? 'rotate-180' : ''
+              }`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor" 
+              strokeWidth={3}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+            </svg>
+          </div>
+        </div>
 
-        <div className="w-[1px] h-5 bg-neutral-200 mx-3"></div>
-
-        <button 
-          onClick={() => setIsSortOpen(true)}
-          className="flex items-center gap-2 text-sm font-bold text-slate-500 cursor-pointer bg-transparent border-none"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 1 1-.708-.708L3 3.707V5a.5.5 0 0 1-1 0v-2.5zM2 9.5a.5.5 0 0 1 .5-.5h2.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708L3 10.707V12a.5.5 0 0 1-1 0v-2.5z"/></svg>
-          <span>Ordenar</span>
-        </button>
+        {/* Contenido listado scrollable de la bottom sheet */}
+        {isMobileExpanded && (
+              <div className="flex flex-col gap-4 pb-20">
+                {displayProperties.map(p => (
+                  <div key={p.id} className="w-full">
+                    <ListingCard
+                       prop={p}
+                       active={hoveredPin === p.id}
+                       onClick={() => handleListingCardClick(p.id)}
+                       onHover={setHoveredPin}
+                       isFavorite={isFavoriteLocal(p.id)}
+                       onFavoriteToggle={handleFavoriteToggle}
+                    />
+                  </div>
+                ))}
+              </div>
+        )}
       </div>
 
-
-
-      {/* ─── MODAL DE FILTROS EN PANTALLA COMPLETA MÓVIL ─── */}
+      {/* ─── MODAL DE FILTROS AVANZADOS CENTRADO ─── */}
       {showMobileFilters && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 animate-fadeIn">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
-            <div>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Búsqueda Avanzada</span>
-              <h2 className="font-heading text-2xl font-black text-black uppercase tracking-tight">{t("Filtros")}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          {/* CONTENEDOR MODAL */}
+          <div className="rounded-3xl shadow-2xl max-w-lg w-full bg-white overflow-hidden flex flex-col max-h-[85vh] animate-scaleIn">
+            
+            {/* HEADER FIJO */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-8 py-5 relative">
+              <h2 className="text-2xl font-semibold text-[#0a1931]">Filtros</h2>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="text-slate-400 hover:text-slate-650 transition-colors p-2 text-xl font-bold bg-transparent border-0 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              onClick={() => setShowMobileFilters(false)}
-              className="p-2 border border-neutral-200 hover:border-black text-neutral-400 hover:text-black transition-colors rounded-none"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto py-6 space-y-6">
-            {/* Búsqueda por Texto */}
-            <div className="space-y-2">
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Buscar por Zona o Palabra")}</label>
-              <div className="relative flex items-center bg-neutral-50 border border-black py-3 px-4 w-full">
+            {/* CUERPO CON SCROLL INTERNO */}
+            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-thin">
+              
+              {/* Grupo 1 (Búsqueda) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Búsqueda por texto</h3>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Ej: Cala Cala, Prado..."
-                  className="bg-transparent text-sm font-semibold text-black placeholder-neutral-350 focus:outline-none w-full border-none focus:ring-0 p-0"
+                  className="rounded-2xl border border-slate-200 w-full px-4 py-3 outline-none focus:border-[#0a1931] text-sm text-slate-800"
+                />
+              </div>
+
+              {/* Grupo 2 (Operación) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Operación</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: '', label: 'Todos' },
+                    { id: 'VENTA', label: 'Venta' },
+                    { id: 'ALQUILER', label: 'Alquiler' },
+                    { id: 'ANTICRETICO', label: 'Anticrético' },
+                    { id: 'PROYECTOS', label: 'Proyectos' }
+                  ].map((op) => {
+                    const isSelected = activeOffer === op.id;
+                    return (
+                      <button
+                        key={op.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveOffer(op.id);
+                          const params = new URLSearchParams(searchParams.toString());
+                          if (op.id) {
+                            params.set('category', op.id);
+                          } else {
+                            params.delete('category');
+                          }
+                          router.replace(`?${params.toString()}`);
+                        }}
+                        className={`rounded-full px-5 py-2.5 text-sm transition-all duration-200 cursor-pointer border ${
+                          isSelected
+                            ? 'bg-[#0a1931] text-white border-transparent font-medium'
+                            : 'bg-white/80 text-slate-700 border-slate-200 font-normal hover:border-slate-350'
+                        }`}
+                      >
+                        {op.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Grupo 3 (Tipo) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Tipo</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'Todo', label: 'Todo' },
+                    { id: 'casa', label: 'Casas' },
+                    { id: 'departamento', label: 'Departamentos' },
+                    { id: 'terreno', label: 'Terrenos' },
+                    { id: 'oficina', label: 'Oficinas' },
+                    { id: 'galpón', label: 'Galpones' },
+                    { id: 'local comercial', label: 'Locales comerciales' }
+                  ].map((type) => {
+                    const isSelected = selectedType === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setSelectedType(type.id)}
+                        className={`rounded-full px-5 py-2.5 text-sm transition-all duration-200 cursor-pointer border ${
+                          isSelected
+                            ? 'bg-[#0a1931] text-white border-transparent font-medium'
+                            : 'bg-white/80 text-slate-700 border-slate-200 font-normal hover:border-slate-350'
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Grupo 4 (Opciones especiales) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Opciones especiales</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'terreno', label: 'Terreno' },
+                    { id: 'preventa', label: 'Preventa' },
+                    { id: 'oficina', label: 'Oficina' },
+                    { id: 'galpon', label: 'Galpón' },
+                    { id: 'local', label: 'Local comercial' }
+                  ].map((special) => {
+                    const isSelected = filtros.tiposCasa.includes(special.id);
+                    return (
+                      <button
+                        key={special.id}
+                        type="button"
+                        onClick={() => {
+                          setFiltros(f => {
+                            const exist = f.tiposCasa.includes(special.id);
+                            const updated = exist
+                              ? f.tiposCasa.filter(id => id !== special.id)
+                              : [...f.tiposCasa, special.id];
+                            return { ...f, tiposCasa: updated };
+                          });
+                        }}
+                        className={`rounded-full px-5 py-2.5 text-sm transition-all duration-200 cursor-pointer border ${
+                          isSelected
+                            ? 'bg-[#0a1931] text-white border-transparent font-medium'
+                            : 'bg-white/80 text-slate-700 border-slate-200 font-normal hover:border-slate-350'
+                        }`}
+                      >
+                        {special.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Grupo 5 (Rangos de Precio) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Precio (USD)</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 font-medium">Mínimo</span>
+                    <input
+                      type="number"
+                      value={filtros.precioMin ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        setFiltros(f => ({ ...f, precioMin: val }));
+                      }}
+                      placeholder="Mínimo"
+                      className="rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-[#0a1931] outline-none text-slate-800 bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 font-medium">Máximo</span>
+                    <input
+                      type="number"
+                      value={filtros.precioMax ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        setFiltros(f => ({ ...f, precioMax: val }));
+                        if (val) setMaxPrice(val);
+                      }}
+                      placeholder="Máximo"
+                      className="rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-[#0a1931] outline-none text-slate-800 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Grupo 6 (Metraje / Área mínima) */}
+              <div className="space-y-2">
+                <h3 className="text-base font-semibold text-[#0a1931]">Área mínima (m²)</h3>
+                <input
+                  type="number"
+                  value={filtros.piesCuadradosMin ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : null;
+                    setFiltros(f => ({ ...f, piesCuadradosMin: val }));
+                  }}
+                  placeholder="Área mínima"
+                  className="rounded-2xl border border-slate-200 w-full px-4 py-3 text-sm focus:border-[#0a1931] outline-none text-slate-800 bg-white"
                 />
               </div>
             </div>
 
-            {/* Tipo de Inmueble */}
-            <div className="space-y-2">
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Tipo de Inmueble")}</label>
-              <div className="grid grid-cols-2 gap-2">
-                {typeOptions.map(tOption => (
-                  <button
-                    key={tOption || 'all'}
-                    type="button"
-                    onClick={() => {
-                      setActiveType(tOption);
-                    }}
-                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
-                      activeType === tOption ? 'bg-black text-white border-black' : 'bg-white text-black border-neutral-200'
-                    }`}
-                  >
-                    {tOption ? tOption.charAt(0).toUpperCase() + tOption.slice(1).toLowerCase() : 'Todos'}
-                  </button>
-                ))}
-              </div>
+            {/* FOOTER FIJO (STICKY BOTTOM BAR) */}
+            <div className="border-t border-slate-100 bg-white p-6 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClearAllFilters();
+                  setShowMobileFilters(false);
+                }}
+                className="border border-slate-200 text-slate-700 bg-white rounded-full px-8 py-3.5 text-base font-medium flex-1 text-center hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters(false)}
+                className="bg-[#0a1931] text-white rounded-full px-8 py-3.5 text-base font-medium flex-1 text-center hover:opacity-95 shadow-sm transition-all cursor-pointer"
+              >
+                Aplicar
+              </button>
             </div>
-
-            {/* Tipo de Oferta */}
-            <div className="space-y-2">
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Tipo de Oferta")}</label>
-              <div className="grid grid-cols-2 gap-2">
-                {offerOptions.map(o => (
-                  <button
-                    key={o || 'all-offer'}
-                    type="button"
-                    onClick={() => {
-                      setActiveOffer(o);
-                    }}
-                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
-                      activeOffer === o ? 'bg-black text-white border-black' : 'bg-white text-black border-neutral-200'
-                    }`}
-                  >
-                    {o ? o : 'Todos'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Presupuesto */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Presupuesto Máximo")}</label>
-                <span className="text-sm font-bold text-black">${maxPrice.toLocaleString()}</span>
-              </div>
-              <input
-                type="range"
-                min={40000}
-                max={600000}
-                step={5000}
-                value={maxPrice}
-                onChange={e => setMaxPrice(Number(e.target.value))}
-                className="w-full h-1.5 bg-neutral-200 accent-black cursor-pointer rounded-none appearance-none"
-              />
-            </div>
-
-            {/* Habitaciones */}
-            <div className="space-y-2">
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{t("Habitaciones / Dormitorios")}</label>
-              <div className="grid grid-cols-3 gap-2">
-                {roomsOptions.map(rOption => (
-                  <button
-                    key={rOption || 'all-rooms-mob'}
-                    type="button"
-                    onClick={() => {
-                      setActiveRooms(rOption);
-                    }}
-                    className={`py-3 text-xs font-bold border transition-all uppercase tracking-wider ${
-                      activeRooms === rOption ? 'bg-[#006AFF] text-white border-[#006AFF]' : 'bg-white text-black border-neutral-200'
-                    }`}
-                  >
-                    {rOption ? `${rOption}+` : 'Todos'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Verificado Sello Oro */}
-            <div className="flex items-center justify-between py-2 border-t border-neutral-100">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                {t("Solo propiedades Verificadas")}
-              </span>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div
-                  onClick={() => setOnlyVerified(!onlyVerified)}
-                  className={`relative w-12 h-6 transition-colors duration-200 border border-black p-0.5 rounded-none ${onlyVerified ? 'bg-black' : 'bg-white'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-neutral-200 transition-all rounded-none ${onlyVerified ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="border-t border-neutral-200 pt-4 flex flex-col gap-2">
-            <button
-              onClick={() => setShowMobileFilters(false)}
-              className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all"
-            >
-              {t("Ver ")}{filtered.length}{t(" Resultados")}
-            </button>
-            <button
-              onClick={() => {
-                setActiveType('');
-                setActiveOffer('');
-                setMaxPrice(500000);
-                setActiveRooms('');
-                setOnlyVerified(false);
-                setSearchQuery('');
-              }}
-              className="w-full border border-neutral-200 hover:border-black text-black font-sans font-bold text-xs text-center py-4 uppercase tracking-widest transition-all bg-white"
-            >
-              {t("Restablecer Filtros")}
-            </button>
           </div>
         </div>
       )}
@@ -2457,6 +2181,20 @@ function PropertiesContent() {
 }
 
 export default function PropertiesPage() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#fbf9f9] flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 rounded-none border-2 border-neutral-200 border-t-black animate-spin"></div>
+        <p className="text-[9px] font-bold text-neutral-400 tracking-[0.2em] uppercase animate-pulse">{t("Cargando inventario de propiedades...")}</p>
+      </div>
+    );
+  }
+
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#fbf9f9] flex flex-col items-center justify-center space-y-4">

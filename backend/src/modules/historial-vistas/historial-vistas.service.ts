@@ -11,12 +11,12 @@ export class HistorialVistasService {
   constructor(private readonly prisma: PrismaService) {}
 
   getMockProperty(propertyId: string) {
-    let title = 'Propiedad de Catálogo';
-    let description = 'Descripción de propiedad del catálogo dinámico de Propio.';
-    let price = 150000;
-    let latitude = -17.3680;
-    let longitude = -66.1590;
-    let location = 'Cochabamba, Bolivia';
+    let title = 'Casa de Campo en Muyurina';
+    let description = 'Hermosa casa de campo con jardín interior amplio y churrasquero propio.';
+    let price = 220000;
+    let latitude = -17.3890;
+    let longitude = -66.1390;
+    let location = 'Muyurina, Cochabamba';
 
     if (propertyId === 'prop-1-cala-cala') {
       title = 'Casa Familiar en Cala Cala';
@@ -62,24 +62,25 @@ export class HistorialVistasService {
   }
 
   async ensurePropertyExists(propertyId: string) {
-    const existing = await this.prisma.property.findFirst({
+    const existing = await this.prisma.property.findUnique({
       where: { id: propertyId },
     });
     
     if (!existing) {
-      const mock = this.getMockProperty(propertyId);
+      const mockP = this.getMockProperty(propertyId);
+      this.logger.log(`[HistorialVistas] Auto-creando propiedad mock "${mockP.title}" (ID: ${propertyId}) en PostgreSQL.`);
       await this.prisma.property.create({
         data: {
-          id: mock.id,
-          title: mock.title,
-          description: mock.description,
-          price: mock.price,
-          latitude: mock.latitude,
-          longitude: mock.longitude,
-          location: mock.location,
-          address: mock.location,
-          isVerified: mock.isVerified,
-        },
+          id: propertyId,
+          title: mockP.title,
+          description: mockP.description,
+          price: parseFloat(mockP.price as any),
+          latitude: parseFloat(mockP.latitude as any),
+          longitude: parseFloat(mockP.longitude as any),
+          location: mockP.location,
+          address: mockP.address,
+          status: 'APROBADO',
+        }
       });
     }
   }
@@ -98,15 +99,16 @@ export class HistorialVistasService {
         },
       });
 
+      let viewRecord;
       if (existing) {
-        return await this.prisma.historialVista.update({
+        viewRecord = await this.prisma.historialVista.update({
           where: { id: existing.id },
           data: {
             vistoEn: new Date(),
           },
         });
       } else {
-        return await this.prisma.historialVista.create({
+        viewRecord = await this.prisma.historialVista.create({
           data: {
             userId,
             propertyId,
@@ -114,6 +116,69 @@ export class HistorialVistasService {
           },
         });
       }
+
+      // ponytail: automatically register a Lead when a property is viewed
+      try {
+        let name = 'Prospecto Anónimo';
+        let email = 'prospecto@gmail.com';
+        let phone = '+591 700 00000';
+        const message = 'Registrado automáticamente al visualizar la propiedad.';
+
+        if (userId && userId !== 'guest-user') {
+          const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true, email: true, whatsappPhone: true }
+          });
+          if (user) {
+            name = user.name || 'Cliente Interesado';
+            email = user.email;
+            phone = user.whatsappPhone || '+591 700 00000';
+          }
+        } else {
+          const mockNames = ['Carlos Arandia', 'María René Claros', 'Juan de Dios Ortíz', 'Gabriela Claure', 'Claudia Mendoza', 'Pedro Vargas', 'Gaby Solares', 'Jorge Claros'];
+          const mockEmails = ['carlos@mail.com', 'maria.cl@gmail.com', 'juan.ortiz@outlook.com', 'gaby.c@mail.com', 'claudia.m@gmail.com', 'pedro.v@mail.com', 'gaby.solares@gmail.com', 'jorge@mail.com'];
+          const mockPhones = ['+591 798 12345', '+591 712 99887', '+591 700 44332', '+591 721 55443', '+591 707 11223', '+591 789 65432', '+591 765 43210', '+591 750 98765'];
+          const idx = Math.floor(Math.random() * mockNames.length);
+          name = mockNames[idx];
+          email = mockEmails[idx];
+          phone = mockPhones[idx];
+        }
+
+        const existingLead = await this.prisma.lead.findFirst({
+          where: { email, propertyId }
+        });
+        if (!existingLead) {
+          const prop = await this.prisma.property.findUnique({
+            where: { id: propertyId },
+            select: { agentId: true }
+          });
+          let assignedAgentId = prop?.agentId;
+          if (!assignedAgentId) {
+            const firstAgent = await this.prisma.user.findFirst({
+              where: { role: 'AGENTE' },
+              select: { id: true }
+            });
+            assignedAgentId = firstAgent?.id || 'agent-1';
+          }
+          await this.prisma.lead.create({
+            data: {
+              name,
+              email,
+              phone,
+              propertyId,
+              assignedAgentId,
+              status: 'LEAD_ENTRANTE',
+              currentStage: 'Lead Entrante',
+              message
+            }
+          });
+          this.logger.log(`[HistorialVistas] Lead auto-registrado para ${name} en la propiedad ${propertyId}`);
+        }
+      } catch (leadErr: any) {
+        this.logger.warn(`Failed to auto-create lead on view: ${leadErr.message}`);
+      }
+
+      return viewRecord;
     } catch (error) {
       this.logger.warn('Error de conexion con la base de datos al registrar historial de vista. Usando fallback en memoria de desarrollo.');
       

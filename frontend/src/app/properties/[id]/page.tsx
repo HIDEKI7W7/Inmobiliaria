@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+﻿import { cookies } from 'next/headers';
 import { PropertyDetailClient } from './PropertyDetailClient';
 import { resolveApiUrl } from '@/utils/resolveApiUrl';
 

@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { WHATSAPP_LINK } from '@/utils/whatsapp';
 
 // ── DEFINICIÓN DE TIPOS ──────────────────────────────────────────────────────
 type Rol = 'profesional' | 'propietario' | 'inquilino' | null;
@@ -366,7 +367,7 @@ export default function CentroDeAyuda() {
               </div>
 
               <a
-                href="https://wa.me/59171234567?text=Hola%2C+necesito+soporte+personalizado+en+Propio+como+usuario"
+                href={WHATSAPP_LINK}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="z-10 flex-shrink-0 inline-flex items-center gap-2 px-6 py-4 bg-[#b9fa3c] hover:bg-[#adf02c] active:scale-95 text-[#04045E] font-black text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-lg"
@@ -386,7 +387,7 @@ export default function CentroDeAyuda() {
 
       {/* ── BOTÓN FIJO DE WHATSAPP (UI/UX AUTOMATIZADA) ── */}
       <a
-        href="https://wa.me/59171234567?text=Hola%2C+necesito+ayuda+urgente+en+Propio"
+        href={WHATSAPP_LINK}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-8 right-8 bg-[#b9fa3c] p-4 rounded-full shadow-lg hover:scale-110 transition-transform z-50 flex items-center justify-center border border-[#04045E]/10"

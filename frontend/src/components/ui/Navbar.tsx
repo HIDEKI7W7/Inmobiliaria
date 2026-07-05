@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { getCurrentUser, removeToken, getRedirectPathByRole, getToken } from '@/utils/session';
+import { useFavorites } from '@/context/FavoritesContext';
 
 const NAV_LINKS = [
   { href: '/properties?category=VENTA', label: 'COMPRAR' },
@@ -20,7 +21,7 @@ const PropioLogo = () => (
   <div className="flex flex-col items-start leading-none select-none active:scale-98 transition-transform">
     <Link href="/" className="flex items-center gap-1.5">
       {/* Isotipo verde lima */}
-      <svg viewBox="0 0 100 100" className="w-6.5 h-6.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 100 100" className="w-10 h-10" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
           fillRule="evenodd"
           clipRule="evenodd"
@@ -47,6 +48,7 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Estados de Autenticación reactivos del cliente
   const [user, setUser] = useState<any>(null);
@@ -55,22 +57,13 @@ export const Navbar = () => {
   const [redirectPath, setRedirectPath] = useState('/cliente');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [favoritos, setFavoritos] = useState<any[]>([]);
+  const { favorites } = useFavorites();
   const [vistosRecientes, setVistosRecientes] = useState<any[]>([]);
 
   useEffect(() => {
     const token = getToken();
     if (isDropdownOpen && isAuthenticated && token) {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      
-      fetch(`${apiBaseUrl}/favoritos`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setFavoritos(data))
-        .catch(err => console.error("Error favoritos UI:", err));
 
       fetch(`${apiBaseUrl}/historial-vistas`, {
         headers: {
@@ -113,6 +106,32 @@ export const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Estado para controlar si el encabezado es sticky
+  const [isHeaderSticky, setIsHeaderSticky] = useState(true);
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      // En otras páginas o rutas, según especificación se ajusta (deja de ser fijo)
+      setIsHeaderSticky(false);
+      return;
+    }
+
+    const handleScroll = () => {
+      // La sección inicial (Hero) ocupará calc(100vh - 60px).
+      // Deja de ser fijo cuando el scroll supera el alto de la pantalla inicial.
+      const threshold = window.innerHeight - 60;
+      if (window.scrollY >= threshold) {
+        setIsHeaderSticky(false);
+      } else {
+        setIsHeaderSticky(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [pathname]);
+
   // Función para obtener las iniciales de manera segura
   const obtenerIniciales = () => {
     if (!user) return 'CC';
@@ -133,8 +152,13 @@ export const Navbar = () => {
   };
 
   const isActive = (href: string) => {
-    const baseHref = href.split('?')[0];
-    return pathname === baseHref;
+    const url = new URL(href, 'http://localhost');
+    const category = url.searchParams.get('category');
+    if (category) {
+      const currentCategory = searchParams.get('category');
+      return pathname === url.pathname && String(currentCategory).toUpperCase().trim() === String(category).toUpperCase().trim();
+    }
+    return pathname === url.pathname && !searchParams.get('category');
   };
 
   // Do not render the Navbar on control panel, agent routes, and auth screens
@@ -150,12 +174,12 @@ export const Navbar = () => {
     const user = getCurrentUser();
     if (user) {
       const role = user.role?.toUpperCase();
-      if (role === 'PROPIETARIO' || role === 'CLIENTE') {
-        // PROPIETARIO o CLIENTE → asistente de publicación
-        router.push('/propietario/publicar');
+      if (role === 'ADMIN') {
+        router.push('/admin'); // Admin dashboard
+      } else if (role === 'AGENTE') {
+        router.push('/agente/propiedades'); // Agent properties dashboard
       } else {
-        // Cualquier otro rol se redirige a / para mantener el desacoplamiento
-        router.push('/');
+        router.push('/propietario/publicar'); // Owner assistant
       }
     } else {
       // Sin sesión activa → redirigir a registro con callback para volver post-auth
@@ -164,13 +188,15 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="w-full h-[60px] bg-[#000033] shadow-md border-b border-white/10 px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 shrink-0">
+    <nav className={`w-full h-[60px] bg-[#000033] shadow-md border-b border-white/10 px-6 py-2.5 flex items-center justify-between z-50 shrink-0 ${
+      isHeaderSticky ? 'sticky top-0' : 'relative'
+    }`}>
 
       {/* ── LOGO ── */}
       <PropioLogo />
 
       {/* ── ENLACES DE NAVEGACIÓN (desktop) ── */}
-      <div className="hidden md:flex items-center gap-9 text-[11px] font-bold uppercase tracking-widest">
+      <div className="hidden lg:flex items-center gap-9 text-[11px] font-bold uppercase tracking-widest">
         {NAV_LINKS.map(link => (
           <Link
             key={link.href}
@@ -187,7 +213,7 @@ export const Navbar = () => {
       </div>
 
       {/* ── CTAs (desktop) ── */}
-      <div className="hidden md:flex items-center gap-3">
+      <div className="hidden lg:flex items-center gap-3">
         {/* [AYUDA] — Link secundario sutil de soporte */}
         <Link
           href="/ayuda"
@@ -242,7 +268,7 @@ export const Navbar = () => {
                     href="/dashboard/favoritos"
                     onClick={() => setIsDropdownOpen(false)}
                   >
-                    Favoritos {favoritos.length > 0 ? `(${favoritos.length})` : ''}
+                    Favoritos {favorites.length > 0 ? `(${favorites.length})` : ''}
                   </Link>
 
                   <Link 
@@ -270,7 +296,7 @@ export const Navbar = () => {
         ) : (
           <Link
             href="/login"
-            className="px-5 py-2.5 rounded-xl border border-white/40 font-bold text-[11px] tracking-wide text-white hover:bg-white/5 active:scale-[0.98] transition-all duration-200"
+            className="px-5 py-2.5 rounded-xl bg-brand-blue hover:bg-[#03034f] font-bold text-[11px] tracking-wide text-white active:scale-[0.98] transition-all duration-200 shadow-sm border border-brand-blue/20"
           >
             Ingresar / Registrarse
           </Link>
@@ -281,7 +307,7 @@ export const Navbar = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden p-2 rounded-xl text-white/80 hover:bg-white/5 hover:text-white transition-all"
+        className="lg:hidden p-2 rounded-xl text-white/80 hover:bg-white/5 hover:text-white transition-all"
         aria-label="Menú principal"
       >
         {isOpen ? (
@@ -296,7 +322,7 @@ export const Navbar = () => {
       </button>
 
       {/* ── CAJÓN MÓVIL ── */}
-      <div className={`md:hidden absolute top-full left-0 w-full bg-[#000033] border-b border-white/10 shadow-lg transition-all duration-300 ${
+      <div className={`lg:hidden absolute top-full left-0 w-full bg-[#000033] border-b border-white/10 shadow-lg transition-all duration-300 ${
         isOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-3 invisible pointer-events-none'
       }`}>
         <div className="px-6 py-8 flex flex-col gap-5">
@@ -352,11 +378,23 @@ export const Navbar = () => {
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="text-center py-3.5 border border-white/40 text-white font-bold rounded-xl text-[11px] hover:bg-white/5 transition-all"
+                className="text-center py-3.5 bg-brand-blue text-white font-bold rounded-xl text-[11px] hover:bg-[#03034f] transition-all shadow-sm border border-brand-blue/20"
               >
                 Ingresar / Registrarse
               </Link>
             )}
+
+            {/* Favoritos móvil */}
+            <Link
+              href="/dashboard/favoritos"
+              onClick={() => setIsOpen(false)}
+              className="text-center py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl text-[11px] transition-all flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill={favorites.length > 0 ? '#b9fa3c' : 'none'} viewBox="0 0 24 24" stroke={favorites.length > 0 ? '#b9fa3c' : 'currentColor'} strokeWidth={2.5} className="w-4 h-4 transition-transform duration-300">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+              Favoritos {favorites.length > 0 ? `(${favorites.length})` : ''}
+            </Link>
 
             {/* Publicar Gratis → validación de sesión */}
             <button

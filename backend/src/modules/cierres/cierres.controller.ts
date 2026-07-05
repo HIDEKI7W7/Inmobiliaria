@@ -16,29 +16,48 @@ import { AuthGuard } from '../auth/auth.guard';
 export class CierresController {
   constructor(private readonly cierresService: CierresService) {}
 
+  /** Propiedades disponibles del agente (propias + colaboraciones aceptadas) */
+  @Get('available-properties')
+  @UseGuards(AuthGuard)
+  async getAvailableProperties(@Request() req: any) {
+    return this.cierresService.getAvailableProperties(req.user.id);
+  }
+
+  /** Clientes asignados al agente (para selector) */
+  @Get('my-clients')
+  @UseGuards(AuthGuard)
+  async getMyClients(@Request() req: any) {
+    return this.cierresService.getAgentClients(req.user.id);
+  }
+
   @Post()
   @UseGuards(AuthGuard)
   async createCierre(
     @Request() req: any,
-    @Body() body: {
+    @Body()
+    body: {
       propiedadId: string;
+      clientId: string;
+      ownerId: string;
       tipoTransaccion: string;
-      pdfRespaldo: string;
+      finalAmount: number;
+      pdfAdjuntos: { name: string; url: string }[];
       pdfEstado?: string;
     },
   ) {
-    const agenteId = req.user.id;
-    if (!body.propiedadId || !body.tipoTransaccion || !body.pdfRespaldo) {
-      throw new BadRequestException('Faltan campos obligatorios: propiedadId, tipoTransaccion, pdfRespaldo.');
+    const { propiedadId, clientId, ownerId, tipoTransaccion, finalAmount, pdfAdjuntos } = body;
+    if (!propiedadId || !clientId || !ownerId || !tipoTransaccion || finalAmount === undefined || !pdfAdjuntos?.length) {
+      throw new BadRequestException(
+        'Campos obligatorios: propiedadId, clientId, ownerId, tipoTransaccion, finalAmount y al menos un PDF adjunto.',
+      );
     }
-    return this.cierresService.createCierre(agenteId, body);
+    return this.cierresService.createCierre(req.user.id, body);
   }
 
   @Get()
   @UseGuards(AuthGuard)
   async getCierres(@Request() req: any) {
-    const agenteId = req.user.id;
-    return this.cierresService.getCierresByAgent(agenteId);
+    return this.cierresService.getCierresByAgent(req.user.id);
   }
 
   @Patch(':id')
@@ -46,13 +65,14 @@ export class CierresController {
   async updateCierre(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       tipoTransaccion?: string;
-      pdfRespaldo?: string;
+      finalAmount?: number;
+      pdfAdjuntos?: { name: string; url: string }[];
       pdfEstado?: string;
     },
   ) {
-    const agenteId = req.user.id;
-    return this.cierresService.updateCierre(id, agenteId, body);
+    return this.cierresService.updateCierre(id, req.user.id, body);
   }
 }

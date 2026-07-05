@@ -19,8 +19,8 @@ export class UpdateOnboardingDto {
   @IsEnum(OnboardingPropertyInterest)
   propertyInterest: OnboardingPropertyInterest;
 
-  @Matches(/^\+[1-9]\d{7,14}$/, {
-    message: 'El WhatsApp debe estar en formato internacional. Ejemplo: +59170712345',
+  @Matches(/^\+?[1-9]\d{6,14}$/, {
+    message: 'El WhatsApp debe tener un formato válido. Ejemplo: +59170712345',
   })
   whatsappPhone: string;
 }

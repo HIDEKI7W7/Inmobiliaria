@@ -21,4 +21,32 @@ export class CreatePaymentDto {
   @IsString({ message: 'La referencia de pago debe ser una cadena de texto.' })
   @IsOptional()
   reference?: string;
+
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsString()
+  @IsOptional()
+  category_type?: string;
+
+  @IsString()
+  @IsOptional()
+  issuer_type?: string;
+
+  @IsString()
+  @IsOptional()
+  issuerName?: string;
+
+  @IsString()
+  @IsOptional()
+  destinationAccount?: string;
+
+  @IsString()
+  @IsOptional()
+  receiptUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
 }

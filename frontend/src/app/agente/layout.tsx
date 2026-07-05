@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoutAction from '@/components/LogoutAction';
+import { getCurrentUser } from '@/utils/session';
 
 interface NavItem {
   name: string;
@@ -15,6 +16,76 @@ interface NavItem {
 export default function AgenteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Interception Modal States & Logic
+  const [activeAnn, setActiveAnn] = useState<any>(null);
+  const [showAnnModal, setShowAnnModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedAnn = localStorage.getItem('propio_active_announcement');
+      if (storedAnn) {
+        try {
+          const ann = JSON.parse(storedAnn);
+          if (ann.activo) {
+            const readListStored = localStorage.getItem('propio_read_announcements');
+            const readList = readListStored ? JSON.parse(readListStored) : [];
+            if (!readList.includes(ann.id)) {
+              setActiveAnn(ann);
+              setShowAnnModal(true);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  const handleAcceptAnnouncement = () => {
+    if (!activeAnn) return;
+
+    // 1. Save read token
+    const readListStored = localStorage.getItem('propio_read_announcements');
+    const readList = readListStored ? JSON.parse(readListStored) : [];
+    if (!readList.includes(activeAnn.id)) {
+      readList.push(activeAnn.id);
+      localStorage.setItem('propio_read_announcements', JSON.stringify(readList));
+    }
+
+    // 2. Add signature to admin reader logs list
+    const storedReads = localStorage.getItem('propio_announcement_reads');
+    let readsList = storedReads ? JSON.parse(storedReads) : [];
+    
+    // Find current agent and update/add their read log
+    const user = getCurrentUser() as any;
+    const agentId = user?.id || 'AGT-2026-007';
+    const agentName = user?.name || 'david.agt';
+    const agentEmail = user?.email || 'david.agt@propio.bo';
+
+    const existingIndex = readsList.findIndex((r: any) => r.idAgente === agentId);
+    const logEntry = {
+      idAgente: agentId,
+      nombre: agentName,
+      email: agentEmail,
+      sucursal: 'Cochabamba',
+      leido: true,
+      fechaLectura: new Date().toLocaleString(),
+    };
+
+    if (existingIndex > -1) {
+      readsList[existingIndex] = logEntry;
+    } else {
+      readsList.push(logEntry);
+    }
+    localStorage.setItem('propio_announcement_reads', JSON.stringify(readsList));
+
+    // 3. Trigger storage event to notify other pages
+    window.dispatchEvent(new Event('storage'));
+
+    // 4. Close modal
+    setShowAnnModal(false);
+  };
 
   const navItems: NavItem[] = [
     {
@@ -68,6 +139,15 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
+      name: 'Colaboraciones',
+      href: '/agente/colaboraciones',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
     },
@@ -232,6 +312,64 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
         </main>
         
       </div>
+
+      {/* ========================================== */}
+      {/* [COMPONENTE_MODAL_INTERCEPTOR_ASESOR] */}
+      {/* ========================================== */}
+      {showAnnModal && activeAnn && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center z-50 p-4 select-none">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn relative flex flex-col max-h-[90vh]">
+            {/* Cabecera Verde Lima */}
+            <div className="h-2 bg-[#b9fa3c] w-full shrink-0" />
+            
+            <div className="p-8 overflow-y-auto space-y-6 flex-1">
+              {/* Header con Icono de Billetes */}
+              <div className="text-center space-y-2">
+                <div className="h-14 w-14 bg-emerald-50 rounded-full flex items-center justify-center text-3xl mx-auto shadow-xs border border-emerald-100 animate-pulse">
+                  💵
+                </div>
+                <h2 className="text-base font-black text-[#04045E] uppercase tracking-tight max-w-sm mx-auto leading-snug">
+                  {activeAnn.titulo}
+                </h2>
+                <p className="text-xs text-slate-500 font-medium max-w-md mx-auto">
+                  {activeAnn.subtitulo}
+                </p>
+              </div>
+
+              {/* Cuerpo Estructurado de Viñetas */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                {activeAnn.secciones.map((sec: any, sIdx: number) => (
+                  <div key={sIdx} className="space-y-2">
+                    <h4 className="text-xs font-black text-[#04045E] uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="text-[#0066ff] font-mono">▸</span> {sec.titulo}
+                    </h4>
+                    <ul className="space-y-1.5 pl-4">
+                      {sec.vinetas.map((vin: string, vIdx: number) => (
+                        <li key={vIdx} className="text-slate-600 text-xs leading-relaxed flex items-start gap-2">
+                          <span className="text-slate-400 mt-1.5 text-[6px] shrink-0">●</span>
+                          <span>{vin}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botón Mandatario de Firma */}
+              <div className="pt-4 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleAcceptAnnouncement}
+                  className="bg-[#04045E] hover:bg-[#03034d] text-white w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                >
+                  <span>ENTENDIDO Y ACEPTADO</span>
+                  <span>🚀</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

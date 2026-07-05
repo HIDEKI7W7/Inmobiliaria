@@ -60,8 +60,9 @@ export const apiClient = {
       headers: {
         'Content-Type': 'application/json',
       },
-      next: { revalidate: 60 }, // ISR (Incremental Static Regeneration) cada 60s
-    });
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    } as any);
   },
 
   async getWithAuth<T>(path: string, token: string): Promise<T> {
@@ -71,7 +72,9 @@ export const apiClient = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-    });
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    } as any);
   },
 
   async post<T>(path: string, body: any): Promise<T> {
@@ -124,6 +127,16 @@ export const apiClient = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
+    });
+  },
+
+  async postMultipartWithAuth<T>(path: string, formData: FormData, token: string): Promise<T> {
+    return request<T>(path, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
     });
   },
 };

@@ -1,0 +1,20 @@
+
+> propio-frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 3.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 2.8s (529 modules)
+ GET / 200 in 3051ms
+ ✓ Compiled /properties in 471ms (564 modules)
+ ✓ Compiled /login in 214ms (554 modules)
+ GET / 200 in 122ms
+ GET / 200 in 42ms
+ ✓ Compiled /auth/social-simulator in 373ms (560 modules)
+ GET /auth/social-simulator?provider=GOOGLE 200 in 498ms
+ GET / 200 in 69ms
+ ✓ Compiled in 557ms (556 modules)

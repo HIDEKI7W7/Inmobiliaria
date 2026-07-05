@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
@@ -6,20 +6,20 @@ import { usePathname } from 'next/navigation';
 export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
   const pathname = usePathname();
 
-  // Ocultar Footer en paneles administrativos, login, rutas de agente y buscador (salvo que sea forzado en scroll)
+  // ponytail: YAGNI - Hide Footer on control panels and auth views
   if (!forceRender && (pathname?.startsWith('/admin') || pathname?.startsWith('/agente') || pathname === '/login' || pathname === '/properties')) {
     return null;
   }
 
   return (
-    <footer className="w-full bg-[#000033] text-white py-12 px-6 mt-auto border-t border-white/10">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+    <footer className="w-full bg-[#000033] text-white py-12 px-6 mt-auto border-t border-white/10 select-none">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
         
-        {/* Identidad de la Marca */}
-        <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1">
-          <div className="flex items-center gap-1.5 select-none">
-            {/* Isotipo verde lima */}
-            <svg viewBox="0 0 100 100" className="w-6.5 h-6.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Columna Izquierda: Identidad de Marca */}
+        <div className="flex flex-col items-center md:items-start gap-2">
+          <div className="flex items-center gap-2 select-none">
+            {/* Isotipo verde lima oficial */}
+            <svg viewBox="0 0 100 100" className="w-8 h-8 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"
@@ -27,21 +27,21 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
                 fill="#ccff00"
               />
             </svg>
-            <span className="font-heading font-black text-xl tracking-tight text-white flex items-center gap-0.5">
-              Propio<span className="text-[#ccff00] text-2xl leading-none font-bold">.</span>
-            </span>
+            <span className="font-heading font-black text-xl tracking-tight text-white">Propio</span>
           </div>
-          <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Hazlo seguro. Hazlo tuyo. Hazlo propio.</p>
+          <p className="text-[10px] text-slate-350 font-bold uppercase tracking-wider">
+            Hazlo seguro, hazlo tuyo, <span className="text-[#ccff00]">hazlo propio.</span>
+          </p>
         </div>
 
-        {/* Redes Sociales */}
-        <div className="flex items-center gap-6">
+        {/* Columna Central: Redes Sociales */}
+        <div className="flex items-center gap-6 justify-center md:pt-1">
           {/* TikTok */}
           <a
             href="https://www.tiktok.com/@propio.inmuebles?_r=1&_t=ZS-97GeWMZ1FA4"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
+            className="text-white hover:text-[#ccff00] transition-colors hover:scale-105 active:scale-95 duration-200"
             aria-label="TikTok"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
             href="https://www.facebook.com/share/1GfPYDUtCX/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
+            className="text-white hover:text-[#ccff00] transition-colors hover:scale-105 active:scale-95 duration-200"
             aria-label="Facebook"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
             href="https://www.instagram.com/propioinmuebles?utm_source=qr&igsh=aGVmdGhpNGFvb3Q="
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
+            className="text-white hover:text-[#ccff00] transition-colors hover:scale-105 active:scale-95 duration-200"
             aria-label="Instagram"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -77,10 +77,10 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
 
           {/* YouTube */}
           <a
-            href="https://youtube.com/@propio"
+            href="https://www.youtube.com/@PropioInmuebles"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/70 hover:text-[#ccff00] transition-colors hover:scale-110 active:scale-95 duration-200"
+            className="text-white hover:text-[#ccff00] transition-colors hover:scale-105 active:scale-95 duration-200"
             aria-label="YouTube"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -89,11 +89,13 @@ export const Footer = ({ forceRender }: { forceRender?: boolean } = {}) => {
           </a>
         </div>
 
-        {/* Contactos y Copy */}
-        <div className="flex flex-col items-center md:items-end gap-1 text-xs text-slate-400 font-bold uppercase tracking-wider">
-          <span>Email: contacto@propio.com.bo</span>
-          <span>Soporte: +591 712 34567</span>
-          <span className="text-[10px] text-slate-500 font-semibold tracking-normal mt-1">© 2026 Propio Digital. Todos los derechos reservados.</span>
+        {/* Columna Derecha: Contacto y Copyright */}
+        <div className="flex flex-col items-center md:items-end text-center md:text-right gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <span>EMAIL: CONTACTO@PROPIO.COM.BO</span>
+          <span>SOPORTE: +591 782 34567</span>
+          <span className="text-[9px] text-slate-500 font-semibold tracking-normal mt-1">
+            © 2026 PROPIO DIGITAL. TODOS LOS DERECHOS RESERVADOS.
+          </span>
         </div>
 
       </div>

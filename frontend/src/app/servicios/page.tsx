@@ -1,83 +1,143 @@
-'use client';
+﻿'use client';
 
-import React from 'react';
-
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  highlight: boolean;
-  badge?: string;
-  features: { text: string; included: boolean }[];
-}
-
-const PLANS: Plan[] = [
-  {
-    id: 'basico',
-    name: 'Plan Básico',
-    price: 0,
-    period: 'gratis',
-    highlight: false,
-    features: [
-      { text: '1 publicación activa', included: true },
-      { text: 'Fotos básicas (hasta 5)', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Verificación legal documental', included: false },
-      { text: 'Posicionamiento destacado', included: false },
-    ],
-  },
-  {
-    id: 'estandar',
-    name: 'Plan Estándar',
-    price: 250,
-    period: 'mes',
-    highlight: false,
-    features: [
-      { text: '3 publicaciones activas', included: true },
-      { text: 'Fotos y video estándar', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Sello de verificación documental', included: true },
-      { text: 'Posicionamiento destacado', included: false },
-    ],
-  },
-  {
-    id: 'profesional',
-    name: 'Plan Profesional',
-    price: 490,
-    period: 'mes',
-    highlight: true,
-    badge: 'Recomendado',
-    features: [
-      { text: '10 publicaciones activas', included: true },
-      { text: 'Fotos HD + video premium', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Sello de verificación Sello Oro', included: true },
-      { text: 'Posicionamiento destacado en mapa', included: true },
-    ],
-  },
-  {
-    id: 'elite',
-    name: 'Plan Elite',
-    price: 990,
-    period: 'mes',
-    highlight: false,
-    badge: 'Todo incluido',
-    features: [
-      { text: 'Publicaciones ilimitadas', included: true },
-      { text: 'Fotos, video + tour virtual 360°', included: true },
-      { text: 'Contacto prioritario directo', included: true },
-      { text: 'Sello de verificación Sello Oro', included: true },
-      { text: 'Campañas de Marketing dedicadas', included: true },
-    ],
-  },
-];
+import React, { useEffect, useState } from 'react';
+import { WHATSAPP_LINK } from '@/utils/whatsapp';
 
 export default function ServiciosPage() {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [commissionRate, setCommissionRate] = useState(1.5);
+
   const handleSelectPlan = (planName: string) => {
-    const text = encodeURIComponent(`Hola Propio, me interesa contratar el ${planName} de la plataforma.`);
-    window.open(`https://wa.me/59171234567?text=${text}`, '_blank');
+    window.open(WHATSAPP_LINK, '_blank');
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const activeAnnRaw = localStorage.getItem('propio_active_announcement');
+      if (activeAnnRaw) {
+        try {
+          const ann = JSON.parse(activeAnnRaw);
+          const sec = ann.secciones?.find((s: any) => s.titulo.toLowerCase().includes('comisión') || s.titulo.toLowerCase().includes('comision') || s.titulo.toLowerCase().includes('comisión base'));
+          if (sec && sec.vinetas && sec.vinetas[0]) {
+            const match = sec.vinetas[0].match(/(\d+(\.\d+)?)\s*%/);
+            if (match && match[1]) {
+              setCommissionRate(parseFloat(match[1]));
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing active announcement for commission rate:', e);
+        }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const res = await fetch(`${apiBaseUrl}/marketing-plans`);
+        if (res.ok) {
+          const data = await res.json();
+          setPlans(data);
+        }
+      } catch (err) {
+        console.error('Error fetching marketing plans:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlans();
+  }, []);
+
+  const fallbackPlans = [
+    {
+      id: 'plan-gratis',
+      name: 'Plan Gratuito',
+      price: 'Gratis',
+      billingCycle: '',
+      badgeText: null,
+      themeType: 'gray',
+      features: [
+        { text: '1 publicación activa', included: true },
+        { text: 'Fotos básicas (hasta 5)', included: true },
+        { text: 'Contacto directo por WhatsApp', included: true },
+      ],
+    },
+    {
+      id: 'plan-contenidos',
+      name: 'Plan Contenidos',
+      price: 'Bs. 69',
+      billingCycle: '/mes',
+      badgeText: 'MAS RECOMENDADO PARA RENTAS',
+      themeType: 'green',
+      features: [
+        { text: '1 propiedad', included: true },
+        { text: 'Fotos + Video optimizado', included: true },
+        { text: 'Contacto directo por WhatsApp', included: true },
+        { text: 'Mapa interactivo con radar', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+      ],
+    },
+    {
+      id: 'plan-venta-pro',
+      name: 'Plan Venta Pro',
+      price: 'Bs. 199',
+      billingCycle: '/mes',
+      badgeText: 'MAS RECOMENDADO PARA VENTA',
+      themeType: 'green',
+      features: [
+        { text: '1 propiedad', included: true },
+        { text: 'Dron + Fotos Profesionales', included: true },
+        { text: 'Sello Oro + Mapa Premium', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+        { text: 'Estadísticas Avanzadas de Visitas', included: true },
+        { text: 'PUBLICIDAD PRIORITARIA', included: true },
+      ],
+    },
+    {
+      id: 'plan-cierre-garantizado',
+      name: 'Cierre Garantizado',
+      price: `Comisión: ${commissionRate}%`,
+      billingCycle: 'del valor de venta (Todo incluido)',
+      badgeText: 'TODO INCLUIDO',
+      themeType: 'blue',
+      features: [
+        { text: 'Gestión completa por Agente Experto', included: true },
+        { text: 'Visitas y Negociación delegadas', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+        { text: 'Auditoría Legal y Notarial', included: true },
+      ],
+    },
+  ];
+
+  const displayPlans = (plans.length > 0 ? plans : fallbackPlans).map(p => {
+    if (p.id === 'plan-cierre-garantizado' || p.id === 'cierre_garantizado') {
+      return {
+        ...p,
+        price: `Comisión: ${commissionRate}%`,
+        billingCycle: 'del valor de venta (Todo incluido)'
+      };
+    }
+    if (p.id === 'plan-contenidos' || p.id === 'contenidos') {
+      return { ...p, price: 'Bs. 69' };
+    }
+    if (p.id === 'plan-venta-pro' || p.id === 'venta_pro') {
+      return { ...p, price: 'Bs. 199' };
+    }
+    return p;
+  });
+
+  if (loading) {
+    return (
+      <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased text-slate-800 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-10 h-10 border-4 border-[#000033] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-black text-[#000033] uppercase tracking-wider">Cargando planes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased text-slate-800">
@@ -108,67 +168,143 @@ export default function ServiciosPage() {
       {/* PLANES MATRIX SECTION */}
       <section className="py-24 max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-          {PLANS.map((plan) => (
-            <div 
-              key={plan.id}
-              className={`relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 bg-white border ${
-                plan.highlight
-                  ? 'border-2 border-[#ccff00] shadow-2xl scale-[1.03] z-10'
-                  : 'border-slate-100 shadow-md hover:shadow-xl'
-              }`}
-            >
-              {plan.badge && (
-                <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
-                  plan.highlight ? 'bg-[#ccff00] text-[#000033]' : 'bg-[#000033] text-white'
-                }`}>
-                  {plan.badge}
-                </div>
-              )}
-              
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-heading font-black text-lg text-[#000033] uppercase tracking-wide mb-4">
-                    {plan.name}
-                  </h3>
-                  
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="font-heading font-black text-3xl text-[#000033]">
-                      {plan.price === 0 ? 'Gratis' : `Bs. ${plan.price}`}
-                    </span>
-                    {plan.price > 0 && <span className="text-xs text-slate-400">/{plan.period}</span>}
+          {displayPlans.map((plan) => {
+            // Custom styles based on themeType
+            let theme = {
+              borderClass: 'border-slate-200 shadow-md hover:shadow-xl hover:border-slate-350',
+              badgeClass: 'bg-[#000033] text-white',
+              buttonClass: 'bg-[#000033] text-white hover:bg-[#000044]',
+              checkClass: 'bg-emerald-50 text-emerald-600',
+              cardBg: 'bg-white text-slate-800',
+              titleColor: 'text-[#000033]',
+              priceColor: 'text-[#000033]',
+              cycleColor: 'text-slate-400',
+              featureTextClass: 'text-slate-800',
+              dividerClass: 'border-slate-100',
+            };
+
+            if (plan.themeType === 'gray') {
+              theme = {
+                borderClass: 'border-slate-200 shadow-sm hover:shadow-md hover:border-slate-350',
+                badgeClass: 'bg-slate-500 text-white',
+                buttonClass: 'bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl',
+                checkClass: 'bg-slate-100 text-slate-500',
+                cardBg: 'bg-white text-slate-800',
+                titleColor: 'text-slate-700',
+                priceColor: 'text-slate-800',
+                cycleColor: 'text-slate-400',
+                featureTextClass: 'text-slate-650',
+                dividerClass: 'border-slate-100',
+              };
+            } else if (plan.themeType === 'green') {
+              theme = {
+                borderClass: 'border-2 border-[#a3e635] shadow-md relative pt-10',
+                badgeClass: 'bg-[#a3e635] text-slate-900',
+                buttonClass: 'bg-[#a3e635] text-slate-900 font-bold hover:bg-[#8ed024]',
+                checkClass: 'bg-emerald-100 text-emerald-600 font-bold',
+                cardBg: 'bg-white text-slate-800',
+                titleColor: 'text-[#000033]',
+                priceColor: 'text-[#000033]',
+                cycleColor: 'text-slate-400',
+                featureTextClass: 'text-slate-800',
+                dividerClass: 'border-slate-100',
+              };
+            } else if (plan.themeType === 'blue') {
+              theme = {
+                borderClass: 'border-2 border-blue-950 shadow-2xl',
+                badgeClass: 'bg-blue-950 text-white',
+                buttonClass: 'bg-blue-950 hover:bg-blue-900 text-white font-bold rounded-2xl shadow-md',
+                checkClass: 'bg-emerald-100 text-emerald-600 font-bold',
+                cardBg: 'bg-slate-50/50 text-slate-800',
+                titleColor: 'text-[#000033]',
+                priceColor: 'text-[#000033]',
+                cycleColor: 'text-slate-500',
+                featureTextClass: 'text-slate-805',
+                dividerClass: 'border-slate-200',
+              };
+            }
+
+            // Custom button text based on requirements
+            let buttonText = 'Contratar Plan';
+            if (plan.id === 'plan-gratis' || plan.id === 'gratuito') {
+              buttonText = 'Comenzar gratis';
+            } else if (plan.id === 'plan-cierre-garantizado' || plan.id === 'cierre_garantizado') {
+              buttonText = 'Contratar Cierre Garantizado';
+            }
+            
+            const isNumericPrice = /^\d+$/.test(plan.price);
+
+            return (
+              <div 
+                key={plan.id}
+                className={
+                  plan.themeType === 'green'
+                    ? `rounded-3xl border-2 border-[#a3e635] bg-white p-6 flex flex-col justify-between shadow-md relative pt-10 transition-all duration-300 hover:-translate-y-1`
+                    : `relative rounded-3xl flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 border ${theme.cardBg} ${theme.borderClass}`
+                }
+              >
+                {plan.badgeText && (
+                  <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow-sm z-10 whitespace-nowrap ${theme.badgeClass}`}>
+                    {plan.badgeText}
                   </div>
+                )}
+                
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className={`font-heading font-black text-lg uppercase tracking-wide mb-4 ${theme.titleColor}`}>
+                      {plan.name}
+                    </h3>
+                    
+                    <div className="flex items-baseline gap-1 mb-6 min-h-[48px]">
+                      {isNumericPrice ? (
+                        <>
+                          <span className={`font-heading font-black text-4xl ${theme.priceColor}`}>
+                            Bs. {plan.price}
+                          </span>
+                          <span className={`text-xs ${theme.cycleColor}`}>{plan.billingCycle}</span>
+                        </>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`font-heading font-black text-2xl tracking-tight leading-none ${theme.priceColor}`}>
+                            {plan.price}
+                          </span>
+                          {plan.billingCycle && (
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${theme.cycleColor}`}>
+                              {plan.billingCycle}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
-                  <ul className="space-y-3 pt-4 border-t border-slate-100">
-                    {plan.features.map((f, i) => (
-                      <li key={i} className={`flex items-center gap-2.5 text-xs ${
-                        f.included ? 'text-slate-800 font-medium' : 'text-slate-350 line-through'
-                      }`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] ${
-                          f.included ? 'bg-emerald-50 text-emerald-600 font-bold' : 'bg-slate-50 text-slate-300'
+                    <ul className={`space-y-3 pt-4 border-t ${theme.dividerClass}`}>
+                      {(plan.features as any[] || []).map((f, i) => (
+                        <li key={i} className={`flex items-start gap-2.5 text-xs ${
+                          f.included ? theme.featureTextClass : 'text-gray-400 line-through opacity-70'
                         }`}>
-                          {f.included ? '✓' : '–'}
-                        </span>
-                        {f.text}
-                      </li>
-                    ))}
-                  </ul>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] ${
+                            f.included ? theme.checkClass : 'bg-slate-100 text-slate-350'
+                          }`}>
+                            {f.included ? '✓' : '–'}
+                          </span>
+                          <span>{f.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-8">
+                  <button
+                    onClick={() => handleSelectPlan(plan.name)}
+                    className={`w-full py-3 rounded-xl font-heading font-black text-xs uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-md ${theme.buttonClass}`}
+                  >
+                    {buttonText}
+                  </button>
                 </div>
               </div>
-
-              <div className="pt-8">
-                <button
-                  onClick={() => handleSelectPlan(plan.name)}
-                  className={`w-full py-3 rounded-xl font-heading font-black text-xs uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 shadow-md ${
-                    plan.highlight
-                      ? 'bg-[#ccff00] text-[#000033] hover:bg-[#b5e600]'
-                      : 'bg-[#000033] text-white hover:bg-[#000044]'
-                  }`}
-                >
-                  {plan.price === 0 ? 'Comenzar Gratis' : 'Contratar Plan'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -183,7 +319,7 @@ export default function ServiciosPage() {
           </p>
           <div className="pt-3">
             <a 
-              href="https://wa.me/59171234567?text=Hola,%20tengo%20dudas%20sobre%20los%20planes%20de%20difusión%20de%20Propio."
+              href={WHATSAPP_LINK}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold text-xs uppercase tracking-widest px-6 py-3 rounded-xl transition-all"

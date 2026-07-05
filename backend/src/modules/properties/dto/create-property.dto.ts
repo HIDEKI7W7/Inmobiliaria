@@ -85,4 +85,15 @@ export class CreatePropertyDto {
   @IsNumber()
   @IsOptional()
   longitude?: number;
+
+  @IsOptional()
+  documentosLegales?: any[];
+
+  @IsOptional()
+  extra_documents?: { name: string; file_url?: string }[];
+
+  @IsNumber()
+  @IsOptional()
+  exchangeRateAtPublication?: number;
 }
+

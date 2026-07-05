@@ -1,0 +1,57 @@
+
+> propio-backend@1.0.0 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m4:05:08 p. m.[0m] Starting compilation in watch mode...
+
+[[90m4:05:10 p. m.[0m] Found 0 errors. Watching for file changes.
+
+(node:9468) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[32m[Nest] 12108  - [39m23/05/2026, 4:05:11 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[31m[Nest] 12108  - [39m23/05/2026, 4:05:11 p. m. [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39m[31mFalta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID[39m
+Error: Falta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID
+    at requireEnv (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\oauth-profile.ts:16:11)
+    at new GoogleStrategy (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\google.strategy.ts:10:27)
+    at Injector.instantiateClass (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:373:19)
+    at callback (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:65:45)
+    at async Injector.resolveConstructorParams (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:145:24)
+    at async Injector.loadInstance (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:70:13)
+    at async Injector.loadProvider (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:98:9)
+    at async C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 4)
+    at async InstanceLoader.createInstancesOfProviders (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:55:9)
+[2J[3J[H[[90m4:11:10 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:11:17 p. m.[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 2796  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[31m[Nest] 2796  - [39m23/05/2026, 4:11:23 p. m. [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39m[31mFalta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID[39m
+Error: Falta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID
+    at requireEnv (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\oauth-profile.ts:16:11)
+    at new GoogleStrategy (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\google.strategy.ts:10:27)
+    at Injector.instantiateClass (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:373:19)
+    at callback (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:65:45)
+    at async Injector.resolveConstructorParams (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:145:24)
+    at async Injector.loadInstance (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:70:13)
+    at async Injector.loadProvider (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:98:9)
+    at async C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 4)
+    at async InstanceLoader.createInstancesOfProviders (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:55:9)
+[2J[3J[H[[90m4:14:38 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:14:40 p. m.[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 4592  - [39m23/05/2026, 4:15:02 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[31m[Nest] 4592  - [39m23/05/2026, 4:15:02 p. m. [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39m[31mFalta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID[39m
+Error: Falta configurar la variable de entorno requerida: GOOGLE_CLIENT_ID
+    at requireEnv (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\oauth-profile.ts:16:11)
+    at new GoogleStrategy (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\strategies\google.strategy.ts:10:27)
+    at Injector.instantiateClass (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:373:19)
+    at callback (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:65:45)
+    at async Injector.resolveConstructorParams (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:145:24)
+    at async Injector.loadInstance (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:70:13)
+    at async Injector.loadProvider (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\injector.js:98:9)
+    at async C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 4)
+    at async InstanceLoader.createInstancesOfProviders (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\injector\instance-loader.js:55:9)

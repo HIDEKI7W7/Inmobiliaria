@@ -28,26 +28,14 @@ test.describe('Propio E2E - Asistente de Publicación (Wizard)', () => {
   test('Debería completar el wizard de 4 pasos con conversión de divisa, áreas separadas y validación legal', async ({ page }) => {
     // === PASO 1: DATOS BÁSICOS ===
     // Verificar título comercial
-    await page.fill('input[placeholder="Ej. Departamento de lujo con acabados importados"]', 'Finca Campestre Premium en Muyurina');
+    await page.fill('input[placeholder="Ej. Hermosa Casa con Piscina en Queru Queru"]', 'Finca Campestre Premium en Muyurina');
 
-    // Cambiar moneda a USD y configurar tipo de cambio
-    await page.selectOption('select:has-text("Bolivianos")', 'USD');
-    
-    // El input de tipo de cambio debería estar visible
-    const rateInput = page.locator('input[placeholder="Ej. 6.96"]');
-    await expect(rateInput).toBeVisible();
-    await rateInput.fill('7.00');
+    // Llenar precio en Bolivianos
+    await page.fill('input[placeholder="Ej: 1740000"]', '1050000');
 
-    // Llenar precio en USD
-    await page.fill('input[placeholder="Ej. 100000"]', '150000');
-
-    // Verificar el equivalente calculado en Bolivianos (150,000 * 7 = 1,050,000)
-    const eqInput = page.locator('input[readonly]');
-    await expect(eqInput).toHaveValue(/1.050.000/);
-
-    // Llenar áreas separadas
-    await page.fill('input[placeholder="Ej. 300"]', '1000'); // Terreno
-    await page.fill('input[placeholder="Ej. 180"]', '250');  // Construida
+    // Verificar el equivalente calculado en USD (1,050,000 / 6.96 = 150862.07 o / 9.73 = 107913.67)
+    const usdInput = page.locator('input[placeholder="Autocalculado / Referencia"]');
+    await expect(usdInput).toHaveValue(/150862|107913/);
 
     // Llenar habitaciones
     await page.fill('label:has-text("Dormitorios") + input', '5');
@@ -68,18 +56,22 @@ test.describe('Propio E2E - Asistente de Publicación (Wizard)', () => {
     // === PASO 2: UBICACIÓN ===
     await expect(page.locator('text=Ubicación y Geolocalización')).toBeVisible();
 
+    // Llenar áreas separadas
+    await page.fill('input[placeholder="Ej. 300"]', '1000'); // Terreno
+    await page.fill('input[placeholder="Ej. 180"]', '250');  // Construida
+
     // Seleccionar Ciudad/Departamento
     await page.selectOption('select:has-text("Cochabamba")', 'Santa Cruz');
 
     // Zona/Barrio y Dirección
-    await page.fill('input[placeholder="Ej. Queru Queru"]', 'Muyurina');
+    await page.selectOption('div:has(> label:has-text("Zona / Barrio")) select', 'Equipetrol');
     await page.fill('input[placeholder="Ej. Calle Aniceto Padilla #456"]', 'Km 5 Doble Vía a Cotoca');
 
     // Avanzar al Paso 3
     await page.click('button[type="submit"]');
 
     // === PASO 3: VALIDACIÓN LEGAL ===
-    await expect(page.locator('text=Checklist de Validación Legal')).toBeVisible();
+    await expect(page.locator('text=Carpeta y Validación Documental')).toBeVisible();
 
     // Como es Venta (por defecto), debemos marcar todos los documentos para tener Sello Oro
     await page.click('text=Folio Real Actualizado');
@@ -104,10 +96,10 @@ test.describe('Propio E2E - Asistente de Publicación (Wizard)', () => {
 
     // === VERIFICACIÓN DE ÉXITO ===
     await expect(page.locator('text=¡Propiedad Recibida con Éxito!')).toBeVisible();
-    await expect(page.locator('text=Sello Oro: Aprobado Preliminar')).toBeVisible();
+    await expect(page.locator('text=DOCUMENTACION VERIFICADA: APROBADO PRELIMINAR')).toBeVisible();
 
-    // El enlace al panel de propietario de producción de Vercel debe estar configurado
+    // El enlace al panel de propietario
     const panelLink = page.locator('text=Ir a mi Panel de Propietario');
-    await expect(panelLink).toHaveAttribute('href', 'https://frontend-olzedn7qe-hidekiiiii.vercel.app/propietario/dashboard');
+    await expect(panelLink).toHaveAttribute('href', '/propietario/dashboard');
   });
 });

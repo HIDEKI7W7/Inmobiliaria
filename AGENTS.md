@@ -44,8 +44,14 @@ Se establece el mandato de que para cualquier tarea de UI/UX, arquitectura, segu
 * **Herramientas de Alto Rendimiento:** Utilizar `uv` como gestor de paquetes Python ultrarrápido y seguro de dependencias si un proyecto requiere scripts Python.
 * **Caching y Cache-Cleans:** En entornos Next.js propensos a bucles de Webpack o corrupción de caché, asegurar purgas físicas limpias de `.next` y `node_modules/.cache` mediante scripts de automatización de desarrollo (`clean.js`).
 
+## 🛡️ 6. Preservación del Estado Funcional (No Romper lo que Funciona)
+* **Principio de Mínima Intervención:** Si una característica o servicio (por ejemplo, el frontend en el puerto 3000 o el backend) funciona correctamente, **no lo toques ni lo modifiques** a menos que sea estrictamente necesario para la tarea solicitado por el usuario.
+* **Integridad de Procesos Activos:** Queda prohibido detener o interrumpir procesos activos en ejecución que no requieran modificación. Al hacer cambios con nuevos prompts, asegúrate de no arruinar ni comprometer lo que ya está bien.
+* **Edición Focalizada:** Modifica única y exclusivamente las líneas de código y archivos necesarios para la tarea. No toques código circundante que ya esté funcionando bien.
+
 ---
 
 ## 📌 Nota para el Agente:
 > [!IMPORTANT]
 > Lee este archivo antes de comenzar cualquier tarea de desarrollo. Tu cumplimiento de estas reglas es absoluto e inquebrantable. Cada refactorización o nueva característica de software que desarrolles debe diseñarse con este nivel de calidad premium.
+

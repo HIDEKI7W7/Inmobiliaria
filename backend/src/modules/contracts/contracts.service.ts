@@ -2,6 +2,21 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 
+// ─── Almacén en memoria para documentos adjuntos (persistente durante el ciclo de vida del servidor) ───
+// En producción, se reemplazaría por S3 / Cloudinary / sistema de archivos compartido.
+interface ContractDocument {
+  id: string;
+  contractId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: Date;
+  /** Base64 del buffer para descarga en sesión */
+  dataBase64: string;
+}
+
+const documentsStore = new Map<string, ContractDocument[]>();
+
 @Injectable()
 export class ContractsService {
   private readonly logger = new Logger(ContractsService.name);
@@ -149,6 +164,8 @@ export class ContractsService {
         throw new NotFoundException(`El contrato con ID ${id} no existe.`);
       }
       await this.prisma.contract.delete({ where: { id } });
+      // Limpiar documentos asociados al eliminar el contrato
+      documentsStore.delete(id);
       return { message: 'Contrato eliminado correctamente de la base de datos.' };
     } catch (error: unknown) {
       if (error instanceof NotFoundException) throw error;
@@ -160,7 +177,66 @@ export class ContractsService {
         throw new NotFoundException(`El contrato con ID ${id} no existe.`);
       }
       this.fallbackContracts.splice(index, 1);
+      documentsStore.delete(id);
       return { message: 'Contrato eliminado correctamente (Simulado).' };
     }
+  }
+
+  // ─── [SERVICIO_DOCUMENTOS_CONTRATO] ────────────────────────────────────────
+
+  /** Devuelve la lista de documentos de un contrato (sin el buffer base64 para economizar ancho de banda) */
+  async listDocuments(contractId: string): Promise<Omit<ContractDocument, 'dataBase64'>[]> {
+    const docs = documentsStore.get(contractId) ?? [];
+    return docs.map(({ dataBase64: _ignored, ...rest }) => rest);
+  }
+
+  /** Procesa y almacena los archivos subidos en memoria */
+  async uploadDocuments(
+    contractId: string,
+    files: any[],
+  ): Promise<{ message: string; uploaded: Omit<ContractDocument, 'dataBase64'>[] }> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No se proporcionaron archivos para subir.');
+    }
+
+    const existing = documentsStore.get(contractId) ?? [];
+
+    const newDocs: ContractDocument[] = files.map((file) => ({
+      id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      contractId,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+      uploadedAt: new Date(),
+      dataBase64: file.buffer.toString('base64'),
+    }));
+
+    documentsStore.set(contractId, [...existing, ...newDocs]);
+
+    this.logger.log(
+      `${newDocs.length} documento(s) almacenados para contrato ${contractId}`,
+    );
+
+    const uploaded = newDocs.map(({ dataBase64: _ignored, ...rest }) => rest);
+    return {
+      message: `${newDocs.length} documento(s) subido(s) exitosamente.`,
+      uploaded,
+    };
+  }
+
+  /** Elimina un documento específico por ID */
+  async deleteDocument(
+    contractId: string,
+    docId: string,
+  ): Promise<{ message: string }> {
+    const docs = documentsStore.get(contractId) ?? [];
+    const index = docs.findIndex((d) => d.id === docId);
+    if (index === -1) {
+      throw new NotFoundException(`Documento ${docId} no encontrado en contrato ${contractId}.`);
+    }
+    docs.splice(index, 1);
+    documentsStore.set(contractId, docs);
+    this.logger.log(`Documento ${docId} eliminado del contrato ${contractId}`);
+    return { message: 'Documento eliminado correctamente.' };
   }
 }

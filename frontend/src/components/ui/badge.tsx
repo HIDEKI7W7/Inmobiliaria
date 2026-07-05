@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export const Badge = ({ status }: { status: 'Verified' | 'Pending' }) => {
   const styles = status === 'Verified' 

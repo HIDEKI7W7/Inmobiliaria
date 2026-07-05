@@ -29,8 +29,10 @@ async function bootstrap() {
   allowedOrigins.push(
     'http://localhost:3000',
     'http://localhost:3001',
+    'http://localhost:3002',
     'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001'
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3002'
   );
 
 
@@ -75,7 +77,8 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 4000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 Backend de "Propio" corriendo en: http://localhost:${port}/api`);
 }
 bootstrap();
+// Trigger reload for Prisma client regeneration v7

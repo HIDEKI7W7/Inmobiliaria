@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { decodeToken, getCurrentUser, getRedirectPathByRole, getToken, saveToken } from '@/utils/session';
+import Link from 'next/link';
+import { decodeToken, getCurrentUser, getRedirectPathByRole, getToken, saveToken, removeToken } from '@/utils/session';
 
-type Objective = 'COMPRAR' | 'ALQUILAR' | 'VENDER';
+type Objective = 'CLIENTE' | 'PROPIETARIO' | 'AGENTE';
 type PropertyInterest = 'CASA' | 'DEPARTAMENTO' | 'TERRENO';
 
 const objectives: Array<{ value: Objective; label: string; detail: string; badge: string }> = [
-  { value: 'COMPRAR', label: 'Comprar Inmueble', detail: 'Busco una propiedad para invertir o vivir de forma directa y transparente.', badge: 'Comprador' },
-  { value: 'ALQUILAR', label: 'Alquilar Inmueble', detail: 'Quiero ver opciones disponibles de alquiler directo y sin intermediarios.', badge: 'Inquilino' },
-  { value: 'VENDER', label: 'Publicar / Vender', detail: 'Deseo cargar mis inmuebles en la plataforma para recibir apoyo comercial.', badge: 'Propietario' },
+  { value: 'CLIENTE', label: 'Comprar / Alquilar', detail: 'Busco una propiedad para invertir o vivir de forma directa y transparente.', badge: 'Cliente' },
+  { value: 'PROPIETARIO', label: 'Publicar / Vender', detail: 'Deseo cargar mis inmuebles en la plataforma para recibir apoyo comercial.', badge: 'Propietario' },
+  { value: 'AGENTE', label: 'Registrarse como Agente', detail: 'Quiero unirme a la red de Propio para gestionar leads, cierres y pactar comisiones compartidas.', badge: 'Agente' },
 ];
 
 const propertyTypes: Array<{ value: PropertyInterest; label: string; icon: string; desc: string }> = [
@@ -21,6 +22,11 @@ const propertyTypes: Array<{ value: PropertyInterest; label: string; icon: strin
 
 export default function OnboardingPage() {
   const router = useRouter();
+  
+  const handleLogout = () => {
+    removeToken();
+    router.replace('/');
+  };
   
   // Estados principales de control
   const [step, setStep] = useState(1);
@@ -35,20 +41,30 @@ export default function OnboardingPage() {
   const [activeStepView, setActiveStepView] = useState(1);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        localStorage.removeItem("propio_onboarding_step");
+        router.replace('/login');
+        return;
+      }
 
-    if (user.onboardingCompleted) {
-      router.replace(getRedirectPathByRole(user.role, user.objective, true));
+      if (user.whatsappPhone) {
+        setWhatsappPhone(user.whatsappPhone);
+      }
+
+      if (user.onboardingCompleted) {
+        router.replace(getRedirectPathByRole(user.role, user.objective, true));
+      }
+    } catch (e) {
+      console.error("Error setting up onboarding:", e);
+      localStorage.removeItem("propio_onboarding_step");
     }
   }, [router]);
 
   const progress = useMemo(() => `${Math.round((activeStepView / 3) * 100)}%`, [activeStepView]);
 
-  const validatePhone = (phone: string) => /^\+[1-9]\d{7,14}$/.test(phone.trim());
+  const validatePhone = (phone: string) => /^\+?[1-9]\d{6,14}$/.test(phone.trim());
   const isPhoneValid = useMemo(() => validatePhone(whatsappPhone), [whatsappPhone]);
 
   // Transición de pasos con Skeleton de 300ms de alta calidad
@@ -67,6 +83,39 @@ export default function OnboardingPage() {
 
     if (!objective || !propertyInterest || !isPhoneValid) {
       setError('Por favor, completa todos los campos requeridos con un número de WhatsApp válido.');
+      return;
+    }
+
+    if (objective === 'AGENTE') {
+      setIsSaving(true);
+      try {
+        const user = getCurrentUser();
+        const userName = user?.name || user?.email?.split('@')[0] || 'Nuevo Agente';
+        const userEmail = user?.email || 'agente@propio.com.bo';
+        
+        const customAgentsRaw = localStorage.getItem('propio_custom_agents');
+        let customAgents = customAgentsRaw ? JSON.parse(customAgentsRaw) : [];
+        if (!Array.isArray(customAgents)) customAgents = [];
+        
+        const newAgent = {
+          id: `AGT-CUSTOM-${Date.now()}`,
+          name: userName,
+          email: userEmail,
+          phone: whatsappPhone.trim(),
+          status: "pendiente",
+          score: 4.5,
+          basePercentage: 0
+        };
+        
+        customAgents.push(newAgent);
+        localStorage.setItem('propio_custom_agents', JSON.stringify(customAgents));
+        
+        setStep(4);
+      } catch (err: any) {
+        setError(err.message || 'Error al registrar el agente.');
+      } finally {
+        setIsSaving(false);
+      }
       return;
     }
 
@@ -130,6 +179,33 @@ export default function OnboardingPage() {
     }
   };
 
+  if (step === 4) {
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] text-slate-600 font-sans antialiased flex flex-col justify-between py-10 px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] bg-gradient-to-b from-blue-50/40 via-transparent to-transparent -z-10 rounded-full blur-3xl"></div>
+        <header className="w-full max-w-5xl mx-auto flex items-center justify-between pb-6 mb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2 select-none">
+            <span className="font-heading font-black text-xl tracking-tight text-[#04045E]">Propio.</span>
+          </div>
+        </header>
+        <section className="flex-grow flex items-center justify-center py-6">
+          <div className="w-full max-w-lg bg-white border border-slate-200/60 rounded-3xl p-8 text-center shadow-xl space-y-6">
+            <div className="text-5xl">⏳</div>
+            <h2 className="text-xl font-heading font-black text-[#04045E] uppercase tracking-tight">Registro Recibido</h2>
+            <p className="text-slate-500 text-xs font-semibold leading-relaxed">
+              Tu perfil está en revisión por el administrador.
+            </p>
+            <div className="pt-4">
+              <Link href="/" className="inline-block bg-[#04045E] hover:bg-[#0b0b82] text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all">
+                Volver al Inicio
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-slate-600 font-sans antialiased selection:bg-[#b9fa3c]/30 flex flex-col justify-between py-10 px-4 sm:px-6 relative overflow-hidden">
       
@@ -138,7 +214,7 @@ export default function OnboardingPage() {
       
       {/* Header Corporativo Fino */}
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between pb-6 mb-4 border-b border-slate-100">
-        <div className="flex items-center gap-2 select-none group">
+        <Link href="/" className="flex items-center gap-2 select-none group cursor-pointer no-underline">
           <svg viewBox="0 0 100 100" className="w-8 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path 
               fillRule="evenodd" 
@@ -150,10 +226,18 @@ export default function OnboardingPage() {
           <span className="font-heading font-black text-xl tracking-tight text-[#04045E]">
             Propio<span className="text-[#b9fa3c] text-2xl leading-none font-bold">.</span>
           </span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="text-[10px] font-sans font-black uppercase tracking-wider text-red-650 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-200/50 cursor-pointer transition-all"
+          >
+            Cerrar Sesión 🚪
+          </button>
+          <span className="text-[10px] font-sans font-black uppercase tracking-wider text-slate-400 bg-slate-100/70 px-3 py-1.5 rounded-full border border-slate-200/50">
+            Onboarding Asistido
+          </span>
         </div>
-        <span className="text-[10px] font-sans font-black uppercase tracking-wider text-slate-400 bg-slate-100/70 px-3 py-1.5 rounded-full border border-slate-200/50">
-          Onboarding Asistido
-        </span>
       </header>
 
       {/* Contenedor Principal */}

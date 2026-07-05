@@ -4,6 +4,7 @@ export class FindPropertiesQueryDto {
   sortDir?: string;
   ownerId?: string;
   agentId?: string;
+  userId?: string;
   status?: string;
   offerType?: string;
   type?: string;
@@ -20,5 +21,9 @@ export class FindPropertiesQueryDto {
   piesCuadradosMin?: string;
   piesCuadradosMax?: string;
   text?: string;
+  swLat?: string;
+  neLat?: string;
+  swLng?: string;
+  neLng?: string;
   cursor?: string;
 }

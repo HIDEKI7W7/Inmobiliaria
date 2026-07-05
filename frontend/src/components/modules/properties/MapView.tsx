@@ -2,6 +2,20 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Property } from './PropertyCard';
+import { WHATSAPP_LINK } from '../../../utils/whatsapp';
+
+const formatMapPrice = (price: number, currency: 'USD' | 'BOB' = 'USD') => {
+  if (currency === 'USD') {
+    if (price >= 1000000) return `$${(price / 1000000).toFixed(1).replace('.0', '')}M`;
+    if (price >= 1000) return `$${(price / 1000).toFixed(1).replace('.0', '')}k`;
+    return `$${Math.round(price)}`;
+  } else {
+    if (price >= 1000000) return `Bs. ${(price / 1000000).toFixed(1).replace('.0', '')}M`;
+    if (price >= 1000) return `Bs. ${(price / 1000).toFixed(1).replace('.0', '')}k`;
+    return `Bs. ${Math.round(price)}`;
+  }
+};
+
 
 interface MapViewProps {
   properties: Property[];
@@ -10,6 +24,14 @@ interface MapViewProps {
   onSelectProperty: (id: string) => void;
   currency: 'USD' | 'BOB';
   center?: [number, number];
+  zoom?: number;
+  currentPropertyId?: string | null;
+  onBoundsChange?: (bounds: {
+    swLat: number;
+    swLng: number;
+    neLat: number;
+    neLng: number;
+  }) => void;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -19,35 +41,31 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectProperty,
   currency,
   center,
+  zoom: zoomProp,
+  currentPropertyId,
+  onBoundsChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<{ [key: string]: any }>({});
   const [zoom, setZoom] = useState(13);
   const [L, setL] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [viewedIds, setViewedIds] = useState<string[]>([]);
 
-  // Normalizar coordenadas soportando tanto lat/lng como latitude/longitude desde backend/base de datos
-  const normalizedProperties = React.useMemo(() => {
-    return properties.map((p) => {
-      if (!p) return p;
-      let latVal = p.lat;
-      let lngVal = p.lng;
-      if (latVal === undefined || latVal === null) {
-        latVal = p.latitude as any;
-      }
-      if (lngVal === undefined || lngVal === null) {
-        lngVal = p.longitude as any;
-      }
-      return {
-        ...p,
-        lat: typeof latVal === 'string' ? parseFloat(latVal) : latVal,
-        lng: typeof lngVal === 'string' ? parseFloat(lngVal) : lngVal,
-      };
-    });
-  }, [properties]);
+  useEffect(() => {
+    if (selectedPropertyId && !viewedIds.includes(selectedPropertyId)) {
+      setViewedIds((prev) => [...prev, selectedPropertyId]);
+    }
+  }, [selectedPropertyId, viewedIds]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Carga de Leaflet únicamente en el cliente
   useEffect(() => {
+    if (!isMounted) return;
     if (typeof window !== 'undefined') {
       import('leaflet').then((leaflet) => {
         setL(leaflet.default);
@@ -61,21 +79,49 @@ export const MapView: React.FC<MapViewProps> = ({
         });
       });
     }
-  }, []);
+  }, [isMounted]);
 
-  // Formateador simplificado para los pines del mapa
-  const formatShortPrice = (price: number) => {
-    const value = currency === 'USD' ? price : price * 10;
-    const prefix = currency === 'USD' ? '$' : 'Bs. ';
+  // Normalizar coordenadas soportando tanto lat/lng como latitude/longitude desde backend/base de datos
+  const normalizedProperties = React.useMemo(() => {
+    return properties
+      .filter((p: any) => p && p.id && p.title && p.location && (Number(p.price || 0) > 0 || Number(p.priceBob || 0) > 0))
+      .map((p) => {
+        if (!p) return p;
 
-    if (value >= 1000000) {
-      return `${prefix}${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `${prefix}${Math.round(value / 1000)}k`;
-    }
-    return `${prefix}${value}`;
-  };
+      // Intentar extraer latitud y longitud por todos los nombres de propiedades comunes
+      let latVal = p.lat ?? (p as any).latitude ?? (p as any).latitud;
+      let lngVal = p.lng ?? (p as any).longitude ?? (p as any).longitud;
+
+      let parsedLat = typeof latVal === 'string' ? parseFloat(latVal) : typeof latVal === 'number' ? latVal : null;
+      let parsedLng = typeof lngVal === 'string' ? parseFloat(lngVal) : typeof lngVal === 'number' ? lngVal : null;
+
+      // Si falta latitud o longitud, aplicar coordenadas de fallback basadas en la ubicación/ciudad
+      let lat = parsedLat;
+      let lng = parsedLng;
+      if (lat === null || isNaN(lat) || lng === null || isNaN(lng)) {
+        const locLower = String(p.location || '').toLowerCase();
+        if (locLower.includes('la paz')) {
+          lat = -16.5000 + (Math.random() - 0.5) * 0.01;
+          lng = -68.1500 + (Math.random() - 0.5) * 0.01;
+        } else if (locLower.includes('santa cruz') || locLower.includes('urubó') || locLower.includes('equipetrol')) {
+          lat = -17.7862 + (Math.random() - 0.5) * 0.01;
+          lng = -63.1812 + (Math.random() - 0.5) * 0.01;
+        } else {
+          // Cochabamba u otros fallbacks
+          lat = -17.3895 + (Math.random() - 0.5) * 0.01;
+          lng = -66.1568 + (Math.random() - 0.5) * 0.01;
+        }
+      }
+
+      return {
+        ...p,
+        lat,
+        lng,
+      };
+    });
+  }, [properties]);
+
+
 
   // Algoritmo de clustering dinámico en tiempo real basado en el zoom con tolerancia a fallos
   const getClusters = (props: Property[], currentZoom: number) => {
@@ -153,8 +199,6 @@ export const MapView: React.FC<MapViewProps> = ({
       zoomControl: false,
     });
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
     // Capa de mapa base premium y minimalista (CartoDB Positron) para resaltar los pines
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
@@ -168,7 +212,51 @@ export const MapView: React.FC<MapViewProps> = ({
       setZoom(map.getZoom());
     });
 
+    // Helper simple de debounce para evitar llamadas excesivas
+    const debounce = (fn: Function, delay: number) => {
+      let timer: any;
+      return (...args: any[]) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    };
+
+    const handleBoundsChange = debounce(() => {
+      if (!mapRef.current) return;
+      const b = mapRef.current.getBounds();
+      const sw = b.getSouthWest();
+      const ne = b.getNorthEast();
+      if (onBoundsChange) {
+        onBoundsChange({
+          swLat: sw.lat,
+          swLng: sw.lng,
+          neLat: ne.lat,
+          neLng: ne.lng,
+        });
+      }
+    }, 400);
+
+    map.on('moveend', handleBoundsChange);
+
+    // Disparar límites iniciales con retardo sutil para sincronizar carga
+    const initialTimer = setTimeout(() => {
+      if (mapRef.current) {
+        const b = mapRef.current.getBounds();
+        const sw = b.getSouthWest();
+        const ne = b.getNorthEast();
+        if (onBoundsChange) {
+          onBoundsChange({
+            swLat: sw.lat,
+            swLng: sw.lng,
+            neLat: ne.lat,
+            neLng: ne.lng,
+          });
+        }
+      }
+    }, 600);
+
     return () => {
+      clearTimeout(initialTimer);
       map.remove();
       mapRef.current = null;
     };
@@ -178,37 +266,40 @@ export const MapView: React.FC<MapViewProps> = ({
   // Efecto para centrar dinámicamente cuando el prop center cambia
   useEffect(() => {
     if (!L || !mapRef.current || !center) return;
-    mapRef.current.setView(center, 13, {
+    mapRef.current.flyTo(center, zoomProp || 13, {
       animate: true,
-      duration: 1.0,
+      duration: 1.5,
     });
-  }, [center, L]);
+  }, [center, zoomProp, L]);
 
-  // Efecto para corregir el Layout Glitch de Leaflet (Dimensiones colapsadas) recalculando en caliente
+  // Resize con debounce para no saturar el hilo principal en móviles
+  // NOTA: separado de normalizedProperties para evitar re-disparos por cada cambio de filtro
   useEffect(() => {
     if (!L || !mapRef.current) return;
 
+    let rafId: number;
     const forceResize = () => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        mapRef.current?.invalidateSize();
+      });
     };
 
-    // Ráfagas repetidas para asegurar que el mapa se estira perfectamente después de que Tailwind complete sus transiciones
-    const timer1 = setTimeout(forceResize, 50);
-    const timer2 = setTimeout(forceResize, 150);
-    const timer3 = setTimeout(forceResize, 400);
+    // Boot reducido a 100ms para acelerar la carga de tiles en smartphones
+    const boot = setTimeout(forceResize, 100);
+    // Segunda pasada a 600ms para cubrir transiciones lentas de CSS en móviles de gama baja
+    const boot2 = setTimeout(forceResize, 600);
 
-    // Escuchador de redimensionamiento de ventana
-    window.addEventListener('resize', forceResize);
+    window.addEventListener('resize', forceResize, { passive: true });
 
     return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
+      clearTimeout(boot);
+      clearTimeout(boot2);
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', forceResize);
     };
-  }, [L, normalizedProperties]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [L]);
 
   // Renderizado dinámico de Pines (Marcadores) y Clústeres
   useEffect(() => {
@@ -278,25 +369,30 @@ export const MapView: React.FC<MapViewProps> = ({
           return;
         }
 
+        const isCurrent = currentPropertyId && String(property.id) === String(currentPropertyId);
         const isHovered = activePropertyId === property.id || selectedPropertyId === property.id;
-        const priceK = (property.price / 1000).toFixed(0);
-        const priceLabel = currency === 'USD' ? `$${priceK}K` : `Bs. ${(property.priceBob || property.price * 10 / 1000).toFixed(0)}K`;
+        const priceLabel = formatMapPrice(property.priceBob || (property.price * 10), 'BOB');
+        const isViewed = viewedIds.includes(property.id);
         
-        const markerHtml = `
-          <div class="font-sans font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-md border transition-all duration-300 whitespace-nowrap cursor-pointer ${
-            isHovered
-              ? 'bg-[#ccff00] text-[#000033] border-[#000033] scale-110 ring-4 ring-[#ccff00]/45 font-black'
-              : 'bg-[#000033] text-[#ccff00] border-[#ccff00]/20 hover:scale-105'
+        const markerHtml = isCurrent ? `
+          <div class="bg-blue-600 border border-blue-400 text-white rounded-full px-3 py-1.5 text-[10px] font-black shadow-md flex items-center justify-center whitespace-nowrap cursor-default ring-4 ring-blue-600/30 select-none animate-pulse">
+            📍 USTED ESTÁ AQUÍ
+          </div>
+        ` : `
+          <div class="bg-white border border-slate-100 text-slate-900 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm flex items-center justify-center whitespace-nowrap cursor-pointer transition-all duration-200 ${
+            isViewed ? 'text-emerald-500 font-extrabold' : ''
+          } ${
+            isHovered ? 'scale-115 ring-2 ring-[#0a1931]/20 shadow-md' : 'hover:scale-105'
           }">
-            ${property.verified ? '👑 ' : ''}${priceLabel}
+            ${priceLabel}
           </div>
         `;
 
         const markerIcon = L.divIcon({
           html: markerHtml,
-          className: 'custom-price-marker',
-          iconSize: [70, 35],
-          iconAnchor: [35, 17.5],
+          className: isCurrent ? 'custom-main-minimap-marker' : 'custom-price-marker',
+          iconSize: isCurrent ? [130, 32] : [70, 35],
+          iconAnchor: isCurrent ? [65, 16] : [35, 17.5],
         });
 
         const marker = L.marker([property.lat, property.lng], {
@@ -305,17 +401,18 @@ export const MapView: React.FC<MapViewProps> = ({
         }).addTo(map);
 
         // Mini-Ficha Flotante (Popup) interactiva con botones de acción en español boliviano
-        const formattedPriceFull =
-          currency === 'USD'
-            ? `$${property.price.toLocaleString()}`
-            : `Bs. ${(property.priceBob || property.price * 10).toLocaleString()}`;
+        const formattedPriceFull = `Bs. ${(property.priceBob || property.price * 10).toLocaleString('es-BO')}`;
+        const formattedPriceSecondary = `USD ${(property.price || 0).toLocaleString()}`;
 
         const popupContent = `
           <div class="font-sans w-56 rounded-2xl overflow-hidden bg-white">
             <div class="relative h-28 w-full overflow-hidden">
               <img src="${property.imageUrl}" alt="${property.title}" class="object-cover h-full w-full" />
               ${property.verified ? '<span class="absolute top-2 left-2 bg-amber-500 text-propio-blue font-black text-[8px] px-2 py-0.5 rounded-full border border-amber-300">👑 Oro</span>' : ''}
-              <span class="absolute bottom-2 right-2 bg-[#000033] text-white text-xs font-black px-2.5 py-1 rounded-lg border border-white/10">${formattedPriceFull}</span>
+              <div class="absolute bottom-2 right-2 bg-[#000033] text-white p-2 rounded-lg border border-white/10 flex flex-col items-end">
+                <span class="text-xs font-black leading-tight">${formattedPriceFull}</span>
+                <span class="text-[8px] text-slate-300 font-bold mt-0.5 leading-none">${formattedPriceSecondary}</span>
+              </div>
             </div>
             <div class="p-3.5 space-y-2">
               <h4 class="font-heading font-black text-[#000033] text-sm leading-tight m-0 line-clamp-1">${property.title}</h4>
@@ -345,12 +442,12 @@ export const MapView: React.FC<MapViewProps> = ({
         markersRef.current[property.id] = marker;
       }
     });
-  }, [normalizedProperties, zoom, activePropertyId, selectedPropertyId, currency, L, onSelectProperty]);
+  }, [normalizedProperties, zoom, activePropertyId, selectedPropertyId, currency, L, onSelectProperty, viewedIds]);
 
   useEffect(() => {
     if (!L || !mapRef.current || !selectedPropertyId) return;
 
-    const property = normalizedProperties.find((p) => p.id === selectedPropertyId);
+    const property = normalizedProperties.find((p) => String(p.id) === String(selectedPropertyId));
     if (property) {
       if (typeof property.lat !== 'number' || typeof property.lng !== 'number' || isNaN(property.lat) || isNaN(property.lng)) {
         console.warn(`Propiedad con ID ${property.id} saltada por coordenadas inválidas.`);
@@ -373,27 +470,29 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <div className="relative w-full h-full overflow-hidden z-10" style={{ height: '100%', width: '100%' }}>
+      {/* Mapa Leaflet */}
       <div ref={mapContainerRef} className="w-full h-full z-0" style={{ height: '100%', width: '100%' }} />
-      
-      {/* Indicador Flotante Bolivia */}
-      <div className="absolute top-4 left-4 z-[1000] bg-[#000033] text-white px-4 py-2 rounded-2xl shadow-lg border border-white/10 flex items-center gap-2 select-none">
-        <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-[#ccff00]" />
-        <span className="text-xs font-black font-sans uppercase tracking-wider">Bolivia Activo</span>
+
+      {/* ponytail: removed floating metric banner and geofencing buttons per image_800d1b.png design cleanup */}
+
+      {/* ── CONTROLES DE ZOOM PERSONALIZADOS (top-right, style clones image_7ffe1b.png) ── */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
+        <button
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:text-[#0a1931] transition-colors cursor-pointer text-lg font-light border-b border-slate-100 bg-transparent border-0"
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-50 hover:text-[#0a1931] transition-colors cursor-pointer text-lg font-light bg-transparent border-0"
+          aria-label="Zoom out"
+        >
+          −
+        </button>
       </div>
 
-      {/* Botón Flotante de WhatsApp para Contacto Directo - Integrado en el Canvas del Mapa */}
-      <a
-        href="https://wa.me/59171234567?text=Hola,%20quisiera%20hacer%20una%20consulta%20en%20Propio."
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute bottom-6 right-6 z-[1000] bg-[#25D366] hover:bg-[#20ba5a] text-white p-3.5 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center border border-white/20"
-        title="Contacto directo por WhatsApp"
-        aria-label="Contactar por WhatsApp"
-      >
-        <svg className="w-7 h-7 fill-current" viewBox="0 0 16 16">
-          <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
-        </svg>
-      </a>
 
       {/* Estilos inyectados para formatear los Popups de Leaflet */}
       <style jsx global>{`
@@ -418,6 +517,7 @@ export const MapView: React.FC<MapViewProps> = ({
           background: transparent !important;
           border: none !important;
         }
+        .leaflet-control-zoom { display: none !important; }
       `}</style>
     </div>
   );

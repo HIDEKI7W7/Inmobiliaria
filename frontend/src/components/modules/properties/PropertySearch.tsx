@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export interface FilterState {
   text: string;
@@ -100,7 +100,7 @@ export const PropertySearch: React.FC<PropertySearchProps> = ({
           }`}
         >
           <span>🏆</span>
-          <span>Sólo Verificadas (Sello Oro)</span>
+          <span>Documentación Verificada</span>
         </button>
       </div>
 
@@ -128,8 +128,8 @@ export const PropertySearch: React.FC<PropertySearchProps> = ({
         </div>
       </div>
 
-      {/* Divisa y Toggle */}
-      <div className="flex justify-between items-center pt-2 border-t border-linear-hairline">
+      {/* Divisa y Toggle - Ocultado para forzar BOB */}
+      <div className="hidden justify-between items-center pt-2 border-t border-linear-hairline">
         <span className="text-[9px] font-bold text-linear-ink-subtle uppercase tracking-widest">
           Moneda de Referencia
         </span>

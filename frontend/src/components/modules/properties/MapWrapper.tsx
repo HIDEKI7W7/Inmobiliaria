@@ -44,6 +44,14 @@ interface MapWrapperProps {
   onSelectProperty: (id: string) => void;
   currency: 'USD' | 'BOB';
   center?: [number, number];
+  zoom?: number;
+  currentPropertyId?: string | null;
+  onBoundsChange?: (bounds: {
+    swLat: number;
+    swLng: number;
+    neLat: number;
+    neLng: number;
+  }) => void;
 }
 
 export const MapWrapper: React.FC<MapWrapperProps> = (props) => {

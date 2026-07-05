@@ -25,7 +25,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
               Catálogo de Propiedades
             </h2>
             <p className="text-sm text-slate-500 font-sans font-medium">
-              Explora opciones validadas por nuestro Sello Oro con precios transparentes y sin comisiones ocultas.
+              Explora opciones con Documentación Verificada, precios transparentes y sin comisiones ocultas.
             </p>
           </div>
           
@@ -60,34 +60,41 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
                 No hay resultados para tu búsqueda
               </h3>
               <p className="text-xs text-slate-400 font-sans leading-relaxed max-w-sm mx-auto">
-                No encontramos propiedades que coincidan exactamente con tus filtros. Intenta ampliando la zona de búsqueda o eliminando el filtro de Sello Oro.
+                No encontramos propiedades que coincidan exactamente con tus filtros. Intenta ampliando la zona de búsqueda o eliminando el filtro de Documentación Verificada.
               </p>
             </div>
           </div>
         ) : (
           /* Grid Responsivo Pixel-Perfect (Mobile-first, se colapsa a flex-col en móvil, y se expande en desktop) */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {properties.map((property) => (
-              <div 
-                key={property.id} 
-                className="transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <PropertyCard
-                  title={property.title}
-                  price={property.price}
-                  priceBob={property.priceBob}
-                  image={property.imageUrl}
-                  isVerified={property.verified}
-                  location={property.location}
-                  specs={{
-                    rooms: property.rooms,
-                    bathrooms: property.bathrooms,
-                    area: property.area,
-                  }}
-                  currency={currency}
-                />
-              </div>
-            ))}
+            {(() => {
+              const uniqueProperties = properties.filter((prop, index, self) =>
+                index === self.findIndex((p) => (p.id === prop.id))
+              );
+              return uniqueProperties.map((property) => (
+                <div 
+                  key={property.id} 
+                  className="transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <PropertyCard
+                    property={property}
+                    propertyId={property.id}
+                    title={property.title}
+                    price={property.price}
+                    priceBob={property.priceBob}
+                    image={property.imageUrl}
+                    isVerified={property.verified}
+                    location={property.location}
+                    specs={{
+                      rooms: property.rooms,
+                      bathrooms: property.bathrooms,
+                      area: property.area,
+                    }}
+                    currency={currency}
+                  />
+                </div>
+              ));
+            })()}
           </div>
         )}
 

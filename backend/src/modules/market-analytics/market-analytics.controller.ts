@@ -52,4 +52,9 @@ export class MarketAnalyticsController {
     );
     return { message: 'Snapshot de precio registrado exitosamente' };
   }
+
+  @Get('traffic-sources')
+  async getTrafficSources() {
+    return this.marketAnalyticsService.getTrafficSources();
+  }
 }

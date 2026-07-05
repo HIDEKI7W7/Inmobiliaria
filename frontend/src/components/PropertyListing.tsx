@@ -41,7 +41,7 @@ export const PropertyListing: React.FC<PropertyListingProps> = ({
   isLoading,
   highlightedId,
   onPropertyHover,
-  currency = 'USD',
+  currency = 'BOB',
 }) => {
   // 1. Renderizado en Estado de Carga (Skeleton Loaders)
   if (isLoading) {
@@ -77,7 +77,9 @@ export const PropertyListing: React.FC<PropertyListingProps> = ({
     <div className="flex flex-col gap-4 overflow-y-auto h-[calc(100vh-200px)] pr-2 scrollbar-thin">
       {properties.map((property) => (
         <PropertyCard
+          property={property}
           key={property.id}
+          propertyId={property.id}
           title={property.title}
           price={property.price}
           priceBob={property.priceBob}

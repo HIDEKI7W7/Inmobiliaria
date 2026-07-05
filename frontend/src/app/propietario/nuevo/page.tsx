@@ -4,52 +4,88 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { propertiesService } from '../../../services/properties.service';
+// import { propertiesService } from '../../../services/properties.service'; // no longer used: canonical write goes directly to localStorage
 
-const DEPARTAMENTOS_COORDS: Record<string, { lat: number; lng: number }> = {
-  'La Paz': { lat: -16.5000, lng: -68.1500 },
-  'Cochabamba': { lat: -17.3895, lng: -66.1568 },
-  'Santa Cruz': { lat: -17.7833, lng: -63.1833 },
-  'Oruro': { lat: -17.9833, lng: -67.1500 },
-  'Potosí': { lat: -19.5833, lng: -65.7500 },
-  'Chuquisaca': { lat: -19.0333, lng: -65.2627 },
-  'Tarija': { lat: -21.5355, lng: -64.7299 },
-  'Beni': { lat: -14.8333, lng: -64.9000 },
-  'Pando': { lat: -11.0267, lng: -68.7697 }
+import PropertyFormFields from '../../../components/modules/properties/PropertyFormFields';
+import { persistProperty } from '../../../utils/localDb';
+import { useFavorites } from '../../../context/FavoritesContext';
+import { getCurrentUser } from '../../../utils/session';
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
 };
-
-const DEPARTAMENTOS = Object.keys(DEPARTAMENTOS_COORDS);
-
-const ATTRIBUTES_BY_CATEGORY = {
-  Interiores: ['Aire Acondicionado', 'Calefacción', 'Cocina Equipada', 'Roperos Empotrados', 'Amoblado', 'Termotanque', 'Suite Master', 'Dependencias de Servicio'],
-  Exteriores: ['Jardín', 'Churrasquera/Parrillero', 'Terraza', 'Balcón', 'Patio', 'Piscina Privada'],
-  Parqueos: ['Parqueo Techado', 'Parqueo de Visitas', 'Garaje con Portón Eléctrico', 'Baulera'],
-  Seguridad: ['Seguridad 24/7', 'Cerco Eléctrico', 'Cámaras de Vigilancia', 'Alarma', 'Conserjería'],
-  'Áreas Comunes': ['Salón de Eventos', 'Gimnasio', 'Piscina Común', 'Canchas Deportivas', 'Parque Infantil', 'Sauna'],
-  Sostenibilidad: ['Calefón Solar', 'Paneles Solares', 'Iluminación LED', 'Sistema de Reciclaje de Agua']
-};
-
-const LeafletMap = dynamic(
-  () => import('./LeafletMap'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[280px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#000033]"></div>
-        <p className="text-[10px] text-slate-400 font-sans uppercase tracking-widest animate-pulse font-bold">
-          Inicializando Mapa Táctil...
-        </p>
-      </div>
-    ),
-  }
-);
 
 export default function SmartCaptureForm() {
   const router = useRouter();
+  let setContextProperties: any = null;
+  try {
+    const context = useFavorites();
+    setContextProperties = context.setProperties;
+  } catch (err) {
+    console.warn("useFavorites hook not available", err);
+  }
   const [step, setStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState<{ name: string; size: string; progress: number }[]>([]);
+  const [uploadedImagesBase64, setUploadedImagesBase64] = useState<string[]>([]);
+  const [uploadedDocsBase64, setUploadedDocsBase64] = useState<Record<string, string>>({});
+  const [documentosLegales, setDocumentosLegales] = useState<File[]>([]);
+  
+  const handleAdjuntarDocumento = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newDocs = Array.from(e.target.files);
+      if (newDocs.length > 0) {
+        setDocumentosLegales((prev) => [...prev, ...newDocs]);
+        // FileReader para Base64 de documentos
+        newDocs.forEach((file: any) => {
+          const reader = new FileReader();
+          const realFile = file.fileObj || file;
+          reader.onloadend = () => {
+            setUploadedDocsBase64(prev => ({
+              ...prev,
+              [file.name]: reader.result as string
+            }));
+          };
+          reader.readAsDataURL(realFile);
+        });
+      }
+    }
+  };
+
+  const handleEliminarDocumento = (index: number) => {
+    setDocumentosLegales((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const [extraDocuments, setExtraDocuments] = useState<{ id: string; name: string; file: File | null }[]>([]);
+
+  const handleAddExtraDocument = () => {
+    setExtraDocuments((prev) => [
+      ...prev,
+      { id: 'extra-' + Math.random().toString(36).substr(2, 9), name: '', file: null }
+    ]);
+  };
+
+  const handleUpdateExtraDocumentName = (id: string, name: string) => {
+    setExtraDocuments((prev) =>
+      prev.map((doc) => (doc.id === id ? { ...doc, name } : doc))
+    );
+  };
+
+  const handleUploadExtraDocumentFile = (id: string, file: File) => {
+    setExtraDocuments((prev) =>
+      prev.map((doc) => (doc.id === id ? { ...doc, file } : doc))
+    );
+  };
+
+  const handleRemoveExtraDocument = (id: string) => {
+    setExtraDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
   
   // Selección de atributos de alto valor
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, boolean>>({});
@@ -61,7 +97,7 @@ export default function SmartCaptureForm() {
     currency: 'BOB', // BOB o USD
     priceBOB: '',
     priceUSD: '',
-    exchangeRate: '6.96',
+    exchangeRate: '9.76',
     minPrice: '', // Precio mínimo sugerido por el propietario
     offerType: 'VENTA', // VENTA, ALQUILER, ANTICRETICO, PROYECTO
     type: 'DEPARTAMENTO', // DEPARTAMENTO, CASA, TERRENO, OFICINA, etc.
@@ -69,7 +105,7 @@ export default function SmartCaptureForm() {
     builtArea: '',
     rooms: '3',
     bathrooms: '2',
-    location: 'Cochabamba',
+    location: 'SANTA CRUZ',
     zona: '',
     address: '',
     latitude: -17.3895,
@@ -88,6 +124,7 @@ export default function SmartCaptureForm() {
     hasTestimonio: false,
     hasImpuestosAlDia: false,
     hasPlanoUsoSuelo: false,
+    hasOtrosDocumentos: false,
   });
 
   // Cargar borrador de localStorage
@@ -150,40 +187,7 @@ export default function SmartCaptureForm() {
     handlePersistDraft(formData, documents, updated, step);
   };
 
-  const handleLocationChange = (loc: string) => {
-    const coords = DEPARTAMENTOS_COORDS[loc] || { lat: -17.3895, lng: -66.1568 };
-    const updated = {
-      ...formData,
-      location: loc,
-      latitude: coords.lat,
-      longitude: coords.lng
-    };
-    setFormData(updated);
-    handlePersistDraft(updated, documents, selectedAttributes, step);
-  };
 
-  const handlePriceChange = (val: string, type: 'BOB' | 'USD' | 'RATE' | 'CURRENCY') => {
-    const rate = parseFloat(formData.exchangeRate) || 6.96;
-    if (type === 'BOB') {
-      const bob = val;
-      const usd = val ? (parseFloat(val) / rate).toFixed(2) : '';
-      updateFormData({ priceBOB: bob, priceUSD: usd });
-    } else if (type === 'USD') {
-      const usd = val;
-      const bob = val ? (parseFloat(val) * rate).toFixed(2) : '';
-      updateFormData({ priceUSD: usd, priceBOB: bob });
-    } else if (type === 'RATE') {
-      const newRate = val;
-      const rateNum = parseFloat(val) || 6.96;
-      let bob = formData.priceBOB;
-      if (formData.currency === 'USD' && formData.priceUSD) {
-        bob = (parseFloat(formData.priceUSD) * rateNum).toFixed(2);
-      }
-      updateFormData({ exchangeRate: newRate, priceBOB: bob });
-    } else if (type === 'CURRENCY') {
-      updateFormData({ currency: val });
-    }
-  };
 
   const isChecklistComplete = () => {
     if (formData.offerType === 'ALQUILER') {
@@ -223,36 +227,177 @@ export default function SmartCaptureForm() {
     setSaving(true);
     try {
       const activeAttrs = Object.keys(selectedAttributes).filter(k => selectedAttributes[k]);
-      const attrsText = activeAttrs.length > 0 ? `\n\nAtributos: ${activeAttrs.join(', ')}` : '';
-      const areaText = `\nSuperficie Terreno: ${formData.landArea || 0} m²\nSuperficie Construida: ${formData.builtArea || 0} m²`;
-      const zonaText = formData.zona ? `\nZona: ${formData.zona}` : '';
 
-      const payload = {
+      // ── Calcular ID correlativo legible (PROP-REAL-011 / PROP-RENT-011) ──
+      const isRent = (formData.offerType || 'VENTA') === 'ALQUILER';
+      const prefix = isRent ? 'PROP-RENT' : 'PROP-REAL';
+      let correlativeIdx = 11;
+      try {
+        const localPropsRes = await fetch('/api/local/properties').then(r => r.json());
+        const localProps = localPropsRes?.properties || [];
+        const allExisting = JSON.parse(localStorage.getItem('propio_custom_created_properties') || '[]');
+        const combined = [...allExisting, ...localProps];
+        const matching = combined.filter((p: any) => p && p.id && p.id.startsWith(prefix));
+        
+        let maxIdx = 10;
+        matching.forEach((p: any) => {
+          const numPart = parseInt(p.id.replace(prefix + '-', ''));
+          if (!isNaN(numPart) && numPart > maxIdx) {
+            maxIdx = numPart;
+          }
+        });
+        correlativeIdx = maxIdx + 1;
+      } catch (_e) {
+        correlativeIdx = Math.floor(Math.random() * 1000) + 100;
+      }
+      const correlativeId = `${prefix}-${String(correlativeIdx).padStart(3, '0')}`;
+
+      // ── Variables del checklist legal ──
+      const customPriceBob = parseFloat(formData.priceBOB) || 0;
+      const customPriceUsd = parseFloat(formData.priceUSD) || Math.round(customPriceBob / 9.76);
+      const hasAnyCheckedDoc = documents.hasFolioReal || documents.hasCI || documents.hasCatastro || documents.hasTestimonio || documents.hasImpuestosAlDia || documents.hasPlanoUsoSuelo || documents.hasOtrosDocumentos;
+      const isMissingFiles = documentosLegales.length === 0;
+      const docStatusVal = (hasAnyCheckedDoc && isMissingFiles) ? 'marcado_sin_archivo' : 'OK';
+
+      // Estructura de los 6 documentos oficiales específicos
+      const officialDocsList = await Promise.all([
+        { key: 'hasFolioReal', name: 'Folio Real Actualizado (Libre Alodial)', checked: !!documents.hasFolioReal },
+        { key: 'hasCatastro', name: 'Certificado Catastral Al Día', checked: !!documents.hasCatastro },
+        { key: 'hasTestimonio', name: 'Testimonio de Escritura Pública', checked: !!documents.hasTestimonio },
+        { key: 'hasImpuestosAlDia', name: 'Impuestos Municipales Al Día', checked: !!documents.hasImpuestosAlDia },
+        { key: 'hasPlanoUsoSuelo', name: 'Plano de Uso de Suelo Aprobado', checked: !!documents.hasPlanoUsoSuelo },
+        { key: 'hasCI', name: 'Cédula de Identidad Vigente (CI)', checked: !!documents.hasCI },
+      ].map(async (item) => {
+        const fileObj = documentosLegales.find((f: any) => f && f.docKey === item.key);
+        let fileBase64: string | null = null;
+        if (fileObj) {
+          try {
+            const realFile = (fileObj as any).fileObj || fileObj;
+            fileBase64 = await fileToBase64(realFile);
+          } catch (err) {
+            console.error('Error reading file as base64', err);
+          }
+        }
+        return {
+          name: item.name,
+          checked: item.checked,
+          file: fileBase64 || '',
+          fileType: fileObj ? fileObj.type : '',
+          fileName: fileObj ? fileObj.name : '',
+        };
+      }));
+
+      // ── Objeto canonical compartido por admin, propietario y catálogo ──
+      const canonicalProp = {
+        id: correlativeId,
         title: formData.title,
-        description: formData.description + attrsText + areaText + zonaText,
-        price: parseFloat(formData.priceBOB) || 0,
-        minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
+        description: formData.description + (activeAttrs.length > 0 ? `\n\nAtributos: ${activeAttrs.join(', ')}` : '') + `\nSuperficie Terreno: ${formData.landArea || 0} m²\nSuperficie Construida: ${formData.builtArea || 0} m²` + (formData.zona ? `\nZona: ${formData.zona}` : ''),
+        price: customPriceUsd,
+        priceBob: customPriceBob,
+        priceBs: customPriceBob,
         area: parseFloat(formData.builtArea) || parseFloat(formData.landArea) || 0,
-        rooms: parseInt(formData.rooms),
-        bathrooms: parseInt(formData.bathrooms),
-        location: formData.location,
-        address: formData.address || null,
-        offerType: formData.offerType,
-        type: formData.type,
-        imageUrl: formData.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
-        latitude: formData.latitude,
-        longitude: formData.longitude,
+        m2: parseFloat(formData.builtArea) || parseFloat(formData.landArea) || 0,
+        rooms: parseInt(formData.rooms) || 0,
+        beds: parseInt(formData.rooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        baths: parseInt(formData.bathrooms) || 0,
+        location: String(formData.location || 'SANTA CRUZ').toUpperCase(),
+        address: formData.address || 'Calle Innominada',
+        imageUrl: uploadedImagesBase64[0] || formData.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
+        image: uploadedImagesBase64[0] || formData.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
+        images: uploadedImagesBase64.length > 0
+          ? uploadedImagesBase64
+          : [formData.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'],
+        lat: formData.latitude ?? -17.3895,
+        lng: formData.longitude ?? -66.1568,
+        coordinates: { lat: formData.latitude ?? -17.3895, lng: formData.longitude ?? -66.1568 },
+        type: (formData.type || 'casa').toLowerCase(),
+        offerType: formData.offerType || 'VENTA',
+        priceLabel: `${Math.round(customPriceUsd / 1000)}K USD`,
+        lotSize: parseFloat(formData.landArea) || 0,
+        verified: checklistOk,
+        isVerified: checklistOk,
+        status: 'NUEVA_PUBLICACION',
+        documentStatus: docStatusVal,
         hasFolioReal: documents.hasFolioReal,
         hasCatastro: documents.hasCatastro,
         hasTestimonio: documents.hasTestimonio,
         hasImpuestosAlDia: documents.hasImpuestosAlDia,
         hasPlanoUsoSuelo: documents.hasPlanoUsoSuelo,
         hasCI: documents.hasCI,
+        // documentsList: formato para el panel de auditoría del admin
+        documentsList: officialDocsList.map((d, i) => ({
+          id: `DOC-${correlativeId}-${i}`,
+          name: d.name,
+          isMarked: d.checked,
+          fileData: d.file || null,
+          fileType: d.fileType || '',
+          fileName: d.fileName || '',
+        })),
+        documents: officialDocsList,
+        specs: {
+          dorm: parseInt(formData.rooms) || 0,
+          baños: parseInt(formData.bathrooms) || 0,
+          constr: parseFloat(formData.builtArea) || 0,
+        },
+        agentId: 'AGT-001',
+        agent_id: 'AGT-001',
+        ownerId: (getCurrentUser()?.userId || getCurrentUser()?.name || getCurrentUser()?.email?.split('@')[0] || 'owner'),
+        agente: { nombre: 'Asesor Asignado', telefono: '59172345678' },
+        propietario: { nombre: 'Propietario Principal', telefono: '59171234567' },
+        createdAt: new Date().toISOString(),
       };
 
-      const mockToken = 'mock-jwt-token-from-nest-api';
-      await propertiesService.createPropertyAsPropietario(payload, mockToken);
-      
+      // ── Escribir en ambas keys de localStorage (sesión activa) ──
+      try {
+        // 1. propio_custom_created_properties → leído por el admin y el panel propietario
+        const customCreatedRaw = localStorage.getItem('propio_custom_created_properties');
+        let customPropsList: any[] = [];
+        try { customPropsList = JSON.parse(customCreatedRaw || '[]'); } catch (_e) { customPropsList = []; }
+        if (!Array.isArray(customPropsList)) customPropsList = [];
+        customPropsList.unshift(canonicalProp);
+        localStorage.setItem('propio_custom_created_properties', JSON.stringify(customPropsList));
+
+        // 2. propio_properties_data → leído por el catálogo público
+        const propertiesDataRaw = localStorage.getItem('propio_properties_data');
+        let propertiesDataList: any[] = [];
+        try { propertiesDataList = JSON.parse(propertiesDataRaw || '[]'); } catch (_e) { propertiesDataList = []; }
+        if (!Array.isArray(propertiesDataList)) propertiesDataList = [];
+        propertiesDataList.unshift(canonicalProp);
+        localStorage.setItem('propio_properties_data', JSON.stringify(propertiesDataList));
+
+        // 3. Invalidar el caché del admin para forzar recarga en la misma pestaña
+        localStorage.removeItem('propio_admin_properties');
+
+        // 4. Notificar a otras pestañas y a la misma pestaña
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'propio_custom_created_properties',
+          newValue: JSON.stringify(customPropsList),
+        }));
+        window.dispatchEvent(new CustomEvent('propio:new-property', { detail: canonicalProp }));
+
+        // ── Mutación sobre el estado global que comparte el ERP ──
+        if (setContextProperties) {
+          setContextProperties((prev: any[]) => [canonicalProp, ...prev]);
+        }
+      } catch (err) {
+        console.error('Error saving canonical property to localStorage:', err);
+      }
+
+      // ── PERSISTENCIA REAL EN db.json via helper blindado (sobrevive F5 y reinicios) ──
+      try {
+        const propForDB = {
+          ...canonicalProp,
+          // Solo primera imagen para no inflar db.json con base64
+          images: canonicalProp.images?.length > 0 ? [canonicalProp.images[0]] : canonicalProp.images,
+          imageUrl: canonicalProp.imageUrl || '',
+        };
+        // Fire-and-forget: el helper valida Content-Type antes de parsear
+        persistProperty(propForDB).catch(e => console.warn('[localDb] persistProperty error:', e));
+      } catch (fetchErr) {
+        console.warn('[localDb] Error al persistir propiedad:', fetchErr);
+      }
+
       localStorage.removeItem('propio_smart_capture_draft');
       setIsSuccess(true);
     } catch (error) {
@@ -299,6 +444,15 @@ export default function SmartCaptureForm() {
           }
         }, 150);
       });
+
+      // Lector de archivos para transformar a Base64 e inyectar en array real
+      allowedFiles.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUploadedImagesBase64((prev) => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -307,14 +461,6 @@ export default function SmartCaptureForm() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#000033] font-sans antialiased flex flex-col selection:bg-[#ccff00]/30">
       
-      {/* Navbar Superior */}
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center select-none flex-shrink-0">
-        <Link href="/" className="text-xl font-heading font-bold text-[#000033]">
-          Propio<span className="text-[#ccff00] font-black">.</span>
-        </Link>
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Paso {step} de 4</span>
-      </header>
-
       {/* Contenedor Central */}
       <main className="flex-grow flex items-center justify-center p-4 sm:p-6 md:p-12">
         
@@ -328,28 +474,30 @@ export default function SmartCaptureForm() {
               <h1 className="text-2xl font-heading font-black tracking-tight uppercase text-[#000033]">
                 ¡Propiedad Recibida con Éxito!
               </h1>
-              <span className={`inline-block text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${
-                checklistOk 
-                  ? 'bg-emerald-55 text-emerald-800 border border-emerald-200' 
-                  : 'bg-amber-55 text-amber-800 border border-amber-205'
-              }`}>
-                {checklistOk ? 'Sello Oro: Aprobado Preliminar' : 'Sello Oro: Validación Pendiente'}
+              {/* [JSX_BADGE_ESTADO_REVISION] */}
+              <span className="bg-slate-100 text-slate-500 border border-slate-200 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider text-center">
+                {checklistOk ? 'En revisión por el equipo legal' : 'Documentación pendiente de completar'}
               </span>
-              <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto pt-2 font-medium">
-                {checklistOk 
-                  ? `Tu inmueble en ${formData.location} ha sido registrado de forma segura. Nuestro equipo validará los documentos para activar tu Sello Oro de validación inmediata.`
-                  : `Tu inmueble ha sido registrado como BORRADOR PENDIENTE. Para recibir ofertas directas con Sello Oro, recuerda adjuntar tu carpeta legal completa en el Paso 3.`
-                }
-              </p>
+
+              {/* [JSX_MODIFICACION_PARRAFO_DESCRIPCION] */}
+              {checklistOk ? (
+                <p className="text-sm text-slate-500 max-w-xl mx-auto leading-relaxed mt-4 text-center">
+                  Tu inmueble en {formData.location} ha sido registrado de forma segura. Nuestro equipo validará los documentos para activar el sello de DOCUMENTACION VERIFICADA de validación inmediata.
+                </p>
+              ) : (
+                <p className="text-sm text-slate-500 max-w-xl mx-auto leading-relaxed mt-4 text-center">
+                  Tu inmueble esta en proceso de aprobación. Para recibir el sello de DOCUMENTACION VERIFICADA, recuerda adjuntar tu carpeta legal completa en el paso 3.
+                </p>
+              )}
             </div>
 
             <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="https://frontend-olzedn7qe-hidekiiiii.vercel.app/propietario/dashboard"
+              <Link
+                href="/propietario/dashboard"
                 className="px-6 py-3.5 bg-[#ccff00] hover:bg-opacity-95 text-[#000033] font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md text-center hover:scale-[1.02] active:scale-95"
               >
                 Ir a mi Panel de Propietario 🏡
-              </a>
+              </Link>
               <Link
                 href="/properties"
                 className="px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-[#000033] border border-slate-200 font-bold text-xs uppercase tracking-widest rounded-xl transition-all text-center hover:scale-[1.02] active:scale-95"
@@ -392,593 +540,86 @@ export default function SmartCaptureForm() {
               </div>
             </div>
 
-            <form onSubmit={step === 4 ? handleSubmit : handleNext} className="space-y-6">
-              
+            <form onSubmit={step === 4 ? handleSubmit : handleNext} className="flex flex-col gap-6">
               {/* PASO 1: DATOS BÁSICOS */}
+
               {step === 1 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
                     <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">1. Ficha Técnica del Inmueble</h2>
                     <p className="text-slate-500 text-sm font-medium">Configura la información financiera, tipología y atributos de tu inmueble.</p>
                   </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Título Comercial</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. Departamento de lujo con acabados importados"
-                      value={formData.title}
-                      onChange={(e) => updateFormData({ title: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                    />
-                  </div>
-
-                  {/* LÓGICA FINANCIERA DE MONEDA */}
-                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Moneda de Publicación</label>
-                        <select
-                          value={formData.currency}
-                          onChange={(e) => handlePriceChange(e.target.value, 'CURRENCY')}
-                          className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
-                        >
-                          <option value="BOB">Bolivianos (Bs.)</option>
-                          <option value="USD">Dólares (USD)</option>
-                        </select>
-                      </div>
-
-                      {formData.currency === 'USD' ? (
-                        <div>
-                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">
-                            Tipo de Cambio (Bs. x 1 USD) <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            required
-                            placeholder="Ej. 6.96"
-                            value={formData.exchangeRate}
-                            onChange={(e) => handlePriceChange(e.target.value, 'RATE')}
-                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {formData.currency === 'BOB' ? (
-                        <div>
-                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Precio en Bolivianos (Bs.)</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            placeholder="Ej. 700000"
-                            value={formData.priceBOB}
-                            onChange={(e) => handlePriceChange(e.target.value, 'BOB')}
-                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
-                          />
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Precio en Dólares (USD)</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            placeholder="Ej. 100000"
-                            value={formData.priceUSD}
-                            onChange={(e) => handlePriceChange(e.target.value, 'USD')}
-                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
-                          />
-                        </div>
-                      )}
-
-                      {formData.currency === 'USD' ? (
-                        <div>
-                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
-                            Equivalente Calculado (Bs.)
-                          </label>
-                          <input
-                            type="text"
-                            readOnly
-                            placeholder="Bs. 0.00"
-                            value={formData.priceBOB ? `${parseFloat(formData.priceBOB).toLocaleString('es-BO')} Bs.` : ''}
-                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm outline-none cursor-default"
-                          />
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-400 mb-2">
-                            Referencia en Dólares (USD)
-                          </label>
-                          <input
-                            type="text"
-                            readOnly
-                            placeholder="USD 0.00"
-                            value={formData.priceUSD ? `${parseFloat(formData.priceUSD).toLocaleString('en-US')} USD` : ''}
-                            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm outline-none cursor-default"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-slate-500 mb-2">
-                        Precio mínimo sugerido por el propietario (Tope Opcional)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Monto confidencial para negociaciones"
-                        value={formData.minPrice}
-                        onChange={(e) => updateFormData({ minPrice: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-white text-slate-900 font-medium text-sm transition-colors"
-                      />
-                      <span className="text-[9px] text-slate-450 font-bold mt-1.5 block uppercase tracking-wider">🔒 Visible solo para agentes.</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Tipo de Oferta</label>
-                      <select
-                        value={formData.offerType}
-                        onChange={(e) => updateFormData({ offerType: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                      >
-                        <option value="VENTA">Venta 💰</option>
-                        <option value="ALQUILER">Alquiler 🔑</option>
-                        <option value="ANTICRETICO">Anticrético 📜</option>
-                        <option value="PROYECTO">Proyecto 🏗️</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Tipo de Inmueble</label>
-                      <select
-                        value={formData.type}
-                        onChange={(e) => updateFormData({ type: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                      >
-                        <option value="DEPARTAMENTO">Departamento 🏢</option>
-                        <option value="CASA">Casa 🏡</option>
-                        <option value="TERRENO">Terreno 🏜️</option>
-                        <option value="OFICINA">Oficina 👔</option>
-                        <option value="LOCAL_COMERCIAL">Local Comercial 🏪</option>
-                        <option value="EDIFICIO">Edificio 🏫</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* SUPERFICIES SEPARADAS */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Superficie de Terreno (m²)</label>
-                      <input
-                        type="number"
-                        placeholder="Ej. 300"
-                        value={formData.landArea}
-                        onChange={(e) => updateFormData({ landArea: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Superficie Construida (m²)</label>
-                      <input
-                        type="number"
-                        placeholder="Ej. 180"
-                        value={formData.builtArea}
-                        onChange={(e) => updateFormData({ builtArea: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Dormitorios</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.rooms}
-                        onChange={(e) => updateFormData({ rooms: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold tracking-wider uppercase text-[#000033] mb-2">Baños</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.bathrooms}
-                        onChange={(e) => updateFormData({ bathrooms: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm text-center"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Descripción Destacada</label>
-                    <textarea
-                      required
-                      rows={4}
-                      placeholder="Agrega comodidades, acabados y detalles que cautiven..."
-                      value={formData.description}
-                      onChange={(e) => updateFormData({ description: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors resize-none"
-                    />
-                  </div>
-
-                  {/* CHECKLIST DE ATRIBUTOS DE ALTO VALOR */}
-                  <div className="border-t border-slate-200 pt-6 space-y-4">
-                    <h3 className="text-lg font-heading font-bold text-[#000033] uppercase">Atributos de Alto Valor</h3>
-                    <div className="space-y-6">
-                      {Object.entries(ATTRIBUTES_BY_CATEGORY).map(([category, items]) => (
-                        <div key={category} className="space-y-2">
-                          <h4 className="text-xs font-bold text-slate-450 uppercase tracking-widest">{category}</h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {items.map((item) => {
-                              const isChecked = !!selectedAttributes[item];
-                              return (
-                                <button
-                                  type="button"
-                                  key={item}
-                                  onClick={() => toggleAttribute(item)}
-                                  className={`px-3 py-2 rounded-xl text-xs font-medium text-left border transition-all flex items-center justify-between ${
-                                    isChecked
-                                      ? 'bg-[#ccff00]/10 border-[#ccff00] text-[#000033] font-bold'
-                                      : 'bg-[#F8FAFC] border-slate-200 hover:border-slate-350 text-slate-600'
-                                  }`}
-                                >
-                                  <span>{item}</span>
-                                  {isChecked && <span className="text-[#000033] font-black">✓</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
+                  <PropertyFormFields
+                    formData={formData}
+                    onChange={updateFormData}
+                    step={1}
+                    selectedAttributes={selectedAttributes}
+                    onToggleAttribute={toggleAttribute}
+                    documents={documents}
+                    onUpdateDocuments={updateDocuments}
+                    images={formData.imageUrl ? [formData.imageUrl] : []}
+                  />
                 </div>
               )}
 
               {/* PASO 2: GEOLOCALIZACIÓN */}
               {step === 2 && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div>
-                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">2. Ubicación y Geolocalización</h2>
-                    <p className="text-slate-500 text-sm font-medium">Ubica con total precisión tu propiedad en el mapa para guiar a los interesados.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Ciudad / Departamento</label>
-                      <select
-                        value={formData.location}
-                        onChange={(e) => handleLocationChange(e.target.value)}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                      >
-                        {DEPARTAMENTOS.map((dep) => (
-                          <option key={dep} value={dep}>{dep}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Zona / Barrio</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej. Queru Queru"
-                        value={formData.zona}
-                        onChange={(e) => updateFormData({ zona: e.target.value })}
-                        className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Dirección Completa</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. Calle Aniceto Padilla #456"
-                      value={formData.address}
-                      onChange={(e) => updateFormData({ address: e.target.value })}
-                      className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold tracking-wider uppercase text-[#000033] mb-2">Marcador en Mapa Táctil</label>
-                    <LeafletMap
-                      lat={formData.latitude}
-                      lng={formData.longitude}
-                      onChange={(lat, lng) => updateFormData({ latitude: lat, longitude: lng })}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-[10px] font-mono text-slate-500">
-                    <div>
-                      <span className="block uppercase tracking-wider font-bold text-[#000033] mb-0.5">Latitud GPS:</span>
-                      <span className="font-bold text-slate-800 text-xs">{formData.latitude.toFixed(6)}</span>
-                    </div>
-                    <div>
-                      <span className="block uppercase tracking-wider font-bold text-[#000033] mb-0.5">Longitud GPS:</span>
-                      <span className="font-bold text-slate-800 text-xs">{formData.longitude.toFixed(6)}</span>
-                    </div>
-                  </div>
+                  <PropertyFormFields
+                    formData={formData}
+                    onChange={updateFormData}
+                    step={2}
+                    selectedAttributes={selectedAttributes}
+                    onToggleAttribute={toggleAttribute}
+                    documents={documents}
+                    onUpdateDocuments={updateDocuments}
+                    images={formData.imageUrl ? [formData.imageUrl] : []}
+                  />
                 </div>
               )}
 
               {/* PASO 3: CHECKLIST LEGAL */}
               {step === 3 && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div>
-                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">3. Checklist de Validación Legal</h2>
-                    <p className="text-slate-500 text-sm font-medium">
-                      Adjunta la documentación para activar el <span className="text-[#000033] font-black uppercase">Sello Oro</span> de tu propiedad (Modalidad: {formData.offerType}).
-                    </p>
-                  </div>
-
-                  <div className="space-y-3.5">
-                    {/* Folio Real */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                      <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasFolioReal: !documents.hasFolioReal })}>
-                        <div className="pt-0.5">
-                          <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                            documents.hasFolioReal ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                          }`}>
-                            {documents.hasFolioReal && '✓'}
-                          </div>
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold uppercase tracking-wide">Folio Real Actualizado (Libre Alodial)</h4>
-                          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Certifica que el inmueble está libre de hipotecas, anotaciones o deudas.</p>
-                        </div>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                          <span>📎 Adjuntar</span>
-                          <input
-                            type="file"
-                            accept="image/*,application/pdf"
-                            className="hidden"
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                alert(`Copia de Folio Real cargada: ${e.target.files[0].name}`);
-                                updateDocuments({ hasFolioReal: true });
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    {formData.offerType === 'ALQUILER' ? (
-                      /* Cédula CI para Alquiler */
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                        <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasCI: !documents.hasCI })}>
-                          <div className="pt-0.5">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                              documents.hasCI ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                            }`}>
-                              {documents.hasCI && '✓'}
-                            </div>
-                          </div>
-                          <div className="space-y-0.5">
-                            <h4 className="text-xs font-bold uppercase tracking-wide">Cédula de Identidad Vigente (CI)</h4>
-                            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Copia de CI legible del propietario legal para contratación.</p>
-                          </div>
-                        </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                            <span>📎 Adjuntar</span>
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                  alert(`Copia de CI cargada: ${e.target.files[0].name}`);
-                                  updateDocuments({ hasCI: true });
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Venta / Anticrético / Proyecto */
-                      <div className="space-y-3.5">
-                        {/* Certificado Catastral */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasCatastro: !documents.hasCatastro })}>
-                            <div className="pt-0.5">
-                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                                documents.hasCatastro ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                              }`}>
-                                {documents.hasCatastro && '✓'}
-                              </div>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs font-bold uppercase tracking-wide">Certificado Catastral Al Día</h4>
-                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Registro y plano catastral aprobado por el municipio correspondiente.</p>
-                            </div>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                              <span>📎 Adjuntar</span>
-                              <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    alert(`Copia de Certificado Catastral cargada: ${e.target.files[0].name}`);
-                                    updateDocuments({ hasCatastro: true });
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Testimonio de Escritura */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasTestimonio: !documents.hasTestimonio })}>
-                            <div className="pt-0.5">
-                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                                documents.hasTestimonio ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                              }`}>
-                                {documents.hasTestimonio && '✓'}
-                              </div>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs font-bold uppercase tracking-wide">Testimonio de Escritura Pública</h4>
-                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Escritura de compraventa notariada que acredita la propiedad.</p>
-                            </div>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                              <span>📎 Adjuntar</span>
-                              <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    alert(`Copia de Testimonio de Escritura cargada: ${e.target.files[0].name}`);
-                                    updateDocuments({ hasTestimonio: true });
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Impuestos Municipales */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasImpuestosAlDia: !documents.hasImpuestosAlDia })}>
-                            <div className="pt-0.5">
-                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                                documents.hasImpuestosAlDia ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                              }`}>
-                                {documents.hasImpuestosAlDia && '✓'}
-                              </div>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs font-bold uppercase tracking-wide">Impuestos Municipales Al Día</h4>
-                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Comprobante de pago del último impuesto a la propiedad municipal.</p>
-                            </div>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                              <span>📎 Adjuntar</span>
-                              <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    alert(`Copia de Impuestos cargada: ${e.target.files[0].name}`);
-                                    updateDocuments({ hasImpuestosAlDia: true });
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Plano de Uso de Suelo */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-300 bg-[#F8FAFC] border-slate-200">
-                          <div className="flex gap-4 items-start cursor-pointer flex-1" onClick={() => updateDocuments({ hasPlanoUsoSuelo: !documents.hasPlanoUsoSuelo })}>
-                            <div className="pt-0.5">
-                              <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                                documents.hasPlanoUsoSuelo ? 'bg-emerald-500 border-emerald-500 text-white text-[10px] font-bold' : 'bg-white border-slate-300'
-                              }`}>
-                                {documents.hasPlanoUsoSuelo && '✓'}
-                              </div>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs font-bold uppercase tracking-wide">Plano de Uso de Suelo Aprobado</h4>
-                              <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Plano municipal de zonificación, dimensiones y uso permitido.</p>
-                            </div>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <label className="cursor-pointer bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#000033] flex items-center gap-1.5 transition-colors">
-                              <span>📎 Adjuntar</span>
-                              <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    alert(`Copia de Plano de Uso de Suelo cargada: ${e.target.files[0].name}`);
-                                    updateDocuments({ hasPlanoUsoSuelo: true });
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <PropertyFormFields
+                    formData={formData}
+                    onChange={updateFormData}
+                    step={3}
+                    selectedAttributes={selectedAttributes}
+                    onToggleAttribute={toggleAttribute}
+                    documents={documents}
+                    onUpdateDocuments={updateDocuments}
+                    images={formData.imageUrl ? [formData.imageUrl] : []}
+                    extraDocuments={extraDocuments}
+                    onAddExtraDocument={handleAddExtraDocument}
+                    onUpdateExtraDocumentName={handleUpdateExtraDocumentName}
+                    onUploadExtraDocumentFile={handleUploadExtraDocumentFile}
+                    onRemoveExtraDocument={handleRemoveExtraDocument}
+                    documentosLegales={documentosLegales}
+                    onAdjuntarDocumento={handleAdjuntarDocumento}
+                    onEliminarDocumento={handleEliminarDocumento}
+                  />
                 </div>
               )}
 
               {/* PASO 4: FOTOS */}
               {step === 4 && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div>
-                    <h2 className="text-2xl font-heading font-black tracking-tight text-[#000033] mb-2 uppercase">4. Subir fotografías</h2>
-                    <p className="text-slate-500 text-sm font-medium">Carga las fotografías más destacadas del inmueble (Formatos de imagen nativos, peso máx: 150 MB).</p>
-                  </div>
-
-                  <div className="relative border-2 border-dashed border-slate-200 hover:border-[#000033] bg-slate-50 hover:bg-slate-100 rounded-xl p-8 text-center transition-all duration-300 cursor-pointer group">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleFileUploadSimulate}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    />
-                    <div className="space-y-2.5">
-                      <span className="text-3xl block group-hover:scale-110 transition-transform">📸</span>
-                      <h4 className="text-xs font-bold text-[#000033] uppercase tracking-wider">Subir fotografías</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold">Arrastra o presiona para seleccionar imágenes. (JPG, PNG, WEBP)</p>
-                    </div>
-                  </div>
-
-                  {files.length > 0 && (
-                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs font-sans">
-                      <h4 className="text-[10px] uppercase font-bold text-slate-450 tracking-widest">Archivos en proceso de carga</h4>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {files.map((file, idx) => (
-                          <div key={idx} className="space-y-1 p-3 bg-white border border-slate-100 rounded-lg shadow-sm">
-                            <div className="text-[9px] font-bold text-[#000033] truncate" title={file.name}>
-                              {file.name}
-                            </div>
-                            <div className="flex justify-between text-[8px] text-slate-400">
-                              <span>{file.size}</span>
-                              <span className="font-bold">{file.progress}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
-                              <div
-                                className="h-full bg-[#000033] transition-all"
-                                style={{ width: `${file.progress}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
+                  <PropertyFormFields
+                    formData={formData}
+                    onChange={updateFormData}
+                    step={4}
+                    selectedAttributes={selectedAttributes}
+                    onToggleAttribute={toggleAttribute}
+                    documents={documents}
+                    onUpdateDocuments={updateDocuments}
+                    images={formData.imageUrl ? [formData.imageUrl] : []}
+                    onUploadImageSimulate={handleFileUploadSimulate}
+                    filesSimulated={files}
+                    documentosLegales={documentosLegales}
+                    onAdjuntarDocumento={handleAdjuntarDocumento}
+                    onEliminarDocumento={handleEliminarDocumento}
+                  />
                   {/* Alerta documental */}
                   {!checklistOk ? (
                     <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 space-y-1.5 text-xs">

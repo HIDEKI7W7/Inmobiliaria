@@ -1,28 +1,23 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import { WHATSAPP_LINK } from '../../utils/whatsapp';
 
 export const FloatingWhatsApp = () => {
   const pathname = usePathname();
 
-  // Ocultar botón flotante global en la vista del buscador de propiedades (donde se renderiza
-  // de forma absoluta en el contenedor del mapa), así como en paneles de administración y login.
-  if (
-    pathname?.startsWith('/admin') ||
-    pathname?.startsWith('/agente') ||
-    pathname === '/login' ||
-    pathname === '/properties'
-  ) {
+  // Mostrar botón flotante únicamente en la página de inicio (Home/Inicio)
+  if (pathname !== '/') {
     return null;
   }
 
   return (
     <a
-      href="https://wa.me/59171234567?text=Hola,%20quisiera%20hacer%20una%20consulta%20en%20Propio."
+      href={WHATSAPP_LINK}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-[9999] bg-[#25D366] hover:bg-[#20ba5a] text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center border border-white/20"
+      className="fixed bottom-6 right-6 z-[9999] bg-[#25D366] hover:bg-[#20ba5a] text-white w-[55px] h-[55px] rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center border border-white/20"
       aria-label="Contactar por WhatsApp"
     >
       <svg className="w-7 h-7 fill-current" viewBox="0 0 16 16">

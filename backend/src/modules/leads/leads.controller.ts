@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { LeadsService } from './leads.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -26,6 +26,18 @@ export class LeadsController {
   @Throttle({ leads: { limit: 20, ttl: 60_000 } })
   async create(@Body() body: CreateLeadDto) {
     return this.leadsService.create(body);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  async updateLead(@Param('id') id: string, @Body() body: any) {
+    return this.leadsService.updateLead(id, body);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  async deleteLead(@Param('id') id: string) {
+    return this.leadsService.deleteLead(id);
   }
 }
 

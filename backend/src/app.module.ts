@@ -28,6 +28,15 @@ import { BusquedasGuardadasModule } from './modules/busquedas-guardadas/busqueda
 import { HistorialVistasModule } from './modules/historial-vistas/historial-vistas.module';
 import { CierresModule } from './modules/cierres/cierres.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { MarketingPlansModule } from './modules/marketing-plans/marketing-plans.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { CollaborationRequestsModule } from './modules/collaboration-requests/collaboration-requests.module';
+import { ClientsModule } from './modules/clients/clients.module';
+import { CollaborationsModule } from './modules/collaborations/collaborations.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { PermissionsGuard } from './modules/auth/permissions.guard';
+import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module';
 
 /**
  * TSK-7.1 — Configuración del ThrottlerModule (Rate Limiting)
@@ -76,6 +85,14 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     HistorialVistasModule,
     CierresModule,
     DashboardModule,
+    MarketingPlansModule,
+    AppointmentsModule,
+    AnnouncementsModule,
+    CollaborationRequestsModule,
+    ClientsModule,
+    CollaborationsModule,
+    PermissionsModule,
+    ExchangeRateModule,
   ],
   controllers: [],
   providers: [
@@ -83,6 +100,11 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
+    },
+    // RBAC: Guard global de permisos — verifica que el usuario esté activo y valida permisos por módulo
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
   ],
 })

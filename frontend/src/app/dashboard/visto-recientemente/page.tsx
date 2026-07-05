@@ -5,26 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, getToken, getRedirectPathByRole } from '@/utils/session';
 import { PropertyCard } from '@/components/modules/properties/PropertyCard';
-
-interface BackendProperty {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  area: number;
-  rooms: number;
-  bathrooms: number;
-  location: string;
-  imageUrl?: string;
-  isVerified: boolean;
-}
+import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
 
 export default function VistoRecientementeDashboardPage() {
   const router = useRouter();
   const [userName, setUserName] = useState('');
-  const [history, setHistory] = useState<BackendProperty[]>([]);
-  const [loading, setLoading] = useState(true);
   const [redirectPath, setRedirectPath] = useState('/cliente');
+  const [propiedadesVistas, setPropiedadesVistas] = useState<any[]>([]);
+  const [cargando, setCargando] = useState<boolean>(true);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -38,110 +26,94 @@ export default function VistoRecientementeDashboardPage() {
     setUserName((user as any).name || user.email?.split('@')[0] || 'Usuario');
     setRedirectPath(getRedirectPathByRole(user.role));
 
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiBaseUrl}/historial-vistas`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data);
-        }
-      } catch (err) {
-        console.error('Error al cargar historial de vistas:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // [LOGICA_HISTORIAL_ANTI_CONGELAMIENTO]
+    try {
+      if (typeof window === 'undefined') return;
 
-    fetchHistory();
+      const historial = localStorage.getItem('propio_client_recently_viewed');
+      if (historial) {
+        const idsVistos: string[] = JSON.parse(historial);
+        
+        if (Array.isArray(idsVistos) && idsVistos.length > 0) {
+          const deletedStored = localStorage.getItem('propio_admin_deleted_properties');
+          const deletedIds: string[] = deletedStored ? JSON.parse(deletedStored) : [];
+          
+          // Cruzar contra la base de datos centralizada real ALL_REAL_PROPERTIES
+          const filtradas = ALL_REAL_PROPERTIES.filter(p => 
+            idsVistos.includes(p.id) && !deletedIds.includes(p.id)
+          );
+
+          // Purga silenciosa: sobreescribir el store con solo IDs válidos
+          const validIds = filtradas.map(p => p.id);
+          if (validIds.length !== idsVistos.length) {
+            localStorage.setItem('propio_client_recently_viewed', JSON.stringify(validIds));
+          }
+
+          // Mantener el orden original de visualización
+          const ordenadas = [...filtradas].sort((a, b) => idsVistos.indexOf(a.id) - idsVistos.indexOf(b.id));
+          setPropiedadesVistas(ordenadas);
+        }
+      }
+    } catch (error) {
+      console.error("Error al recuperar el historial de navegación:", error);
+    } finally {
+      // SOLUCIÓN AL BUG: El bloque finally se ejecuta obligatoriamente apagando el spinner siempre
+      setCargando(false);
+    }
   }, [router]);
 
+  // [JSX_INTERFAZ_HISTORIAL_CONDICIONAL]
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col font-sans antialiased">
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 sm:px-8 py-10 space-y-10">
-        
-        {/* ── ENCABEZADO ────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-200">
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#04045E]/60">
-              Panel Privado
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#04045E] tracking-tight">
-              Visto Recientemente
-            </h1>
-            <p className="text-sm text-slate-500 font-medium">
-              Hola {userName}, aquí tienes la lista de inmuebles que has visitado recientemente.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <Link
-              href={redirectPath}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
-            >
-              ← Volver al Panel
-            </Link>
-            <Link
-              href="/properties"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm"
-            >
-              🔍 Buscar Más
-            </Link>
-          </div>
+    <div className="w-full min-h-screen flex flex-col bg-[#f4f4fa] p-4 md:p-8 font-sans">
+      {/* Cabecera del Panel */}
+      <div className="flex justify-between items-center w-full border-b border-gray-200 pb-4 shrink-0">
+        <div>
+          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Panel Privado</span>
+          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Visto Recientemente</h1>
+          <p className="text-xs text-slate-400 mt-0.5">Hola {userName}, aquí tienes la lista de inmuebles que has visitado recientemente.</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Link href={redirectPath} className="px-4 py-2 border border-gray-200 bg-white rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all">← Volver al panel</Link>
+          <Link href="/properties" className="px-4 py-2 bg-[#000033] text-white rounded-xl text-xs font-bold shadow-sm hover:bg-[#000044] transition-all">🔍 Buscar más</Link>
+        </div>
+      </div>
 
-        {/* ── CONTENIDO PRINCIPAL ────────────────────────────────────────── */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-[#04045E]" />
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest animate-pulse">Cargando historial...</p>
+      {/* Cuerpo Lógico Adaptativo */}
+      <div className="flex-1 w-full flex flex-col">
+        {cargando ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-32 gap-3">
+            <div className="w-9 h-9 border-4 border-slate-200 border-t-blue-950 rounded-full animate-spin" />
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Cargando historial...</span>
           </div>
-        ) : history.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-3xl p-16 text-center max-w-lg mx-auto shadow-sm space-y-6">
-            <div className="text-5xl">👀</div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-black text-[#04045E] uppercase tracking-tight">No tienes historial de visitas</h3>
-              <p className="text-slate-400 text-xs font-medium leading-relaxed">
-                ¡Explora nuestro catálogo premium de departamentos, casas y oficinas en Bolivia para registrar tus primeras visitas!
-              </p>
-            </div>
-            <div>
-              <Link
-                href="/properties"
-                className="inline-block px-6 py-3 bg-[#04045E] hover:bg-[#04045E]/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
-              >
-                Ver propiedades
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {history.map((property) => (
-              <div key={property.id} className="h-full">
-                <PropertyCard
-                  propertyId={property.id}
-                  title={property.title}
-                  price={property.price}
-                  image={property.imageUrl || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80'}
-                  isVerified={property.isVerified || false}
-                  specs={{
-                    rooms: property.rooms,
-                    bathrooms: property.bathrooms,
-                    area: property.area,
-                  }}
-                  location={property.location}
-                  isFavorite={false}
-                />
-              </div>
+        ) : propiedadesVistas.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6 w-full animate-fadeIn">
+            {propiedadesVistas.map((item) => (
+              <PropertyCard
+                property={item}
+                key={item.id}
+                propertyId={item.id}
+                title={item.title}
+                price={item.price}
+                priceBob={item.priceBob}
+                image={item.imageUrl || item.image || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80'}
+                isVerified={item.isVerified || item.verified || false}
+                specs={{
+                  rooms: item.rooms,
+                  bathrooms: item.bathrooms,
+                  area: item.area,
+                }}
+                location={item.location}
+              />
             ))}
           </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-lg mb-3">👁️</div>
+            <h3 className="text-sm font-bold text-slate-800">Historial vacío</h3>
+            <p className="text-xs text-slate-400 max-w-xs mt-1">Los inmuebles que explores dentro de la plataforma se guardarán automáticamente aquí.</p>
+          </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { en } from './dictionaries/en';
+﻿import { en } from './dictionaries/en';
 import { es } from './dictionaries/es';
 
 type Locale = 'es' | 'en';

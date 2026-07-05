@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * social-simulator/page.tsx

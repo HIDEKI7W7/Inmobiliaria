@@ -4,14 +4,490 @@ generator client {
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
-generator client_root {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                                                                      String                      @id @default(uuid())
+  email                                                                   String                      @unique
+  password                                                                String?
+  name                                                                    String?
+  role                                                                    Role                        @default(PROPIETARIO)
+  authProvider                                                            AuthProvider                @default(LOCAL) @map("auth_provider")
+  providerId                                                              String?                     @map("provider_id")
+  whatsappPhone                                                           String?                     @map("whatsapp_phone")
+  status                                                                  String                      @default("ACTIVE")
+  nickname                                                                String?
+  avatarUrl                                                               String?                     @map("avatar_url")
+  objective                                                               UserObjective?
+  propertyInterest                                                        PropertyInterest?           @map("property_interest")
+  onboardingCompleted                                                     Boolean                     @default(false) @map("onboarding_completed")
+  createdAt                                                               DateTime                    @default(now()) @map("created_at")
+  updatedAt                                                               DateTime                    @updatedAt @map("updated_at")
+  accessRevokedAt DateTime? @map("access_revoked_at")
+  isActive Boolean @default(true) @map("is_active")
+  busquedasGuardadas                                                      BusquedaGuardada[]
+  cierres Cierre[]
+  clients Client[]
+  collaborationRequestsCapturing CollaborationRequest[] @relation("collaboration_requests_capturing_agent_idTousers")
+  collaborationRequestsSelling CollaborationRequest[] @relation("collaboration_requests_selling_agent_idTousers")
+  inquiries                                                               Inquiry[]
+  ownerContracts                                                          Contract[]                  @relation("OwnerContracts")
+  tenantContracts                                                         Contract[]                  @relation("TenantContracts")
+  favoritos                                                               Favorito[]
+  historialVistas                                                         HistorialVista[]
+  leads                                                                   Lead[]                      @relation("LeadAgent")
+  offers                                                                  Offer[]
+  assignedProperties                                                      Property[]                  @relation("PropertyAgent")
+  ownedProperties                                                         Property[]                  @relation("PropertyOwner")
+  propertyAlerts                                                          PropertyAlert[]             @relation("UserAlerts")
+  meetings                                                                Meeting[]
+  userInteractions UserInteraction[]
+  permissionOverrides UserPermissionOverride[]
+
+  @@unique([authProvider, providerId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Property {
+  id                           String                   @id @default(uuid())
+  title                        String
+  description                  String
+  price                        Float
+  minPrice                     Float?                   @map("min_price")
+  currency                     String                   @default("USD")
+  area                         Float                    @default(0.0)
+  rooms                        Int                      @default(0)
+  bathrooms                    Int                      @default(0)
+  latitude                     Float                    @map("latitude")
+  longitude                    Float                    @map("longitude")
+  location                     String
+  address                      String?
+  offerType                    String                   @default("VENTA") @map("offer_type")
+  imageUrl                     String?                  @map("image_url")
+  type                         String                   @default("DEPARTAMENTO")
+  isVerified                   Boolean                  @default(false) @map("is_verified")
+  status                       PropertyStatus           @default(NUEVA_PUBLICACION)
+  approvedAt                   DateTime?                @map("approved_at")
+  observationNotes             String?                  @map("observation_notes")
+  hasFolioReal                 Boolean                  @default(false) @map("has_folio_real")
+  hasCatastro                  Boolean                  @default(false) @map("has_catastro")
+  hasTestimonio                Boolean                  @default(false) @map("has_testimonio")
+  hasImpuestosAlDia            Boolean                  @default(false) @map("has_impuestos_al_dia")
+  hasPlanoUsoSuelo             Boolean                  @default(false) @map("has_plano_uso_suelo")
+  hasCI                        Boolean                  @default(false) @map("has_ci")
+  ownerId                      String?                  @map("owner_id")
+  agentId                      String?                  @map("agent_id")
+  createdAt                    DateTime                 @default(now()) @map("created_at")
+  updatedAt                    DateTime                 @updatedAt @map("updated_at")
+  deletedAt                    DateTime?                @map("deleted_at")
+  plan                         MarketingPlanType        @default(gratis)
+  exchangeRateAtPublication Float? @map("exchange_rate_at_publication")
+  cierres Cierre[]
+  collaborations CollaborationRequest[]
+  inquiries                    Inquiry[]
+  contracts                    Contract[]
+  expenses                     Expense[]
+  favorecidoPor                Favorito[]
+  historialVistas              HistorialVista[]
+  leads                        Lead[]                   @relation("LeadProperty")
+  offers                       Offer[]
+  priceHistory                 PriceHistory[]
+  agent                        User?                    @relation("PropertyAgent", fields: [agentId], references: [id])
+  owner                        User?                    @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  documents PropertyDocument[]
+  meetings                     Meeting[]
+  userInteractions UserInteraction[]
+
+  @@index([price])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([status, latitude, longitude])
+  @@index([status, type])
+  @@index([type])
+  @@map("properties")
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  email           String
+  message         String?
+  currentStage    String   @default("Lead Entrante") @map("current_stage")
+  assignedAgentId String   @map("assigned_agent_id")
+  propertyId      String   @map("property_id")
+  status          String   @default("LEAD_ENTRANTE")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  agent           User     @relation("LeadAgent", fields: [assignedAgentId], references: [id])
+  property        Property @relation("LeadProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([assignedAgentId])
+  @@index([currentStage])
+  @@map("leads")
+}
+
+model PropertyAlert {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  zona         String
+  precioMax    Float     @map("precio_max")
+  tipoInmueble String    @map("tipo_inmueble")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastMatchAt  DateTime? @map("last_match_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("property_alerts")
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  price      Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("price_histories")
+}
+
+model Contract {
+  id            String         @id @default(uuid())
+  propertyId    String         @map("property_id")
+  tenantId      String         @map("tenant_id")
+  ownerId       String         @map("owner_id")
+  startDate     DateTime       @map("start_date")
+  endDate       DateTime       @map("end_date")
+  monthlyAmount Float          @map("monthly_amount")
+  status        ContractStatus @default(VIGENTE)
+  observations  String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  owner         User           @relation("OwnerContracts", fields: [ownerId], references: [id])
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenant        User           @relation("TenantContracts", fields: [tenantId], references: [id])
+  payments      Payment[]
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("contracts")
+}
+
+model Payment {
+  id                  String   @id @default(uuid())
+  contractId          String   @map("contract_id")
+  amount              Float
+  paymentDate         DateTime @map("payment_date")
+  paymentMethod       String   @map("payment_method")
+  reference           String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  category_type       String   @default("PLAN_MKT_BASICO")
+  destinationAccount String @default("Banco Bisa - Cta 11234") @map("destination_account")
+  issuerName String @default("Propietario") @map("issuer_name")
+  issuer_type         String   @default("PROPIETARIO")
+  notes               String?
+  receiptUrl String? @map("receipt_url")
+  status              String   @default("PENDIENTE")
+  contract            Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("payments")
+}
+
+model Expense {
+  id          String    @id @default(uuid())
+  concept     String
+  amount      Float
+  date        DateTime
+  propertyId  String?   @map("property_id")
+  category    String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  notes       String?
+  receiptUrl String? @default("#") @map("receipt_url")
+  requester   String?
+  status      String    @default("PENDIENTE")
+  vinculacion String?
+  property    Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("expenses")
+}
+
+model Favorito {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("favoritos")
+}
+
+model BusquedaGuardada {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  query     String
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("busquedas_guardadas")
+}
+
+model HistorialVista {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  vistoEn    DateTime @default(now()) @map("visto_en")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("historial_vistas")
+}
+
+model Offer {
+  id         String      @id @default(uuid())
+  userId     String      @map("user_id")
+  propertyId String      @map("property_id")
+  amount     Float
+  status     OfferStatus @default(PENDING)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ofertas")
+}
+
+model Inquiry {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  message    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("consultas")
+}
+
+model Meeting {
+  id           String        @id @default(uuid())
+  userId       String?       @map("user_id")
+  propertyId   String        @map("property_id")
+  scheduledAt  DateTime      @map("scheduled_at")
+  status       MeetingStatus @default(SCHEDULED)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  agentId String? @map("agent_id")
+  clientEmail String? @map("client_email")
+  clientName String? @map("client_name")
+  clientPhone String? @map("client_phone")
+  notes        String?
+  type         String?       @default("visita")
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reuniones")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  text       String
+  createdAt DateTime @default(now()) @map("created_at")
+@@map("activity_logs")
+}
+
+model Announcement {
+  id         String   @id @default(uuid())
+  title      String   @default("ESQUEMA DE COMISIONES 2026")
+  subtitle   String   @default("MENSAJE MANDATORIO PARA ASESORES")
+  content    String
+  isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+@@map("announcements")
+}
+
+model Cierre {
+  id                    String   @id @default(uuid())
+  propiedadId String @map("propiedad_id")
+  agenteId String @map("agente_id")
+  clientId String @map("client_id")
+  ownerId String @map("owner_id")
+  tipoTransaccion String @map("tipo_transaccion")
+  finalAmount Float @map("final_amount")
+  calculatedCommission Float @map("calculated_commission")
+  pdfAdjuntos Json @default("[]") @map("pdf_adjuntos")
+  pdfEstado String? @map("pdf_estado")
+  fechaCierre DateTime @default(now()) @map("fecha_cierre")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agent User @relation(fields: [agenteId], references: [id])
+  client Client @relation(fields: [clientId], references: [id])
+  property Property @relation(fields: [propiedadId], references: [id])
+
+  @@index([agenteId])
+  @@index([clientId])
+  @@index([propiedadId])
+@@map("cierres")
+}
+
+model Client {
+  id                String    @id @default(uuid())
+  name              String
+  email             String
+  phone             String
+  category          String
+  operationType     String
+  propertyType      String
+  zone              String
+  budget            String
+  status            String
+  next_follow_up    DateTime?
+  priority          String
+  notes             String?
+  assignedAgentId String @map("assigned_agent_id")
+  source            String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cierres Cierre[]
+  agent User @relation(fields: [assignedAgentId], references: [id], onDelete: Cascade)
+
+  @@index([assignedAgentId])
+  @@index([category])
+  @@index([priority])
+  @@index([status])
+@@map("clients")
+}
+
+model CollaborationRequest {
+  id                                                     String              @id @default(uuid())
+  propertyId String @map("property_id")
+  sellingAgentId String @map("selling_agent_id")
+  capturingAgentId String @map("capturing_agent_id")
+  status                                                 CollaborationStatus @default(PENDIENTE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  capturingAgent User @relation("collaboration_requests_capturing_agent_idTousers", fields: [capturingAgentId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  sellingAgent User @relation("collaboration_requests_selling_agent_idTousers", fields: [sellingAgentId], references: [id], onDelete: Cascade)
+@@map("collaboration_requests")
+}
+
+model ExchangeRateHistory {
+  id         String   @id @default(uuid())
+  rateBuy Float @map("rate_buy")
+  rateSell Float @map("rate_sell")
+  source     String   @default("BCB")
+  createdAt DateTime @default(now()) @map("created_at")
+@@map("exchange_rate_histories")
+}
+
+model ExchangeRate {
+  id         String   @id @default(uuid())
+  key        String   @unique @default("USD_BOB")
+  rateBuy Float @default(6.86) @map("rate_buy")
+  rateSell Float @default(6.96) @map("rate_sell")
+  updatedAt DateTime @updatedAt @map("updated_at")
+@@map("exchange_rates")
+}
+
+model MarketingPlan {
+  id            String   @id @default(uuid())
+  name          String
+  price         String
+  billingCycle String @map("billing_cycle")
+  badgeText String? @map("badge_text")
+  themeType String @default("gray") @map("theme_type")
+  features      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+@@map("marketing_plans")
+}
+
+model PropertyDocument {
+  id           String   @id @default(uuid())
+  propertyId String @map("property_id")
+  fileName String @map("file_name")
+  fileUrl String @map("file_url")
+  fileType String @map("file_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  observations String?
+  status       String   @default("PENDING")
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+@@map("property_documents")
+}
+
+model RolePermission {
+  id             String         @id @default(uuid())
+  role           Role
+  moduleId String @map("module_id")
+  allowed        Boolean        @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  module SystemModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([role, moduleId])
+@@map("role_permissions")
+}
+
+model SystemModule {
+  id                        String                      @id @default(uuid())
+  name                      String                      @unique
+  displayName String @map("display_name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+  userPermissionOverrides UserPermissionOverride[]
+@@map("system_modules")
+}
+
+model UserInteraction {
+  id               String   @id @default(uuid())
+  userId String @map("user_id")
+  propertyId String @map("property_id")
+  interactionType String @default("LIKE") @map("interaction_type")
+  category         String
+  zone             String
+  timestamp        DateTime @default(now())
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId])
+@@map("user_interactions")
+}
+
+model UserPermissionOverride {
+  id             String         @id @default(uuid())
+  userId String @map("user_id")
+  moduleId String @map("module_id")
+  allowed        Boolean        @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  module SystemModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+@@map("user_permission_overrides")
 }
 
 enum Role {
@@ -54,232 +530,6 @@ enum ContractStatus {
   RESCINDIDO
 }
 
-model User {
-  id                 String          @id @default(uuid())
-  email              String          @unique
-  password           String?
-  name               String?
-  role               Role            @default(PROPIETARIO)
-  authProvider       AuthProvider     @default(LOCAL) @map("auth_provider")
-  providerId         String?         @map("provider_id")
-  whatsappPhone      String?         @map("whatsapp_phone")
-  status             String          @default("ACTIVE")
-  nickname           String?
-  avatarUrl          String?         @map("avatar_url")
-  objective          UserObjective?
-  propertyInterest   PropertyInterest? @map("property_interest")
-  onboardingCompleted Boolean        @default(false) @map("onboarding_completed")
-  ownedProperties    Property[]      @relation("PropertyOwner")
-  assignedProperties Property[]      @relation("PropertyAgent")
-  leads              Lead[]          @relation("LeadAgent")
-  propertyAlerts     PropertyAlert[] @relation("UserAlerts")
-  tenantContracts    Contract[]      @relation("TenantContracts")
-  ownerContracts     Contract[]      @relation("OwnerContracts")
-  favoritos          Favorito[]
-  busquedasGuardadas BusquedaGuardada[]
-  historialVistas    HistorialVista[]
-  offers             Offer[]
-  inquiries          Inquiry[]
-  meetings           Meeting[]
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
-
-  @@index([email])
-  @@index([role])
-  @@unique([authProvider, providerId])
-  @@map("users")
-}
-
-model Property {
-  id                String         @id @default(uuid())
-  title             String
-  description       String         @db.Text
-  price             Float
-  minPrice          Float?         @map("min_price")
-  currency          String         @default("USD")
-  area              Float          @default(0.0)
-  rooms             Int            @default(0)
-  bathrooms         Int            @default(0)
-  latitude          Float          @map("latitude")
-  longitude         Float          @map("longitude")
-  location          String
-  address           String?
-  offerType         String         @default("VENTA") @map("offer_type")
-  imageUrl          String?        @map("image_url")
-  type              String         @default("DEPARTAMENTO")
-  isVerified        Boolean        @default(false) @map("is_verified")
-  status            PropertyStatus @default(NUEVA_PUBLICACION)
-  approvedAt        DateTime?      @map("approved_at")
-  observationNotes  String?        @map("observation_notes") @db.Text
-  hasFolioReal      Boolean        @default(false) @map("has_folio_real")
-  hasCatastro       Boolean        @default(false) @map("has_catastro")
-  hasTestimonio     Boolean        @default(false) @map("has_testimonio")
-  hasImpuestosAlDia Boolean        @default(false) @map("has_impuestos_al_dia")
-  hasPlanoUsoSuelo  Boolean        @default(false) @map("has_plano_uso_suelo")
-  hasCI             Boolean        @default(false) @map("has_ci")
-  ownerId           String?        @map("owner_id")
-  owner             User?          @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  agentId           String?        @map("agent_id")
-  agent             User?          @relation("PropertyAgent", fields: [agentId], references: [id], onDelete: SetNull)
-  leads             Lead[]         @relation("LeadProperty")
-  priceHistory      PriceHistory[]
-  contracts         Contract[]
-  expenses          Expense[]
-  favorecidoPor     Favorito[]
-  historialVistas    HistorialVista[]
-  offers            Offer[]
-  inquiries         Inquiry[]
-  meetings          Meeting[]
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
-  deletedAt         DateTime?      @map("deleted_at")
-
-  @@index([price])
-  @@index([status])
-  @@index([latitude, longitude])
-  @@index([status, latitude, longitude])
-  @@map("properties")
-}
-
-model Lead {
-  id              String   @id @default(uuid())
-  name            String
-  phone           String
-  email           String
-  message         String?  @db.Text
-  currentStage    String   @default("Lead Entrante") @map("current_stage")
-  assignedAgentId String   @map("assigned_agent_id")
-  agent           User     @relation("LeadAgent", fields: [assignedAgentId], references: [id], onDelete: Restrict)
-  propertyId      String   @map("property_id")
-  property        Property @relation("LeadProperty", fields: [propertyId], references: [id], onDelete: Cascade)
-  status          String   @default("LEAD_ENTRANTE")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@index([assignedAgentId])
-  @@index([currentStage])
-  @@map("leads")
-}
-
-model PropertyAlert {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  user         User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
-  zona         String
-  precioMax    Float     @map("precio_max")
-  tipoInmueble String    @map("tipo_inmueble")
-  isActive     Boolean   @default(true) @map("is_active")
-  lastMatchAt  DateTime? @map("last_match_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([isActive])
-  @@map("property_alerts")
-}
-
-model PriceHistory {
-  id         String   @id @default(uuid())
-  propertyId String   @map("property_id")
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  price      Float
-  recordedAt DateTime @default(now()) @map("recorded_at")
-
-  @@index([propertyId])
-  @@map("price_histories")
-}
-
-model Contract {
-  id            String         @id @default(uuid())
-  propertyId    String         @map("property_id")
-  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenantId      String         @map("tenant_id")
-  tenant        User           @relation("TenantContracts", fields: [tenantId], references: [id], onDelete: Restrict)
-  ownerId       String         @map("owner_id")
-  owner         User           @relation("OwnerContracts", fields: [ownerId], references: [id], onDelete: Restrict)
-  startDate     DateTime       @map("start_date")
-  endDate       DateTime       @map("end_date")
-  monthlyAmount Float          @map("monthly_amount")
-  status        ContractStatus @default(VIGENTE)
-  observations  String?        @db.Text
-  payments      Payment[]
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-
-  @@index([propertyId])
-  @@index([tenantId])
-  @@index([ownerId])
-  @@index([status])
-  @@map("contracts")
-}
-
-model Payment {
-  id            String   @id @default(uuid())
-  contractId    String   @map("contract_id")
-  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  amount        Float
-  paymentDate   DateTime @map("payment_date")
-  paymentMethod String   @map("payment_method")
-  reference     String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([contractId])
-  @@map("payments")
-}
-
-model Expense {
-  id         String    @id @default(uuid())
-  concept    String
-  amount     Float
-  date       DateTime
-  propertyId String?   @map("property_id")
-  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  category   String
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-
-  @@index([propertyId])
-  @@map("expenses")
-}
-
-model Favorito {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  propertyId  String   @map("property_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, propertyId])
-  @@map("favoritos")
-}
-
-model BusquedaGuardada {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  query     String   // Filtros serializados en formato string o JSON
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("busquedas_guardadas")
-}
-
-model HistorialVista {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  propertyId String   @map("property_id")
-  vistoEn     DateTime @default(now()) @map("visto_en")
-
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, propertyId])
-  @@map("historial_vistas")
-}
-
 enum OfferStatus {
   PENDING
   ACCEPTED
@@ -292,47 +542,15 @@ enum MeetingStatus {
   CANCELLED
 }
 
-model Offer {
-  id         String      @id @default(uuid())
-  userId     String      @map("user_id")
-  propertyId String      @map("property_id")
-  amount     Float
-  status     OfferStatus @default(PENDING)
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property   Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("ofertas")
+enum CollaborationStatus {
+  PENDIENTE
+  ACEPTADO
+  RECHAZADO
 }
 
-model Inquiry {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  propertyId String   @map("property_id")
-  message    String   @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("consultas")
+enum MarketingPlanType {
+  gratis
+  contenidos
+  venta_pro
+  cierre_garantizado
 }
-
-model Meeting {
-  id          String        @id @default(uuid())
-  userId      String        @map("user_id")
-  propertyId  String        @map("property_id")
-  scheduledAt DateTime      @map("scheduled_at")
-  status      MeetingStatus @default(SCHEDULED)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@map("reuniones")
-}
-
-

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 
@@ -78,7 +78,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
           {/* Subtítulo Descriptivo */}
           <p className="text-sm sm:text-base md:text-lg text-slate-200 max-w-2xl mx-auto leading-relaxed font-sans font-medium">
-            Conexión directa con propietarios, datos validados por el Sello Oro y precios reales sin cargos ocultos ni intermediación abusiva.
+            Conexión directa con propietarios, datos validados por la Documentación Verificada y precios reales sin cargos ocultos ni intermediación abusiva.
           </p>
         </div>
       </section>
@@ -207,12 +207,12 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   }`}
                 >
                   <span className="text-sm">🏆</span>
-                  <span>Solo Sello Oro Verificadas</span>
+                  <span>Documentación Verificada</span>
                 </button>
               </div>
 
-              {/* Toggle de Moneda (USD / BOB) */}
-              <div className="lg:col-span-2 space-y-2">
+              {/* Toggle de Moneda (USD / BOB) - Ocultado para forzar BOB */}
+              <div className="lg:col-span-2 space-y-2 hidden">
                 <label className="block text-[11px] font-sans font-black text-propio-blue/70 uppercase tracking-wider text-center lg:text-left">
                   💱 Moneda
                 </label>

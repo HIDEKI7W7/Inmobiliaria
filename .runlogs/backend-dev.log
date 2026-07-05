@@ -1,0 +1,69 @@
+
+> propio-backend@1.0.0 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m3:56:19 p. m.[0m] Starting compilation in watch mode...
+
+[[90m3:56:21 p. m.[0m] Found 0 errors. Watching for file changes.
+
+(node:19940) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12
+  throw new Error('JWT_SECRET no está definido. El backend no puede iniciar de forma segura.');
+  ^
+
+Error: JWT_SECRET no está definido. El backend no puede iniciar de forma segura.
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12:9)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1576:12)
+    at require (node:internal/modules/helpers:153:16)
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\app.module.ts:3:1)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+
+Node.js v24.15.0
+[2J[3J[H[[90m4:11:10 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:11:18 p. m.[0m] Found 0 errors. Watching for file changes.
+
+C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12
+  throw new Error('JWT_SECRET no está definido. El backend no puede iniciar de forma segura.');
+  ^
+
+Error: JWT_SECRET no está definido. El backend no puede iniciar de forma segura.
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12:9)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1576:12)
+    at require (node:internal/modules/helpers:153:16)
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\app.module.ts:3:1)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+
+Node.js v24.15.0
+[2J[3J[H[[90m4:14:38 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:14:39 p. m.[0m] Found 0 errors. Watching for file changes.
+
+C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12
+  throw new Error('JWT_SECRET no está definido. El backend no puede iniciar de forma segura.');
+  ^
+
+Error: JWT_SECRET no está definido. El backend no puede iniciar de forma segura.
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\modules\auth\auth.module.ts:12:9)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1576:12)
+    at require (node:internal/modules/helpers:153:16)
+    at Object.<anonymous> (C:\Users\PC\Desktop\Inmobiliaria\backend\src\app.module.ts:3:1)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+
+Node.js v24.15.0

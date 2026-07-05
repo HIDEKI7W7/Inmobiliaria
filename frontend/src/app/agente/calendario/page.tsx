@@ -1,6 +1,8 @@
-'use client';
+﻿'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiClient } from '@/services/api.client';
+import { getToken, getCurrentUser } from '@/utils/session';
 
 interface Appointment {
   id: string;
@@ -13,58 +15,7 @@ interface Appointment {
   phone?: string;
 }
 
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: '1',
-    clientName: 'María Quispe',
-    propertyTitle: 'Casa en Cala Cala',
-    time: '10:00',
-    dateStr: '2026-06-19',
-    type: 'visita',
-    notes: 'Cliente muy interesado, viene con su esposo.',
-    phone: '+59177223344'
-  },
-  {
-    id: '2',
-    clientName: 'Carlos Rodríguez',
-    propertyTitle: 'Penthouse en Queru Queru',
-    time: '15:30',
-    dateStr: '2026-06-19',
-    type: 'visita',
-    notes: 'Revisar papeles de hipoteca antes de ir.',
-    phone: '+59178899001'
-  },
-  {
-    id: '3',
-    clientName: 'Sofía Blanco',
-    propertyTitle: 'Departamento en El Prado',
-    time: '11:00',
-    dateStr: '2026-06-22',
-    type: 'reunion',
-    notes: 'Reunión de negociación para el precio final.',
-    phone: '+59171234567'
-  },
-  {
-    id: '4',
-    clientName: 'Jorge Claure',
-    propertyTitle: 'Terreno en Sacaba',
-    time: '09:00',
-    dateStr: '2026-06-25',
-    type: 'firma',
-    notes: 'Firma de minuta de transferencia en Notaría de Fe Pública.',
-    phone: '+59160011223'
-  },
-  {
-    id: '5',
-    clientName: 'Ana Mendoza',
-    propertyTitle: 'Oficina Central Torre Azul',
-    time: '16:00',
-    dateStr: '2026-06-25',
-    type: 'reunion',
-    notes: 'Presentación de propuestas comerciales de alquiler.',
-    phone: '+59170543210'
-  }
-];
+const INITIAL_APPOINTMENTS: Appointment[] = [];
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -77,6 +28,8 @@ export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 18)); // Junio 18, 2026
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 5, 19)); // Seleccionar por defecto mañana 19
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
+  const [agentProperties, setAgentProperties] = useState<any[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
   
   // Form modal state
   const [showModal, setShowModal] = useState(false);
@@ -86,6 +39,58 @@ export default function CalendarioPage() {
   const [newType, setNewType] = useState<'visita' | 'reunion' | 'firma' | 'otro'>('visita');
   const [newNotes, setNewNotes] = useState('');
   const [newPhone, setNewPhone] = useState('');
+
+  useEffect(() => {
+    const token = getToken();
+    const currentUser = getCurrentUser();
+    if (!token) return;
+
+    const fetchMeetings = async () => {
+      try {
+        const res = await apiClient.getWithAuth<any>('/appointments', token);
+        const meetingsList = res.meetings || res || [];
+        const mappedApps = meetingsList.map((meeting: any) => {
+          const dateObj = new Date(meeting.scheduledAt);
+          const y = dateObj.getFullYear();
+          const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const d = String(dateObj.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${d}`;
+          const time = dateObj.toTimeString().substring(0, 5);
+
+          return {
+            id: meeting.id,
+            clientName: meeting.clientName || meeting.user?.name || 'Cliente Invitado',
+            propertyTitle: meeting.property?.title || 'Propiedad sin título',
+            time,
+            dateStr,
+            type: meeting.type || 'visita',
+            notes: meeting.notes || '',
+            phone: meeting.clientPhone || '',
+          };
+        });
+        setAppointments(mappedApps);
+      } catch (err) {
+        console.error('Error fetching meetings:', err);
+      }
+    };
+
+    const fetchProperties = async () => {
+      try {
+        let url = '/properties';
+        if (currentUser && currentUser.userId) {
+          url += `?agentId=${currentUser.userId}`;
+        }
+        const propsData = await apiClient.get<any>(url);
+        const propsList = propsData.data || propsData || [];
+        setAgentProperties(propsList);
+      } catch (err) {
+        console.error('Error fetching properties:', err);
+      }
+    };
+
+    fetchMeetings();
+    fetchProperties();
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -132,26 +137,51 @@ export default function CalendarioPage() {
 
   const selectedAppointments = selectedDate ? getAppointmentsForDate(selectedDate) : [];
 
-  const handleAddAppointment = (e: React.FormEvent) => {
+  const handleAddAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newClientName || !newPropertyTitle || !selectedDate) return;
+    if (!newClientName || !selectedPropertyId || !selectedDate) return;
 
-    const newApp: Appointment = {
-      id: Date.now().toString(),
-      clientName: newClientName,
-      propertyTitle: newPropertyTitle,
-      time: newTime,
-      dateStr: formatDateStr(selectedDate),
-      type: newType,
-      notes: newNotes,
-      phone: newPhone || '+59170000000'
-    };
+    const token = getToken();
+    if (!token) return;
 
-    setAppointments(prev => [...prev, newApp]);
+    const scheduledAt = `${formatDateStr(selectedDate)}T${newTime}:00`;
+
+    try {
+      const res = await apiClient.postWithAuth<any>(
+        '/appointments',
+        {
+          propertyId: selectedPropertyId,
+          scheduledAt,
+          clientName: newClientName,
+          clientPhone: newPhone,
+          notes: newNotes,
+          type: newType,
+        },
+        token
+      );
+
+      if (res && res.meeting) {
+        const meeting = res.meeting;
+        const newApp: Appointment = {
+          id: meeting.id,
+          clientName: meeting.clientName || newClientName,
+          propertyTitle: newPropertyTitle,
+          time: newTime,
+          dateStr: formatDateStr(selectedDate),
+          type: newType,
+          notes: newNotes,
+          phone: newPhone || '+59170000000',
+        };
+        setAppointments(prev => [...prev, newApp]);
+      }
+    } catch (err) {
+      console.error('Error adding appointment:', err);
+    }
     
     // Reset form
     setNewClientName('');
     setNewPropertyTitle('');
+    setSelectedPropertyId('');
     setNewTime('12:00');
     setNewType('visita');
     setNewNotes('');
@@ -449,14 +479,21 @@ export default function CalendarioPage() {
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Propiedad asociada *</label>
-                <input 
-                  type="text"
+                <select
                   required
-                  placeholder="Ej. Casa en Cala Cala"
-                  value={newPropertyTitle}
-                  onChange={e => setNewPropertyTitle(e.target.value)}
+                  value={selectedPropertyId}
+                  onChange={e => {
+                    setSelectedPropertyId(e.target.value);
+                    const prop = agentProperties.find(p => p.id === e.target.value);
+                    if (prop) setNewPropertyTitle(prop.title);
+                  }}
                   className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs text-slate-700 font-semibold focus:outline-none focus:border-[#04045E]"
-                />
+                >
+                  <option value="">Seleccione una propiedad...</option>
+                  {agentProperties.map(prop => (
+                    <option key={prop.id} value={prop.id}>{prop.title}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

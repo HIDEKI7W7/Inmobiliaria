@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getCurrentUser, getToken, getRedirectPathByRole } from '@/utils/session';
 import { PropertyCard } from '@/components/modules/properties/PropertyCard';
 import { useFavorites } from '@/context/FavoritesContext';
+import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
 
 interface BackendProperty {
   id: string;
@@ -38,6 +39,23 @@ export default function FavoritosDashboardPage() {
     setUserName((user as any).name || user.email?.split('@')[0] || 'Usuario');
     setRedirectPath(getRedirectPathByRole(user.role));
   }, [router]);
+
+  // ── Purga silenciosa de IDs huérfanos en localStorage ──
+  // Ejecuta una sola vez al montar: elimina cualquier ID de favorito que ya
+  // no exista en ALL_REAL_PROPERTIES y sobreescribe el store limpio.
+  useEffect(() => {
+    try {
+      const FAV_KEY = 'propio_client_favorites';
+      const raw = localStorage.getItem(FAV_KEY);
+      if (raw) {
+        const ids: string[] = JSON.parse(raw);
+        const validIds = ids.filter(id => ALL_REAL_PROPERTIES.some(p => String(p.id) === id));
+        if (validIds.length !== ids.length) {
+          localStorage.setItem(FAV_KEY, JSON.stringify(validIds));
+        }
+      }
+    } catch (_) {}
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col font-sans antialiased">
@@ -99,24 +117,34 @@ export default function FavoritosDashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((prop) => (
-              <div key={prop.id} className="h-full">
-                <PropertyCard
-                  propertyId={prop.id}
-                  title={prop.title}
-                  price={prop.price}
-                  image={prop.imageUrl || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80'}
-                  isVerified={prop.verified || prop.isVerified}
-                  specs={{
-                    rooms: prop.rooms,
-                    bathrooms: prop.bathrooms,
-                    area: prop.area,
-                  }}
-                  location={prop.location}
-                  isFavorite={true}
-                />
-              </div>
-            ))}
+            {favorites
+              .filter((fav) => {
+                const deletedStored = typeof window !== 'undefined' ? localStorage.getItem('propio_admin_deleted_properties') : null;
+                const deletedIds: string[] = deletedStored ? JSON.parse(deletedStored) : [];
+                return ALL_REAL_PROPERTIES.some(p => String(p.id) === String(fav.id)) && !deletedIds.includes(fav.id);
+              })
+              .map((fav) => {
+                const prop = ALL_REAL_PROPERTIES.find(p => String(p.id) === String(fav.id)) || fav;
+              return (
+                <div key={prop.id} className="h-full">
+                  <PropertyCard
+                    property={prop}
+                    propertyId={prop.id}
+                    title={prop.title}
+                    price={prop.price}
+                    image={prop.imageUrl || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80'}
+                    isVerified={prop.verified || (prop as any).isVerified}
+                    specs={{
+                      rooms: prop.rooms,
+                      bathrooms: prop.bathrooms,
+                      area: prop.area,
+                    }}
+                    location={prop.location}
+                    isFavorite={true}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
 

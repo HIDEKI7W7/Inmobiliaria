@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     // Sobreescribe el layout raíz: sin Navbar ni Footer globales
-    <div className="min-h-screen w-full bg-[#F8FAFC]">
+    <div className="h-screen w-screen bg-[#fbf9f9] overflow-hidden">
       {children}
     </div>
   );

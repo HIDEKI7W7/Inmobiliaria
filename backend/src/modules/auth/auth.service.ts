@@ -119,6 +119,24 @@ export class AuthService {
               });
               this.logger.log(`Usuario demo ${normalizedEmail} creado en base de datos real.`);
             }
+
+            if (mockUser.id === 'owner-1') {
+              const propertyCount = await this.prisma.property.count({
+                where: { ownerId: 'owner-1', deletedAt: null }
+              });
+              if (propertyCount === 0) {
+                const firstProp = await this.prisma.property.findFirst({
+                  where: { deletedAt: null }
+                });
+                if (firstProp) {
+                  await this.prisma.property.update({
+                    where: { id: firstProp.id },
+                    data: { ownerId: 'owner-1' }
+                  });
+                  this.logger.log(`Asignada propiedad ${firstProp.id} al propietario demo owner-1.`);
+                }
+              }
+            }
           } catch (e) {
             this.logger.warn(`No se pudo asegurar la existencia del usuario demo en DB: ${e.message}`);
           }

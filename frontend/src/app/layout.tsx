@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Plus_Jakarta_Sans, Outfit } from 'next/font/google';
 import { Navbar } from '../components/ui/Navbar';
 import { Footer } from '../components/ui/Footer';
@@ -34,10 +35,20 @@ export default function RootLayout({
   try {
     return (
       <html lang="es" className={`${plusJakartaSans.variable} ${outfit.variable}`}>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: `
+            try {
+              localStorage.clear();
+              sessionStorage.clear();
+            } catch (e) {}
+          ` }} />
+        </head>
         <body className="font-sans antialiased min-h-screen flex flex-col bg-slate-50 relative">
           <HttpInterceptor />
           <FavoritesProvider>
-            <Navbar />
+            <Suspense fallback={<div className="h-16 bg-[#000033]" />}>
+              <Navbar />
+            </Suspense>
             <main className="flex-grow flex flex-col">
               {children}
             </main>

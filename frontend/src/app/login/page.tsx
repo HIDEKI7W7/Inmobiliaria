@@ -36,14 +36,19 @@ export default function LoginPage() {
   const [whatsappError, setWhatsappError] = useState('');
 
   // Redirigir si la sesión ya está activa
+  // El getToken() ya incluye fallback desde cookie (anti-F5)
   useEffect(() => {
-    if (isAuthenticated()) {
-      const stored = localStorage.getItem('propio_token');
-      if (stored) {
-        const payload = decodeToken(stored);
-        if (payload) {
-          router.replace(getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted));
-        }
+    const token = typeof window !== 'undefined'
+      ? (localStorage.getItem('propio_token') ||
+         document.cookie.split('; ').find(r => r.startsWith('propio_token='))?.split('=').slice(1).join('=') ||
+         null)
+      : null;
+    if (token) {
+      const payload = decodeToken(token);
+      if (payload && payload.exp && payload.exp > Math.floor(Date.now() / 1000)) {
+        // Rehidratar localStorage si solo estaba en cookie
+        try { localStorage.setItem('propio_token', token); } catch (_e) {}
+        router.replace(getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted));
       }
     }
   }, [router]);
@@ -183,7 +188,101 @@ export default function LoginPage() {
           }, 1500);
         }
       } else {
-        // ─── FLUJO DE LOGIN ESTÁNDAR ───
+        // ─── LOGIN LOCAL AGENTS & STANDARD FLOW ───
+        let localUsers: any[] = [];
+        if (typeof window !== 'undefined') {
+          // 1. Stored admin agents
+          const storedAgents = localStorage.getItem('propio_admin_agents');
+          if (storedAgents) {
+            try {
+              const parsedAgents = JSON.parse(storedAgents);
+              if (Array.isArray(parsedAgents)) {
+                localUsers = [...localUsers, ...parsedAgents.map((a: any) => ({
+                  id: a.id,
+                  name: a.name,
+                  email: a.email,
+                  username: a.username || a.email,
+                  password: a.password,
+                  role: 'AGENTE',
+                  phone: a.phone || '',
+                }))];
+              }
+            } catch (e) {
+              console.error('Error parsing local agents in login', e);
+            }
+          }
+
+          // 2. Stored propio_users_db (unified credentials database)
+          const storedDb = localStorage.getItem('propio_users_db');
+          if (storedDb) {
+            try {
+              const parsedDb = JSON.parse(storedDb);
+              if (Array.isArray(parsedDb)) {
+                localUsers = [...localUsers, ...parsedDb.map((u: any) => ({
+                  id: u.id,
+                  name: u.name,
+                  email: u.email,
+                  username: u.username || u.email,
+                  password: u.password,
+                  role: u.role === 'agent' ? 'AGENTE' : u.role === 'admin' ? 'ADMIN' : (u.role || 'PROPIETARIO').toUpperCase(),
+                  phone: u.profile?.telefono || u.phone || '',
+                }))];
+              }
+            } catch (e) {
+              console.error('Error parsing propio_users_db in login', e);
+            }
+          }
+        }
+
+        const emailNormalizado = email.trim().toLowerCase();
+        const matchedUser = localUsers.find(
+          (u) => u.email?.toLowerCase() === emailNormalizado || u.username?.toLowerCase() === emailNormalizado
+        );
+
+        if (matchedUser) {
+          if (matchedUser.password !== password) {
+            setError(t('Credenciales invalidas'));
+            setIsLoading(false);
+            return;
+          }
+
+          const header = window.btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+          const payloadObj = {
+            userId: matchedUser.id,
+            email: matchedUser.email,
+            name: matchedUser.name,
+            whatsappPhone: matchedUser.phone,
+            role: matchedUser.role,
+            onboardingCompleted: true,
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
+          };
+          const payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(payloadObj))));
+          const mockToken = `${header}.${payload}.signature`;
+
+          saveToken(mockToken);
+          setIsLoading(false);
+          setSuccessMsg(`${t("¡Bienvenido, Asesor")} ${matchedUser.name}!`);
+
+          const redirectPath = matchedUser.role === 'ADMIN' ? '/admin/dashboard' : '/agente/dashboard';
+
+          setTimeout(() => {
+            try {
+              router.push(redirectPath);
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
+                  window.location.href = redirectPath;
+                }
+              }, 150);
+            } catch (e) {
+              if (typeof window !== 'undefined') {
+                window.location.href = redirectPath;
+              }
+            }
+          }, 1200);
+          return;
+        }
+
+        // Standard backend authentication fallback
         const loginRes = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -193,13 +292,13 @@ export default function LoginPage() {
         const loginData = await loginRes.json();
 
         if (!loginRes.ok) {
-          throw new Error(loginData?.message || t('Credenciales inválidas. Verifica tu correo y contraseña.'));
+          throw new Error(loginData?.message || t('Credenciales invalidas'));
         }
 
         const authResponse: AuthResponse = loginData;
         if (authResponse.backendToken) {
           saveToken(authResponse.backendToken);
-          setIsLoading(false); // Liberar el estado de carga inmediatamente
+          setIsLoading(false);
           const payload = decodeToken(authResponse.backendToken);
           
           const searchParams = new URLSearchParams(window.location.search);
@@ -209,7 +308,9 @@ export default function LoginPage() {
             ? getRedirectPathByRole(payload.role || 'PROPIETARIO', payload.objective || null, payload.onboardingCompleted ?? false)
             : getRedirectPathByRole(authResponse?.user?.role || 'PROPIETARIO');
 
-          if (payload && !payload.onboardingCompleted && payload.role?.toUpperCase() !== 'ADMIN' && payload.role?.toUpperCase() !== 'AGENTE') {
+          if (payload?.role?.toUpperCase() === 'ADMIN' || authResponse?.user?.role?.toUpperCase() === 'ADMIN') {
+            redirectPath = '/admin/dashboard';
+          } else if (payload && !payload.onboardingCompleted && payload.role?.toUpperCase() !== 'ADMIN' && payload.role?.toUpperCase() !== 'AGENTE') {
             redirectPath = '/onboarding';
           } else if (customRedirect && customRedirect.startsWith('/')) {
             redirectPath = customRedirect;
@@ -238,6 +339,71 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * handleQuickLogin — acceso rápido de prueba con un solo clic.
+   *
+   * FLUJO en 2 fases:
+   *  Fase 1 (inmediata): Setear los estados controlados del formulario para que
+   *    el usuario vea los campos rellenarse visualmente y desaparezcan los errores.
+   *  Fase 2 (tras 350ms): Construir el token mock, persistirlo en localStorage + cookie
+   *    y navegar al panel del rol seleccionado.
+   */
+  const handleQuickLogin = (demoEmail: string, demoPass: string, demoRole: string, demoLabel: string) => {
+    if (isLoading) return;
+
+    // ── FASE 1: Autocompletar visualmente los inputs del formulario ──
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setEmailError('');
+    setPasswordError('');
+    setNameError('');
+    setWhatsappError('');
+    setError(null);
+    setSuccessMsg(`Cargando panel ${demoLabel}...`);
+    setIsLoading(true);
+
+    // ── FASE 2 (350ms después): Generar token, persistir y redirigir ──
+    setTimeout(() => {
+      try {
+        const roleUpper = demoRole.toUpperCase();
+        const header = window.btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+        const payloadObj = {
+          userId: `demo-${roleUpper.toLowerCase()}-001`,
+          email: demoEmail,
+          name: demoLabel,
+          whatsappPhone: '',
+          role: roleUpper,
+          onboardingCompleted: true,
+          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 días
+        };
+        const payloadEncoded = window.btoa(unescape(encodeURIComponent(JSON.stringify(payloadObj))));
+        const mockToken = `${header}.${payloadEncoded}.demo_signature_local`;
+
+        // saveToken escribe en localStorage Y en la cookie (persistencia anti-F5)
+        saveToken(mockToken);
+
+        const redirectPath: Record<string, string> = {
+          ADMIN: '/admin',
+          AGENTE: '/agente/kanban',
+          PROPIETARIO: '/propietario/dashboard',
+          CLIENTE: '/cliente',
+        };
+        const target = redirectPath[roleUpper] || '/';
+
+        router.push(target);
+        // Fallback hard-navigation si el router de Next.js se demora
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location.pathname !== target) {
+            window.location.href = target;
+          }
+        }, 400);
+      } catch (err: any) {
+        setError('Error al iniciar sesión de prueba: ' + (err?.message || String(err)));
+        setIsLoading(false);
+      }
+    }, 350);
   };
 
   return (
@@ -471,22 +637,16 @@ export default function LoginPage() {
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {[
-                  { label: 'Admin', email: 'admin@propio.com.bo', pass: 'admin123' },
-                  { label: 'Agente', email: 'agent@propio.com.bo', pass: 'agent123' },
-                  { label: 'Propietario', email: 'owner@propio.com.bo', pass: 'owner123' },
-                  { label: 'Cliente', email: 'client@propio.com.bo', pass: 'client123' },
+                  { label: 'Admin',       email: 'admin@propio.com.bo',     pass: 'admin123',  role: 'ADMIN' },
+                  { label: 'Agente',      email: 'agent@propio.com.bo',     pass: 'agent123',  role: 'AGENTE' },
+                  { label: 'Propietario', email: 'owner@propio.com.bo',     pass: 'owner123',  role: 'PROPIETARIO' },
+                  { label: 'Cliente',     email: 'client@propio.com.bo',    pass: 'client123', role: 'CLIENTE' },
                 ].map((demo) => (
                   <button
                     key={demo.label}
                     type="button"
                     className="bg-[#F8FAFC] hover:bg-[#000033] border border-slate-200 rounded-xl px-3.5 py-2 text-[10px] font-bold text-slate-600 hover:text-white transition-all cursor-pointer select-none uppercase tracking-wider"
-                    onClick={() => {
-                      setEmail(demo.email);
-                      setPassword(demo.pass);
-                      setEmailError('');
-                      setPasswordError('');
-                      setError(null);
-                    }}
+                    onClick={() => handleQuickLogin(demo.email, demo.pass, demo.role, demo.label)}
                     disabled={isLoading}
                   >
                     <span className="font-bold text-[#000033] group-hover:text-white">{demo.label}</span> · {demo.email.split('@')[0]}

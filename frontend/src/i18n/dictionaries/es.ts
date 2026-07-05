@@ -1,4 +1,4 @@
-export const es = {
+﻿export const es = {
   titulos: {
     planes: 'Planes',
   },

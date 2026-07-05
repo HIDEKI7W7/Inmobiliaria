@@ -8,6 +8,7 @@ export interface Payment {
     property?: {
       id: string;
       title: string;
+      location?: string; // added to match CTR-102 (Cochabamba)
     };
   };
   amount: number;
@@ -15,31 +16,20 @@ export interface Payment {
   paymentMethod: string;
   reference?: string | null;
   createdAt?: string | Date;
+  category_type?: string;
+  issuer_type?: string;
+  issuerName?: string;
+  destinationAccount?: string;
+  status?: string;
+  notes?: string;
+  receiptUrl?: string;
 }
 
-let mockPayments: Payment[] = [
-  {
-    id: 'payment-1',
-    contractId: 'contract-1',
-    contract: {
-      id: 'contract-1',
-      property: {
-        id: '1',
-        title: 'Apartaestudio moderno en Laureles',
-      }
-    },
-    amount: 1000.00,
-    paymentDate: '2026-05-22',
-    paymentMethod: 'Transferencia',
-    reference: 'TRF-98231',
-    createdAt: '2026-05-22T12:00:00Z',
-  }
-];
+let mockPayments: Payment[] = [];
 
 export const paymentsService = {
   async getPayments(token?: string): Promise<Payment[]> {
     try {
-      // Note: The backend endpoint is /payments, using Auth headers for safety
       return await apiClient.getWithAuth<Payment[]>('/payments', token || 'mock-admin-token');
     } catch (error) {
       console.warn('API de backend inalcanzable. Cargando fallback de pagos.');
@@ -47,13 +37,25 @@ export const paymentsService = {
     }
   },
 
-  async createPayment(dto: {
-    contractId: string;
-    amount: number;
-    paymentDate: string;
-    paymentMethod: string;
-    reference?: string;
-  }, token?: string): Promise<{ message: string; data: Payment }> {
+  async updatePaymentStatus(id: string, payload: { status: string; notes?: string }, token?: string): Promise<Payment> {
+    try {
+      return await apiClient.patchWithAuth<Payment>(`/payments/${id}/status`, payload, token || 'mock-admin-token');
+    } catch (error) {
+      console.warn('API de backend inalcanzable. Actualizando estado de pago simulado.');
+      const idx = mockPayments.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        mockPayments[idx] = {
+          ...mockPayments[idx],
+          status: payload.status,
+          notes: payload.notes !== undefined ? payload.notes : mockPayments[idx].notes
+        };
+        return mockPayments[idx];
+      }
+      throw error;
+    }
+  },
+
+  async createPayment(dto: any, token?: string): Promise<{ message: string; data: Payment }> {
     try {
       return await apiClient.postWithAuth<{ message: string; data: Payment }>(
         '/payments',
@@ -61,21 +63,21 @@ export const paymentsService = {
         token || 'mock-admin-token'
       );
     } catch (error) {
-      console.warn('API de backend inalcanzable. Registrando pago simular en memoria.');
+      console.warn('API de backend inalcanzable. Registrando pago simulado.');
       const newPayment: Payment = {
-        id: 'payment-' + Math.random().toString(36).substr(2, 9),
+        id: 'PAY-' + Math.floor(100 + Math.random() * 900),
         contractId: dto.contractId,
-        contract: {
-          id: dto.contractId,
-          property: {
-            id: '1',
-            title: 'Apartaestudio moderno en Laureles',
-          }
-        },
         amount: parseFloat(String(dto.amount)),
         paymentDate: dto.paymentDate,
         paymentMethod: dto.paymentMethod,
         reference: dto.reference || null,
+        status: dto.status || 'PENDIENTE',
+        category_type: dto.category_type || 'PLAN_MKT_BASICO',
+        issuer_type: dto.issuer_type || 'PROPIETARIO',
+        issuerName: dto.issuerName || 'Propietario',
+        destinationAccount: dto.destinationAccount || 'Banco Bisa - Cta 11234',
+        receiptUrl: dto.receiptUrl || null,
+        notes: dto.notes || null,
         createdAt: new Date().toISOString(),
       };
       mockPayments.push(newPayment);

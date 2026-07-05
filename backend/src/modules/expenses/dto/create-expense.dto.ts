@@ -21,4 +21,24 @@ export class CreateExpenseDto {
   @IsString({ message: 'La categoría del gasto debe ser una cadena de texto.' })
   @IsNotEmpty({ message: 'La categoría del gasto es obligatoria.' })
   category: string;
+
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsString()
+  @IsOptional()
+  requester?: string;
+
+  @IsString()
+  @IsOptional()
+  vinculacion?: string;
+
+  @IsString()
+  @IsOptional()
+  receiptUrl?: string;
 }

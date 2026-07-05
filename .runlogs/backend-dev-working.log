@@ -1,0 +1,201 @@
+
+> propio-backend@1.0.0 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m4:08:33 p. m.[0m] Starting compilation in watch mode...
+
+[[90m4:08:36 p. m.[0m] Found 0 errors. Watching for file changes.
+
+(node:21928) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +20ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mHttpModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +59ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStitchModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAdminModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMarketAnalyticsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPropertiesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLeadsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mContractsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPaymentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mExpensesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAlertsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +27ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/register, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/google, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/google/callback, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/facebook, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/facebook/callback, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/apple, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/apple/callback, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/social-mock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/onboarding, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAdminController {/api/admin}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/admin/users/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPropertiesController {/api/properties}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/propietario, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAdminPropertiesController {/api/admin/properties}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/admin/properties/:id/status, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLeadsController {/api/leads}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/leads, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/leads, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAgentLeadsController {/api/agente/leads}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/agente/leads, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/agente/leads/:id/status, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMarketAnalyticsController {/api/market}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/dom/:propertyId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/trends/:zona, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/summary/:zona, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/snapshot, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAlertsController {/api/alerts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/my, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/:alertId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/engine/run, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/match/:propertyId, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mContractsController {/api/contracts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPaymentsController {/api/payments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mExpensesController {/api/expenses}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/expenses, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/expenses, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStitchController {/api/stitch}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/stitch/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:37 p. m. [32m    LOG[39m [38;5;3m[PrismaService] [39m[32mIniciando conexión con la base de datos PostgreSQL...[39m
+prisma:info Starting a postgresql pool with 17 connections.
+[33m[Nest] 10020  - [39m23/05/2026, 4:08:41 p. m. [33m   WARN[39m [38;5;3m[PrismaService] [39m[33mNo se pudo conectar a PostgreSQL en el arranque: Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.. El sistema continuará en modo de desarrollo resiliente.[39m
+[32m[Nest] 10020  - [39m23/05/2026, 4:08:41 p. m. [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +2ms[39m
+🚀 Backend de "Propio" corriendo en: http://localhost:4000/api
+[31m[Nest] 10020  - [39m23/05/2026, 4:09:08 p. m. [31m  ERROR[39m [38;5;3m[🛡️ ExceptionFilter] [39m[31m[GET] /api/auth/google → HTTP 403: Forbidden resource[39m
+ForbiddenException: Forbidden resource
+    at canActivateFn (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\router\router-execution-context.js:137:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\router\router-execution-context.js:42:31
+    at async C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17
+node:_http_outgoing:642
+    throw new ERR_HTTP_HEADERS_SENT('set');
+          ^
+
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\express\lib\response.js:278:15)
+    at HttpExceptionFilter.catch (C:\Users\PC\Desktop\Inmobiliaria\backend\src\common\filters\http-exception.filter.ts:43:33)
+    at ExceptionsHandler.invokeCustomFilters (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\exceptions\exceptions-handler.js:30:26)
+    at ExceptionsHandler.next (C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\exceptions\exceptions-handler.js:14:18)
+    at C:\Users\PC\Desktop\Inmobiliaria\backend\node_modules\@nestjs\core\router\router-proxy.js:13:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  code: 'ERR_HTTP_HEADERS_SENT'
+}
+
+Node.js v24.15.0
+[2J[3J[H[[90m4:11:10 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:11:17 p. m.[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +134ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +56ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +58ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mHttpModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +126ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStitchModule dependencies initialized[39m[38;5;3m +7ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAdminModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMarketAnalyticsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPropertiesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLeadsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mContractsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPaymentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mExpensesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAlertsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +126ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +7ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/register, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/google, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/google/callback, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/facebook, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/facebook/callback, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/apple, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/apple/callback, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/social-mock, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/onboarding, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAdminController {/api/admin}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/admin/users/create, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPropertiesController {/api/properties}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/propietario, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/properties/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAdminPropertiesController {/api/admin/properties}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/admin/properties/:id/status, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLeadsController {/api/leads}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/leads, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/leads, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAgentLeadsController {/api/agente/leads}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/agente/leads, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/agente/leads/:id/status, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMarketAnalyticsController {/api/market}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/dom/:propertyId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/trends/:zona, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/summary/:zona, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/market/snapshot, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAlertsController {/api/alerts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/my, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/:alertId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/engine/run, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/alerts/match/:propertyId, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mContractsController {/api/contracts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/contracts/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPaymentsController {/api/payments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mExpensesController {/api/expenses}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/expenses, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/expenses, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStitchController {/api/stitch}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/stitch/generate, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:23 p. m. [32m    LOG[39m [38;5;3m[PrismaService] [39m[32mIniciando conexión con la base de datos PostgreSQL...[39m
+prisma:info Starting a postgresql pool with 17 connections.
+[33m[Nest] 1888  - [39m23/05/2026, 4:11:27 p. m. [33m   WARN[39m [38;5;3m[PrismaService] [39m[33mNo se pudo conectar a PostgreSQL en el arranque: Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.. El sistema continuará en modo de desarrollo resiliente.[39m
+[32m[Nest] 1888  - [39m23/05/2026, 4:11:27 p. m. [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +8ms[39m
+🚀 Backend de "Propio" corriendo en: http://localhost:4000/api
+[2J[3J[H[[90m4:14:38 p. m.[0m] File change detected. Starting incremental compilation...
+
+[[90m4:14:40 p. m.[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:03 p. m. [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:03 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +64ms[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:03 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +33ms[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:03 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:04 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +371ms[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:04 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mHttpModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 13140  - [39m23/05/2026, 4:15:04 p. m. [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m

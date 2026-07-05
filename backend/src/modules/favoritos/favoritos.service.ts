@@ -49,12 +49,12 @@ export class FavoritosService {
   }
 
   getMockProperty(propertyId: string) {
-    let title = 'Propiedad de Catálogo';
-    let description = 'Descripción de propiedad del catálogo dinámico de Propio.';
-    let price = 150000;
-    let latitude = -17.3680;
-    let longitude = -66.1590;
-    let location = 'Cochabamba, Bolivia';
+    let title = 'Casa de Campo en Muyurina';
+    let description = 'Hermosa casa de campo con jardín interior amplio y churrasquero propio.';
+    let price = 220000;
+    let latitude = -17.3890;
+    let longitude = -66.1390;
+    let location = 'Muyurina, Cochabamba';
 
     if (propertyId === 'prop-1-cala-cala') {
       title = 'Casa Familiar en Cala Cala';
@@ -100,26 +100,14 @@ export class FavoritosService {
   }
 
   async ensurePropertyExists(propertyId: string) {
-    const existing = await this.prisma.property.findFirst({
+    const existing = await this.prisma.property.findUnique({
       where: { id: propertyId },
     });
     
     if (!existing) {
-      const mock = this.getMockProperty(propertyId);
-      await this.prisma.property.create({
-        data: {
-          id: mock.id,
-          title: mock.title,
-          description: mock.description,
-          price: mock.price,
-          latitude: mock.latitude,
-          longitude: mock.longitude,
-          location: mock.location,
-          address: mock.location,
-          isVerified: mock.isVerified,
-        },
-      });
+      throw new Error(`Propiedad ${propertyId} no existe en la base de datos (evitando polución mock)`);
     }
+    return existing;
   }
 
   async toggleFavorite(userId: string, propertyId: string) {
@@ -127,7 +115,7 @@ export class FavoritosService {
       if (!this.prisma.isConnected) {
         throw new Error('Base de datos desconectada (fallback rápido)');
       }
-      await this.ensurePropertyExists(propertyId);
+      const property = await this.ensurePropertyExists(propertyId);
 
       // Buscar si ya está guardada en favoritos por este usuario
       const existing = await this.prisma.favorito.findUnique({
@@ -148,6 +136,16 @@ export class FavoritosService {
             },
           },
         });
+
+        // Eliminar interacción correspondiente de forma limpia
+        await this.prisma.userInteraction.deleteMany({
+          where: {
+            userId,
+            propertyId,
+            interactionType: 'LIKE',
+          },
+        });
+
         return { favorited: false, isFavorited: false, message: 'Propiedad removida de tus favoritos' };
       } else {
         await this.prisma.favorito.create({
@@ -156,6 +154,18 @@ export class FavoritosService {
             propertyId,
           },
         });
+
+        // Registrar inmediatamente en la tabla user_interactions
+        await this.prisma.userInteraction.create({
+          data: {
+            userId,
+            propertyId,
+            interactionType: 'LIKE',
+            category: property.type,
+            zone: property.location,
+          },
+        });
+
         return { favorited: true, isFavorited: true, message: 'Propiedad guardada en tus favoritos' };
       }
     } catch (error) {
@@ -186,52 +196,73 @@ export class FavoritosService {
   }
 
   async getFavorites(userId: string) {
+    let dbFavorites: any[] = [];
     try {
-      if (!this.prisma.isConnected) {
-        throw new Error('Base de datos desconectada (fallback rápido)');
+      if (this.prisma.isConnected) {
+        const list = await this.prisma.favorito.findMany({
+          where: { userId },
+          include: {
+            property: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+        dbFavorites = list.map(f => f.property);
       }
-      const list = await this.prisma.favorito.findMany({
-        where: { userId },
-        include: {
-          property: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-      // Retornamos únicamente el array con los datos completos de las propiedades guardadas
-      return list.map(f => f.property);
     } catch (error) {
-      this.logger.warn('Error de conexion con la base de datos al obtener favoritos. Usando fallback en archivo JSON persistente.');
+      this.logger.warn(`Error al consultar favoritos de DB: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Cargar y mezclar favoritos del fallback JSON
+    try {
       const map = await this.loadFallbackFavorites();
       const userFavs = map.get(userId);
-      if (!userFavs) return [];
-      
-      return Array.from(userFavs).map(propertyId => this.getMockProperty(propertyId));
+      if (userFavs && userFavs.size > 0) {
+        const fallbackList = Array.from(userFavs).map(propertyId => this.getMockProperty(propertyId));
+        const dbIds = new Set(dbFavorites.map(p => p.id));
+        for (const fallbackProp of fallbackList) {
+          if (!dbIds.has(fallbackProp.id)) {
+            dbFavorites.push(fallbackProp);
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Error al cargar favoritos del fallback JSON: ${error instanceof Error ? error.message : String(error)}`);
     }
+
+    return dbFavorites;
   }
 
   async checkFavorite(userId: string, propertyId: string) {
+    // 1. Primero verificar en el JSON fallback
     try {
-      if (!this.prisma.isConnected) {
-        throw new Error('Base de datos desconectada (fallback rápido)');
-      }
-      await this.ensurePropertyExists(propertyId);
-      
-      const existing = await this.prisma.favorito.findUnique({
-        where: {
-          userId_propertyId: {
-            userId,
-            propertyId,
-          },
-        },
-      });
-      return { isFavorited: !!existing };
-    } catch (error) {
-      this.logger.warn('Error de conexion con la base de datos al verificar favorito. Usando fallback en archivo JSON persistente.');
       const map = await this.loadFallbackFavorites();
       const userFavs = map.get(userId);
-      return { isFavorited: userFavs ? userFavs.has(propertyId) : false };
+      if (userFavs && userFavs.has(propertyId)) {
+        return { isFavorited: true };
+      }
+    } catch (error) {
+      // Ignorar error al leer fallback
     }
+
+    // 2. Si no está en el fallback, verificar en la DB
+    try {
+      if (this.prisma.isConnected) {
+        const existing = await this.prisma.favorito.findUnique({
+          where: {
+            userId_propertyId: {
+              userId,
+              propertyId,
+            },
+          },
+        });
+        return { isFavorited: !!existing };
+      }
+    } catch (error) {
+      this.logger.warn(`Error al verificar favorito en DB: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    return { isFavorited: false };
   }
 }

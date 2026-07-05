@@ -12,7 +12,7 @@ export interface Property {
   area: number;
   rooms: number;
   bathrooms: number;
-  location: string;
+  location: any;
   imageUrl: string;
   image?: string;
   featured?: boolean;
@@ -35,6 +35,9 @@ export interface Property {
   ownerName?: string;
   offerType?: string;
   lotSize?: number;
+  documents?: any[];
+  owner?: { name: string; phone: string; email: string; };
+  ownerId?: string | null;
 }
 
 export interface PropertySpecs {
@@ -50,7 +53,7 @@ interface PropertyCardProps {
   image: string;
   isVerified: boolean;
   specs: PropertySpecs;
-  location?: string;
+  location?: any;
   currency?: 'USD' | 'BOB';
   isHovered?: boolean;
   onMouseEnter?: () => void;
@@ -58,6 +61,8 @@ interface PropertyCardProps {
   propertyId?: string;
   isFavorite?: boolean;
   onFavoriteToggle?: (id: string, isFav: boolean) => void;
+  images?: string[];
+  property?: any;
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({
@@ -75,11 +80,34 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   propertyId,
   isFavorite = false,
   onFavoriteToggle,
+  images,
+  property: passedProperty,
 }) => {
   const router = useRouter();
   const { isFavorited, toggleFavorite } = useFavorites();
 
+  if (!propertyId && (!passedProperty || !passedProperty.id)) {
+    return null;
+  }
+
   const isFav = propertyId ? isFavorited(propertyId) : isFavorite;
+
+  // ponytail: normalize images and image attributes defensively for mock and user-created properties
+  const property = passedProperty
+    ? {
+        ...passedProperty,
+        images: passedProperty.images || passedProperty.media?.photos || [],
+        image: passedProperty.image || passedProperty.imageUrl || image || '',
+      }
+    : {
+        images: images || [],
+        image: image || '',
+        price: price,
+      };
+
+  const locationText = typeof location === 'object' && location !== null
+    ? `${location.address || ''} ${location.city || ''}`.trim() || 'Bolivia'
+    : String(location || 'Bolivia');
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -124,11 +152,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     }
   };
 
-  // Cálculo de precio según tasa de cambio corporativa (1 USD = 10 BOB)
-  const formattedPrice =
-    currency === 'USD'
-      ? `$${price.toLocaleString()}`
-      : `Bs. ${(priceBob || price * 10).toLocaleString()}`;
+  // ponytail: Force Bolivianos (Bs.) currency uniformly for national unification
+  const formattedPrice = `Bs. ${(priceBob || property.priceBob || property.price * 10).toLocaleString()}`;
 
   return (
     <div
@@ -144,19 +169,39 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       {/* Sección Superior: Imagen y Badges Flotantes */}
       <div className="relative h-48 w-full overflow-hidden bg-linear-surface-2">
         <img
-          src={image}
+          src={property.images?.[0] || property.image || '/placeholders/property-empty.jpg'}
           alt={title}
           className="object-cover h-full w-full group-hover:scale-105 transition-transform duration-500 ease-out opacity-90 group-hover:opacity-100"
           loading="lazy"
         />
 
         {/* Badges Flotantes sobre la Imagen */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
-          {isVerified && (
-            <span className="bg-linear-primary text-linear-ink text-[10px] font-sans font-black px-3 py-1.5 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1 border border-linear-primary/40">
-              🏆 Sello Oro: Verificada
-            </span>
-          )}
+        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+          {(() => {
+            const docs: any[] = Array.isArray(property.documents) ? property.documents : [];
+            // ponytail: accept both 'APPROVED' (backend) and 'APROBADO' (legacy UI); fallback to flag
+            const ok = (s: string) => ['APPROVED', 'APROBADO'].includes(s.toUpperCase().trim());
+            const isFullyVerified = docs.length > 0
+              ? docs.every((d: any) => ok(String(d.status || '')))
+              : !!(property.isVerified || property.verified || isVerified);
+
+            if (!isFullyVerified) return null;
+
+            return (
+              <>
+                <style>{`@keyframes seal-pulse{0%,100%{box-shadow:0 0 0 0 rgba(185,250,60,.55)}50%{box-shadow:0 0 0 6px rgba(185,250,60,0)}}`}</style>
+                <span
+                  style={{ animation: 'seal-pulse 2.4s ease-in-out infinite' }}
+                  className="inline-flex items-center gap-1.5 bg-[#04045E] text-[#b9fa3c] text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-full border border-[#b9fa3c]/30 shadow-lg"
+                >
+                  <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Documentación Verificada
+                </span>
+              </>
+            );
+          })()}
         </div>
 
         {/* Botón de favoritos interactivo en verde lima */}
@@ -173,11 +218,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
-            className={`w-5 h-5 transition-all duration-300 ${
-              isFav
-                ? 'stroke-lime-500 fill-lime-500 drop-shadow-md hover:scale-110 transition-transform'
-                : 'stroke-lime-500 stroke-2 fill-transparent hover:scale-110 transition-transform'
-            }`}
+            fill={isFav ? '#b9fa3c' : 'none'}
+            stroke={isFav ? '#b9fa3c' : '#9ca3af'}
+            strokeWidth={2.5}
+            className="w-5 h-5 transition-all duration-300 drop-shadow-md hover:scale-110"
           >
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
           </svg>
@@ -196,7 +240,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Ubicación y Título */}
         <div className="space-y-1">
           <span className="inline-block text-[9px] font-sans font-black tracking-widest text-linear-ink-subtle uppercase">
-            📍 {location}
+            📍 {locationText}
           </span>
           <h3 className="font-sans text-base font-bold text-linear-ink tracking-tight leading-snug line-clamp-1 group-hover:text-linear-primary transition-colors duration-200 uppercase">
             {title}

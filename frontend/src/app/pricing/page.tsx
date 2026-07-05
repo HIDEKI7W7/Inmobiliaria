@@ -1,171 +1,145 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { PricingPlansGrid } from '@/components/PricingPlansGrid';
 
 const t = (key: string) => key;
 
 interface Plan {
   id: string;
   name: string;
-  price: number;
+  price?: number;
+  customPrice?: string;
   period: string;
   highlight: boolean;
   badge?: string;
+  badgeDark?: boolean;
+  pill?: string;
   features: { text: string; included: boolean }[];
 }
 
-const PLANS: Plan[] = [
-  {
-    id: 'basico',
-    name: 'Básico',
-    price: 0,
-    period: 'gratis',
-    highlight: false,
-    features: [
-      { text: '1 publicación activa', included: true },
-      { text: 'Fotos básicas (hasta 5)', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Verificación legal', included: false },
-      { text: 'Publicación en mapa interactivo', included: false },
-      { text: 'Estadísticas de visitas', included: false },
-    ],
-  },
-  {
-    id: 'profesional',
-    name: 'Profesional',
-    price: 49,
-    period: 'mes',
-    highlight: true,
-    badge: 'Más popular',
-    features: [
-      { text: '5 publicaciones activas', included: true },
-      { text: 'Fotos ilimitadas + video', included: true },
-      { text: 'Contacto directo por WhatsApp', included: true },
-      { text: 'Verificación legal Sello Oro', included: true },
-      { text: 'Publicación en mapa interactivo', included: true },
-      { text: 'Estadísticas de visitas en tiempo real', included: true },
-    ],
-  },
-  {
-    id: 'elite',
-    name: 'Elite',
-    price: 129,
-    period: 'mes',
-    highlight: false,
-    badge: 'Todo incluido',
-    features: [
-      { text: 'Publicaciones ilimitadas', included: true },
-      { text: 'Fotos + video + tour 360°', included: true },
-      { text: 'Contacto multi-canal', included: true },
-      { text: 'Verificación legal Sello Oro', included: true },
-      { text: 'Publicación en mapa interactivo', included: true },
-      { text: 'Estadísticas avanzadas + exportación', included: true },
-    ],
-  },
-];
-
 export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // State for dynamic global plan prices loaded from localStorage
+  const [prices, setPrices] = useState({
+    contenidos: 69,
+    venta_pro: 199,
+    cierre_garantizado: 1.5,
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let finalPrices = { contenidos: 69, venta_pro: 199, cierre_garantizado: 1.5 };
+      const saved = localStorage.getItem('propio_global_plan_prices');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          finalPrices.contenidos = parsed.contenidos ?? 69;
+          finalPrices.venta_pro = parsed.venta_pro ?? 199;
+          finalPrices.cierre_garantizado = parsed.cierre_garantizado ?? 1.5;
+        } catch (e) {
+          console.error('Error parsing global plan prices:', e);
+        }
+      }
+
+      // Check announcement for commission rate overrides
+      const activeAnnRaw = localStorage.getItem('propio_active_announcement');
+      if (activeAnnRaw) {
+        try {
+          const ann = JSON.parse(activeAnnRaw);
+          const sec = ann.secciones?.find((s: any) => s.titulo.toLowerCase().includes('comisión') || s.titulo.toLowerCase().includes('comision') || s.titulo.toLowerCase().includes('comisión base'));
+          if (sec && sec.vinetas && sec.vinetas[0]) {
+            const match = sec.vinetas[0].match(/(\d+(\.\d+)?)\s*%/);
+            if (match && match[1]) {
+              finalPrices.cierre_garantizado = parseFloat(match[1]);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing announcement for commission rate:', e);
+        }
+      }
+
+      setPrices(finalPrices);
+    }
+  }, []);
+
+  const dynamicPlans = useMemo<Plan[]>(() => [
+    {
+      id: 'gratuito',
+      name: 'PLAN GRATUITO',
+      price: 0,
+      period: 'Gratis',
+      highlight: false,
+      features: [
+        { text: '1 publicación activa', included: true },
+        { text: 'Fotos básicas (hasta 5)', included: true },
+        { text: 'Contacto directo por WhatsApp', included: true },
+        { text: 'Fotos + Video optimizado', included: false },
+        { text: 'Alquiler de letrero físico', included: false },
+        { text: 'Dron + Fotos Profesionales', included: false },
+        { text: 'Sello Oro + Mapa Premium', included: false },
+        { text: 'Estadísticas avanzadas de visitas', included: false },
+      ],
+    },
+    {
+      id: 'contenidos',
+      name: 'PLAN CONTENIDOS',
+      price: prices.contenidos,
+      period: 'mes',
+      highlight: false,
+      badge: 'MAS RECOMENDADO PARA RENTAS',
+      features: [
+        { text: '1 propiedad', included: true },
+        { text: 'Fotos + Video optimizado', included: true },
+        { text: 'Contacto directo por WhatsApp', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+        { text: 'Dron + Fotos Profesionales', included: false },
+        { text: 'Sello Oro + Mapa Premium', included: false },
+        { text: 'Estadísticas avanzadas de visitas', included: false },
+      ],
+    },
+    {
+      id: 'venta_pro',
+      name: 'PLAN VENTA PRO',
+      price: prices.venta_pro,
+      period: 'mes',
+      highlight: true,
+      badge: 'MAS RECOMENDADO PARA VENTA',
+      pill: 'PUBLICIDAD PRIORITARIA',
+      features: [
+        { text: '1 propiedad', included: true },
+        { text: 'Dron + Fotos Profesionales', included: true },
+        { text: 'Sello Oro + Mapa Premium', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+        { text: 'Estadísticas avanzadas de visitas', included: true },
+      ],
+    },
+    {
+      id: 'cierre_garantizado',
+      name: 'CIERRE GARANTIZADO',
+      customPrice: `Comisión: ${prices.cierre_garantizado}% del valor de venta`,
+      period: '',
+      highlight: false,
+      badge: 'TODO INCLUIDO',
+      badgeDark: true,
+      features: [
+        { text: 'Gestión completa por agente experto', included: true },
+        { text: 'Visitas y negociación delegadas', included: true },
+        { text: 'Alquiler de letrero físico', included: true },
+        { text: 'Auditoría legal y notarial', included: true },
+        { text: `Comisión del ${prices.cierre_garantizado}%`, included: true },
+      ],
+    },
+  ], [prices]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-20 font-sans antialiased">
       <div className="max-w-6xl mx-auto px-6">
         
-        {/* Header */}
-        <div className="text-center mb-16">
-          <span className="text-[#04045E] bg-[#b9fa3c]/20 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-            {t("Planes y Tarifas")}
-          </span>
-          <h1 className="text-4xl md:text-5xl font-black text-[#04045E] tracking-tight mt-4 mb-4 uppercase">
-            {t("Elige tu plan ideal")}
-          </h1>
-          <p className="text-slate-500 max-w-xl mx-auto text-sm font-medium">
-            {t("Sin contratos forzosos ni comisiones de corretaje. Cambia o cancela tu suscripción en cualquier momento.")}
-          </p>
-        </div>
-
-        {/* Planes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-          {PLANS.map((plan) => {
-            const isProfessional = plan.id === 'profesional';
-            
-            return (
-              <div 
-                key={plan.id}
-                className={`relative rounded-3xl flex flex-col p-8 transition-all duration-300 hover:-translate-y-1 ${
-                  isProfessional
-                    ? 'bg-white border-4 border-[#b9fa3c] shadow-2xl scale-[1.03] z-10'
-                    : 'bg-white border border-slate-100 shadow-md hover:shadow-xl'
-                }`}
-              >
-                {/* Badge para el Plan Central */}
-                {plan.badge && (
-                  <div className={`absolute -top-4 left-1/2 -translate-x-1/2 text-xs font-black px-5 py-1.5 rounded-full uppercase tracking-wider shadow-sm ${
-                    isProfessional ? 'bg-[#b9fa3c] text-[#04045E]' : 'bg-[#04045E] text-white'
-                  }`}>
-                    {plan.badge}
-                  </div>
-                )}
-
-                {/* Encabezado de Plan */}
-                <div className="mb-6">
-                  <h3 className="font-bold text-xl text-[#04045E] mb-2 uppercase tracking-wide">
-                    {plan.name}
-                  </h3>
-                  <div className="flex items-end gap-1">
-                    <span className="font-black text-4xl text-[#04045E]">
-                      {plan.price === 0 ? t('Gratis') : `$${plan.price}`}
-                    </span>
-                    {plan.price > 0 && (
-                      <span className="text-slate-400 text-sm font-semibold mb-1">
-                        /{plan.period}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* CONTENIDO DEL PLAN PROFESIONAL / OTROS PLANES */}
-                {/* Solución de Contraste: Texto oscuro para legibilidad 100% garantizada */}
-                <div className="text-slate-700 font-medium text-sm flex-1 mb-8">
-                  <ul className="space-y-4">
-                    {plan.features.map((feature, i) => (
-                      <li 
-                        key={i} 
-                        className={`flex items-center gap-3 ${
-                          feature.included ? 'text-slate-800' : 'text-slate-350 line-through'
-                        }`}
-                      >
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                          feature.included 
-                            ? 'bg-emerald-100 text-emerald-600' 
-                            : 'bg-slate-100 text-slate-300'
-                        }`}>
-                          {feature.included ? '✓' : '✕'}
-                        </span>
-                        <span>{feature.text}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Botón CTA */}
-                <div>
-                  <button
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`w-full py-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-                      isProfessional
-                        ? 'bg-[#b9fa3c] text-[#04045E] hover:brightness-95 shadow-md shadow-lime-100'
-                        : 'bg-[#04045E] text-white hover:bg-opacity-90 shadow-sm'
-                    }`}
-                  >
-                    {plan.price === 0 ? t('Comenzar gratis') : `${t('Contratar')} ${plan.name}`}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Grilla de Planes de Precios */}
+        <PricingPlansGrid onSelectPlan={setSelectedPlan} prices={prices} />
 
         {/* Modal de confirmación */}
         {selectedPlan && (
@@ -184,7 +158,7 @@ export default function PricingPage() {
               <p className="text-slate-500 text-sm font-medium mb-6">
                 {t("Seleccionaste el plan ")}
                 <strong className="text-[#04045E] font-black">
-                  {PLANS.find(p => p.id === selectedPlan)?.name}
+                  {dynamicPlans.find(p => p.id === selectedPlan)?.name}
                 </strong>
                 {t(". Para continuar, inicia sesión o crea tu cuenta de propietario.")}
               </p>

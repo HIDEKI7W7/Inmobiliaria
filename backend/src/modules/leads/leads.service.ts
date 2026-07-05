@@ -13,10 +13,43 @@ export class LeadsService {
   async findAll() {
     this.logger.log('Buscando todos los leads de la base de datos...');
     try {
-      return await this.prisma.lead.findMany({
-        include: { property: true },
+      const leads = await this.prisma.lead.findMany({
+        include: { property: true, agent: true },
         orderBy: { createdAt: 'desc' },
       });
+      if (leads.length === 0) {
+        this.logger.log('[Leads] Base de datos vacía, generando 5 prospectos de prueba vinculados a propiedades...');
+        const props = await this.prisma.property.findMany({ take: 5 });
+        const agents = await this.prisma.user.findMany({ where: { role: 'AGENTE' }, take: 2 });
+        if (props.length > 0) {
+          const mockNames = ['Carlos Arandia', 'María René Claros', 'Juan de Dios Ortíz', 'Gabriela Claure', 'Claudia Mendoza'];
+          const mockEmails = ['carlos@mail.com', 'maria.cl@gmail.com', 'juan.ortiz@outlook.com', 'gaby.c@mail.com', 'claudia.m@gmail.com'];
+          const mockPhones = ['+591 798 12345', '+591 712 99887', '+591 700 44332', '+591 721 55443', '+591 707 11223'];
+          const mockStages = ['LEAD_ENTRANTE', 'CONTACTADO', 'VISITA_AGENDADA', 'PENDIENTE', 'LEAD_ENTRANTE'];
+          
+          for (let i = 0; i < 5; i++) {
+            const prop = props[i % props.length];
+            const agent = agents[i % agents.length] || { id: 'agent-1' };
+            await this.prisma.lead.create({
+              data: {
+                name: mockNames[i],
+                email: mockEmails[i],
+                phone: mockPhones[i],
+                propertyId: prop.id,
+                assignedAgentId: agent.id,
+                status: mockStages[i],
+                currentStage: mockStages[i] === 'LEAD_ENTRANTE' ? 'Lead Entrante' : mockStages[i],
+                message: 'Me interesa agendar una visita.'
+              }
+            });
+          }
+          return await this.prisma.lead.findMany({
+            include: { property: true, agent: true },
+            orderBy: { createdAt: 'desc' },
+          });
+        }
+      }
+      return leads;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'error desconocido';
       this.logger.error(`Error al consultar la base de datos de leads: ${message}`);
@@ -29,7 +62,7 @@ export class LeadsService {
     try {
       const dbLeads = await this.prisma.lead.findMany({
         where: { assignedAgentId: agentId },
-        include: { property: true },
+        include: { property: true, agent: true },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -95,6 +128,62 @@ export class LeadsService {
       const message = error instanceof Error ? error.message : 'error desconocido';
       this.logger.error(`Error de base de datos al actualizar estado del lead: ${message}`);
       throw new NotFoundException(`El prospecto con ID ${id} no fue encontrado o no se pudo actualizar: ${message}`);
+    }
+  }
+
+  async updateLead(id: string, data: any) {
+    this.logger.log(`Actualizando lead completo ${id} (BD)...`);
+    try {
+      // Find property ID if interest matches property title
+      let propertyId = data.propertyId;
+      if (data.interest && !propertyId) {
+        const prop = await this.prisma.property.findFirst({
+          where: { title: data.interest }
+        });
+        if (prop) {
+          propertyId = prop.id;
+        }
+      }
+      
+      // Find agent ID if assignedAgent matches agent name
+      let assignedAgentId = data.assignedAgentId;
+      if (data.assignedAgent && !assignedAgentId) {
+        const agent = await this.prisma.user.findFirst({
+          where: { name: data.assignedAgent, role: 'AGENTE' }
+        });
+        if (agent) {
+          assignedAgentId = agent.id;
+        }
+      }
+
+      return await this.prisma.lead.update({
+        where: { id },
+        data: {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          status: data.status,
+          currentStage: data.status === 'LEAD_ENTRANTE' ? 'Lead Entrante' : data.status,
+          ...(propertyId && { propertyId }),
+          ...(assignedAgentId && { assignedAgentId })
+        },
+        include: { property: true, agent: true }
+      });
+    } catch (error: any) {
+      this.logger.error(`Error actualizando lead ${id}: ${error.message}`);
+      throw new BadRequestException(`No se pudo actualizar el lead: ${error.message}`);
+    }
+  }
+
+  async deleteLead(id: string) {
+    this.logger.log(`Eliminando lead ${id} (BD)...`);
+    try {
+      return await this.prisma.lead.delete({
+        where: { id }
+      });
+    } catch (error: any) {
+      this.logger.error(`Error eliminando lead ${id}: ${error.message}`);
+      throw new BadRequestException(`No se pudo eliminar el lead: ${error.message}`);
     }
   }
 

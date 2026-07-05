@@ -3,15 +3,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken, getCurrentUser } from '@/utils/session';
 import { DaysOnMarketBadge } from '@/components/ui/DaysOnMarketBadge';
 import { PriceTrendChart } from '@/components/ui/PriceTrendChart';
 import { PropertyAlertForm } from '@/components/ui/PropertyAlertForm';
 import { useFavorites } from '@/context/FavoritesContext';
+import { ALL_REAL_PROPERTIES } from '@/data/propertiesData';
 
-// Importación dinámica del Mini Mapa para evitar problemas de hidratación en Next.js
-const MiniMap = dynamic(() => import('@/components/modules/properties/MiniMap'), { 
+// Importación dinámica del Mapa Core para evitar problemas de hidratación en Next.js
+const MapWrapper = dynamic(() => import('@/components/modules/properties/MapWrapper'), { 
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-slate-100 rounded-3xl flex flex-col items-center justify-center space-y-3 p-6 text-center animate-pulse border border-slate-200">
@@ -34,431 +35,12 @@ interface Agent {
   stars: number;
   phone: string;
   avatar: string;
+  verified?: boolean;
+  isVerified?: boolean;
 }
 
 // Catálogo simulado de inmuebles
-const PROPERTIES_CATALOG: Record<string, any> = {
-  'prop-1-muyurina': {
-    id: 'prop-1-muyurina',
-    code: 'PRP-001-CBBA',
-    title: 'Casa de Campo en Muyurina',
-    price: 220000.0,
-    priceBob: 2200000.0,
-    beds: 4,
-    baths: 3,
-    m2: 220,
-    address: 'Calle Muyurina #150, Muyurina',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Hermosa casa de campo con jardín interior amplio, churrasquero propio y una suite espectacular con vestidor. Superficie Terreno: 450 m² | Superficie Construida: 220 m²',
-    amenities: ['JARDÍN INTERIOR AMPLIO', 'CHURRASQUERO PROPIO', 'SUITE CON VESTIDOR', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 220000.0 }],
-    coordinates: { lat: -17.3890, lng: -66.1390 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-2-mayorazgo': {
-    id: 'prop-2-mayorazgo',
-    code: 'PRP-002-CBBA',
-    title: 'Oficina Premium en Mayorazgo',
-    price: 135000.0,
-    priceBob: 1350000.0,
-    beds: 0,
-    baths: 2,
-    m2: 115,
-    address: 'Calle Mayorazgo #250, Mayorazgo',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Oficina premium de alto nivel con iluminación LED inteligente, control de acceso biométrico y chapas digitales. Superficie Terreno: 0 m² | Superficie Construida: 115 m²',
-    amenities: ['ILUMINACIÓN LED INTELIGENTE', 'CONTROL DE ACCESO BIOMÉTRICO', 'CHAPAS DIGITALES', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 135000.0 }],
-    coordinates: { lat: -17.3680, lng: -66.1780 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-3-queru-queru': {
-    id: 'prop-3-queru-queru',
-    code: 'PRP-003-CBBA',
-    title: 'Penthouse de Lujo en Queru Queru',
-    price: 128000.0,
-    priceBob: 1280000.0,
-    beds: 4,
-    baths: 3,
-    m2: 195,
-    address: 'Calle Queru Queru #100, Queru Queru',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Exclusivo penthouse de lujo con suite principal con vestidor, terraza privada con vista panorámica y parqueo subterráneo. Superficie Terreno: 0 m² | Superficie Construida: 195 m²',
-    amenities: ['SUITE PRINCIPAL CON VESTIDOR', 'TERRAZA PRIVADA CON VISTA PANORÁMICA', 'PARQUEO SUBTERRÁNEO', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 128000.0 }],
-    coordinates: { lat: -17.3750, lng: -66.1520 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-4-cala-cala': {
-    id: 'prop-4-cala-cala',
-    code: 'PRP-004-CBBA',
-    title: 'Casa Familiar de Estilo Moderno',
-    price: 210000.0,
-    priceBob: 2100000.0,
-    beds: 5,
-    baths: 4,
-    m2: 250,
-    address: 'Av. Circunvalación #200, Cala Cala',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Amplia casa familiar de estilo moderno con cocina remodelada, jardín posterior amplio y conexión de gas domiciliario. Superficie Terreno: 350 m² | Superficie Construida: 250 m²',
-    amenities: ['COCINA REMODELADA', 'JARDÍN POSTERIOR AMPLIO', 'CONEXIÓN DE GAS DOMICILIARIO', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 210000.0 }],
-    coordinates: { lat: -17.3780, lng: -66.1620 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-5-america': {
-    id: 'prop-5-america',
-    code: 'PRP-005-CBBA',
-    title: 'Terreno Premium Comercial',
-    price: 185000.0,
-    priceBob: 1850000.0,
-    beds: 0,
-    baths: 0,
-    m2: 0,
-    address: 'Av. América Oeste #500, Av. América',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Excelente lote comercial premium en esquina, frente a área verde y de alta afluencia peatonal y vehicular. Superficie Terreno: 600 m² | Superficie Construida: 0 m²',
-    amenities: ['LOTE PREMIUM EN ESQUINA', 'FRENTE A ÁREA VERDE', 'ALTA AFLUENCIA', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 185000.0 }],
-    coordinates: { lat: -17.3715, lng: -66.1518 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-6-la-chimba': {
-    id: 'prop-6-la-chimba',
-    code: 'PRP-006-CBBA',
-    title: 'Galpón Industrial de Alta Capacidad',
-    price: 340000.0,
-    priceBob: 3400000.0,
-    beds: 0,
-    baths: 2,
-    m2: 900,
-    address: 'Zona La Chimba Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'VENTA',
-    description: 'Galpón industrial espacioso con cerco eléctrico perimetral y cisterna propia de gran capacidad. Superficie Terreno: 1200 m² | Superficie Construida: 900 m²',
-    amenities: ['CERCO ELÉCTRICO PERIMETRAL', 'CISTERNA PROPIA DE GRAN CAPACIDAD', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 340000.0 }],
-    coordinates: { lat: -17.4080, lng: -66.1850 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-7-el-prado': {
-    id: 'prop-7-el-prado',
-    code: 'PRP-007-CBBA',
-    title: 'Departamento Amoblado Central',
-    price: 450.0,
-    priceBob: 4500.0,
-    beds: 2,
-    baths: 2,
-    m2: 85,
-    address: 'Av. Ballivián #300, El Prado',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ALQUILER',
-    description: 'Departamento amoblado y céntrico con iluminación LED, conexión de gas domiciliario y en un edificio pet-friendly. Superficie Terreno: 0 m² | Superficie Construida: 85 m²',
-    amenities: ['ILUMINACIÓN LED', 'CONEXIÓN DE GAS DOMICILIARIO', 'EDIFICIO PET-FRIENDLY', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 450.0 }],
-    coordinates: { lat: -17.3940, lng: -66.1560 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-8-sarco': {
-    id: 'prop-8-sarco',
-    code: 'PRP-008-CBBA',
-    title: 'Monoambiente Moderno',
-    price: 280.0,
-    priceBob: 2800.0,
-    beds: 1,
-    baths: 1,
-    m2: 42,
-    address: 'Zona Sarco Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ALQUILER',
-    description: 'Monoambiente moderno con seguridad de vigilancia 24/7, cajón de parqueo subterráneo y área de coworking. Superficie Terreno: 0 m² | Superficie Construida: 42 m²',
-    amenities: ['SEGURIDAD DE VIGILANCIA 24/7', 'CAJÓN DE PARQUEO SUBTERRÁNEO', 'COWORKING SPACE', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 280.0 }],
-    coordinates: { lat: -17.3790, lng: -66.1730 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-9-america-comercial': {
-    id: 'prop-9-america-comercial',
-    code: 'PRP-009-CBBA',
-    title: 'Local Comercial en Planta Baja',
-    price: 700.0,
-    priceBob: 7000.0,
-    beds: 0,
-    baths: 1,
-    m2: 130,
-    address: 'Av. América Oeste #400, Av. América',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'ALQUILER',
-    description: 'Local comercial en planta baja con luces LED empotradas, chapas digitales y vidrieras de alto tráfico. Superficie Terreno: 0 m² | Superficie Construida: 130 m²',
-    amenities: ['LUCES LED EMPOTRADAS', 'CHAPAS DIGITALES', 'VIDRIERAS DE ALTO TRÁFICO', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 700.0 }],
-    coordinates: { lat: -17.3710, lng: -66.1550 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-10-lomas-aranjuez': {
-    id: 'prop-10-lomas-aranjuez',
-    code: 'PRP-010-CBBA',
-    title: 'Garzonier Ejecutivo',
-    price: 350.0,
-    priceBob: 3500.0,
-    beds: 1,
-    baths: 1,
-    m2: 55,
-    address: 'Condominio Lomas de Aranjuez',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ALQUILER',
-    description: 'Garzonier ejecutivo con box de vidrio templado, entorno de alta privacidad y gas domiciliario. Superficie Terreno: 0 m² | Superficie Construida: 55 m²',
-    amenities: ['BOX DE VIDRIO TEMPLADO', 'ENTORNO DE ALTA PRIVACIDAD', 'GAS DOMICILIARIO', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 350.0 }],
-    coordinates: { lat: -17.3520, lng: -66.1530 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-11-pacata-alta': {
-    id: 'prop-11-pacata-alta',
-    code: 'PRP-011-CBBA',
-    title: 'Casa en Condominio Cerrado',
-    price: 680.0,
-    priceBob: 6800.0,
-    beds: 3,
-    baths: 3,
-    m2: 210,
-    address: 'Zona Pacata Alta Condominio Privado',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'ALQUILER',
-    description: 'Casa en condominio cerrado con churrasquero propio techado, áreas verdes comunes y parque infantil. Superficie Terreno: 300 m² | Superficie Construida: 210 m²',
-    amenities: ['CHURRASQUERO PROPIO TECHADO', 'ÁREAS VERDES COMUNES', 'PARQUE INFANTIL', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 680.0 }],
-    coordinates: { lat: -17.3720, lng: -66.1210 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-12-las-cuadras': {
-    id: 'prop-12-las-cuadras',
-    code: 'PRP-012-CBBA',
-    title: 'Departamento Familiar Amplio',
-    price: 24000.0,
-    priceBob: 240000.0,
-    beds: 3,
-    baths: 2,
-    m2: 120,
-    address: 'Calle Las Cuadras #350, Las Cuadras',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    description: 'Departamento familiar amplio con parqueo doble paralelo, baulera amplia y conexión de gas domiciliario. Superficie Terreno: 0 m² | Superficie Construida: 120 m²',
-    amenities: ['PARQUEO DOBLE PARALELO', 'BAULERA AMPLIA', 'CONEXIÓN DE GAS DOMICILIARIO', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 24000.0 }],
-    coordinates: { lat: -17.3980, lng: -66.1460 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-13-san-pedro': {
-    id: 'prop-13-san-pedro',
-    code: 'PRP-013-CBBA',
-    title: 'Monoambiente Funcional',
-    price: 9500.0,
-    priceBob: 95000.0,
-    beds: 1,
-    baths: 1,
-    m2: 38,
-    address: 'Zona San Pedro Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'ANTICRETICO',
-    description: 'Monoambiente funcional con control de acceso biométrico, edificio pet-friendly y acabados modernos. Superficie Terreno: 0 m² | Superficie Construida: 38 m²',
-    amenities: ['CONTROL DE ACCESO BIOMÉTRICO', 'EDIFICIO PET-FRIENDLY', 'ACABADOS MODERNOS', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 9500.0 }],
-    coordinates: { lat: -17.3950, lng: -66.1380 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-14-pacata-baja': {
-    id: 'prop-14-pacata-baja',
-    code: 'PRP-014-CBBA',
-    title: 'Casa Independiente Solida',
-    price: 31000.0,
-    priceBob: 310000.0,
-    beds: 4,
-    baths: 3,
-    m2: 160,
-    address: 'Zona Pacata Baja Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    description: 'Casa independiente sólida con cisterna propia de agua, jardín posterior y cerco eléctrico perimetral. Superficie Terreno: 280 m² | Superficie Construida: 160 m²',
-    amenities: ['CISTERNA PROPIA DE AGUA', 'JARDÍN POSTERIOR', 'CERCO ELÉCTRICO PERIMETRAL', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 31000.0 }],
-    coordinates: { lat: -17.3780, lng: -66.1310 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-15-cona-cona': {
-    id: 'prop-15-cona-cona',
-    code: 'PRP-015-CBBA',
-    title: 'Garzonier Cómodo',
-    price: 8500.0,
-    priceBob: 85000.0,
-    beds: 1,
-    baths: 1,
-    m2: 50,
-    address: 'Zona Coña Coña Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'ANTICRETICO',
-    description: 'Cómodo garzonier con calefón a gas instalado e iluminación LED empotrada. Superficie Terreno: 0 m² | Superficie Construida: 50 m²',
-    amenities: ['CALEFÓN A GAS INSTALADO', 'ILUMINACIÓN LED EMPOTRADA', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 8500.0 }],
-    coordinates: { lat: -17.4020, lng: -66.1950 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-16-temporal': {
-    id: 'prop-16-temporal',
-    code: 'PRP-016-CBBA',
-    title: 'Oficina para Consultorios',
-    price: 13000.0,
-    priceBob: 130000.0,
-    beds: 0,
-    baths: 1,
-    m2: 65,
-    address: 'Zona Temporal Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'ANTICRETICO',
-    description: 'Oficina ideal para consultorios con circuito cerrado de cámaras y chapas digitales inteligentes. Superficie Terreno: 0 m² | Superficie Construida: 65 m²',
-    amenities: ['CIRCUITO CERRADO DE CÁMARAS', 'CHAPAS DIGITALES INTELIGENTES', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 13000.0 }],
-    coordinates: { lat: -17.3620, lng: -66.1480 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-17-cruce-taquina': {
-    id: 'prop-17-cruce-taquina',
-    code: 'PRP-017-CBBA',
-    title: 'Condominio de Casas Smart (En Planos)',
-    price: 190000.0,
-    priceBob: 1900000.0,
-    beds: 4,
-    baths: 4,
-    m2: 280,
-    address: 'Cruce Taquiña Condominio Inteligente',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'PROYECTO',
-    description: 'Condominio de casas inteligentes en planos con Club House con piscina atemperada, domótica y ventanas de doble vidrio (DVH). Superficie Terreno: 400 m² | Superficie Construida: 280 m²',
-    amenities: ['CLUB HOUSE CON PISCINA ATEMPERADA', 'DOMÓTICA', 'VENTANAS DE DOBLE VIDRIO (DVH)', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 190000.0 }],
-    coordinates: { lat: -17.3560, lng: -66.1680 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-18-hipodromo': {
-    id: 'prop-18-hipodromo',
-    code: 'PRP-018-CBBA',
-    title: 'Edificio Eco-Smart',
-    price: 58000.0,
-    priceBob: 580000.0,
-    beds: 2,
-    baths: 2,
-    m2: 78,
-    address: 'Zona Hipódromo Condominio Eco',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'PROYECTO',
-    description: 'Edificio eco-inteligente con termotanque solar instalado, iluminación LED inteligente y área de coworking integrada. Superficie Terreno: 0 m² | Superficie Construida: 78 m²',
-    amenities: ['TERMOTANQUE SOLAR INSTALADO', 'ILUMINACIÓN LED INTELIGENTE', 'ÁREA DE COWORKING INTEGRADA', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 58000.0 }],
-    coordinates: { lat: -17.3990, lng: -66.1750 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-19-beato-salomon': {
-    id: 'prop-19-beato-salomon',
-    code: 'PRP-019-CBBA',
-    title: 'Complejo de Suites Ejecutivas',
-    price: 115000.0,
-    priceBob: 1150000.0,
-    beds: 3,
-    baths: 2,
-    m2: 110,
-    address: 'Beato Salomón Calle Principal',
-    city: 'Cochabamba, Bolivia',
-    verified: false,
-    offerType: 'PROYECTO',
-    description: 'Complejo de suites ejecutivas con walk-in closet, sauna común y circuito cerrado de televisión (CCTV). Superficie Terreno: 0 m² | Superficie Construida: 110 m²',
-    amenities: ['WALK-IN CLOSET', 'SAUNA COMÚN', 'CIRCUITO CERRADO DE TELEVISIÓN (CCTV)', 'NO VERIFICADO'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 115000.0 }],
-    coordinates: { lat: -17.3820, lng: -66.1280 },
-    docs: { folioReal: false, catastro: false, testimonio: false, impuestos: false, plano: false, ci: false },
-    images: ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-20-america-oeste': {
-    id: 'prop-20-america-oeste',
-    code: 'PRP-020-CBBA',
-    title: 'Torre Corporativa de Oficinas',
-    price: 420000.0,
-    priceBob: 4200000.0,
-    beds: 0,
-    baths: 12,
-    m2: 2400,
-    address: 'Av. América Oeste Torre Corporativa',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'PROYECTO',
-    description: 'Torre corporativa de oficinas con control de acceso biométrico, parqueo de visitas en el edificio y generador eléctrico de emergencia. Superficie Terreno: 800 m² | Superficie Construida: 2,400 m²',
-    amenities: ['CONTROL DE ACCESO BIOMÉTRICO', 'PARQUEO DE VISITAS EN EL EDIFICIO', 'GENERADOR ELÉCTRICO DE EMERGENCIA', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 420000.0 }],
-    coordinates: { lat: -17.3695, lng: -66.1610 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80']
-  },
-  'prop-1-cala-cala': {
-    id: 'prop-1-cala-cala',
-    code: 'PRP-004-CBBA',
-    title: 'Casa Familiar de Estilo Moderno',
-    price: 210000.0,
-    priceBob: 2100000.0,
-    beds: 5,
-    baths: 4,
-    m2: 250,
-    address: 'Av. Circunvalación #200, Cala Cala',
-    city: 'Cochabamba, Bolivia',
-    verified: true,
-    offerType: 'VENTA',
-    description: 'Amplia casa familiar de estilo moderno con cocina remodelada, jardín posterior amplio y conexión de gas domiciliario. Superficie Terreno: 350 m² | Superficie Construida: 250 m²',
-    amenities: ['COCINA REMODELADA', 'JARDÍN POSTERIOR AMPLIO', 'CONEXIÓN DE GAS DOMICILIARIO', 'DOCUMENTACIÓN AL DÍA'],
-    history: [{ date: '12/06/2026', event: 'Publicación Inicial', price: 210000.0 }],
-    coordinates: { lat: -17.3780, lng: -66.1620 },
-    docs: { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
-    images: ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80']
-  }
-};
+const PROPERTIES_CATALOG: Record<string, any> = {};
 
 
 const DEFAULT_PROPERTY = {
@@ -489,11 +71,7 @@ const DEFAULT_PROPERTY = {
   ]
 };
 
-const staffAgents: Agent[] = [
-  { id: 'age_1', name: 'Carlos Mendoza', agency: 'Propio Premium Staff', stars: 5.0, phone: '+591 72345678', avatar: 'CM' },
-  { id: 'age_2', name: 'Ana María Rojas', agency: 'Propio Cochabamba Norte', stars: 4.9, phone: '+591 70112233', avatar: 'AR' },
-  { id: 'age_3', name: 'Bryan Salirrosas', agency: 'Propio VIP Sales', stars: 5.0, phone: '+591 71987654', avatar: 'BS' }
-];
+const staffAgents: Agent[] = [];
 
 interface PropertyDetailClientProps {
   propertyId: string;
@@ -501,15 +79,346 @@ interface PropertyDetailClientProps {
   initialToken: string | null;
 }
 
+// ── Helper: normaliza cualquier objeto de propiedad al shape que espera el JSX ──
+function buildPropertyObject(p: any) {
+  if (!p) return null;
+  
+  // Extraer ubicación polimórfica para comprobar si es corta o genérica
+  let cityVal = p.city || (typeof p.location === 'object' && p.location ? (p.location.city || p.location.address || '') : String(p.location || ''));
+  const cleanCity = String(cityVal).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const isShortOrNumeric = cityVal.trim().length < 4 || !isNaN(Number(cityVal.trim())) || cityVal.trim() === "1" || cityVal.trim() === "100";
+  
+  let finalCity = p.city || (typeof p.location === 'object' && p.location ? p.location.city : null);
+  if (!finalCity || isShortOrNumeric || !cleanCity.includes("santa cruz")) {
+    finalCity = "Santa Cruz, Bolivia";
+  }
+
+  let finalAddress = p.address || (typeof p.location === 'object' && p.location ? p.location.address : String(p.location || ''));
+  if (finalAddress.trim().length < 4 || isShortOrNumeric) {
+    finalAddress = "Santa Cruz de la Sierra, Bolivia";
+  }
+
+  // Coordenadas con fallback
+  let lat = p.lat ?? p.latitude ?? p.latitud ?? p.coordinates?.lat ?? null;
+  let lng = p.lng ?? p.longitude ?? p.longitud ?? p.coordinates?.lng ?? null;
+  if (lat === null || lng === null || isNaN(Number(lat)) || isNaN(Number(lng)) || isShortOrNumeric) {
+    lat = -17.78629;
+    lng = -63.18117;
+  }
+
+  // Imágenes
+  let images = (p.images && p.images.length > 0) ? p.images : (p.imageUrl ? [p.imageUrl] : []);
+  if (images.length === 0) {
+    images = ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80'];
+  }
+
+  // Título y código
+  const title = p.title || 'Propiedad Dinámica Aprobada';
+  const code = p.code || (p.id ? `PRP-${String(p.id).toUpperCase()}` : 'PRP-SCZ-DYN');
+
+  // Precio
+  const price = typeof p.price === 'string' ? parseFloat(p.price) : Number(p.price || p.priceBob / 10 || 0);
+  const priceBob = typeof p.priceBob === 'string' ? parseFloat(p.priceBob) : Number(p.priceBob || price * 9.76 || 0);
+
+  return {
+    ...p,
+    id: p.id,
+    code,
+    title,
+    price,
+    priceBob,
+    beds:        p.beds || p.rooms || p.bedrooms || 3,
+    baths:       p.baths || p.bathrooms || p.baths || 2,
+    m2:          p.m2 || p.area || p.specs?.area || 150,
+    address:     finalAddress,
+    city:        finalCity,
+    coordinates: { lat: Number(lat), lng: Number(lng) },
+    images,
+    description: p.description || 'Excelente propiedad con ubicación privilegiada en Santa Cruz de la Sierra. Amplios espacios, acabados de primera calidad, excelente iluminación natural y todos los servicios básicos garantizados. Cercana a transporte, centros comerciales y colegios.',
+    amenities:   (p.amenities && p.amenities.length > 0) ? p.amenities : ["DOCUMENTACIÓN AL DÍA", "LOTE PREMIUM", "PRIVACIDAD ABSOLUTA", "SEGURIDAD 24/7", "PARQUEO PRIVADO"],
+    docs:        p.docs || { folioReal: true, catastro: true, testimonio: true, impuestos: true, plano: true, ci: true },
+    history:     (p.history && p.history.length > 0) ? p.history : [
+      { date: "04/07/2026", event: "Publicación en Marketplace", price }
+    ]
+  };
+}
+
 export function PropertyDetailClient({
   propertyId,
   initialIsFavorited,
   initialToken,
 }: PropertyDetailClientProps) {
-  const currentProperty = PROPERTIES_CATALOG[propertyId] || { ...DEFAULT_PROPERTY, id: propertyId };
-
   const router = useRouter();
-  const { isFavorited: isFavGlobal, toggleFavorite, favorites, loading } = useFavorites();
+  const searchParams = useSearchParams();
+  const { isFavorited: isFavGlobal, toggleFavorite, favorites, loading, properties: contextProperties } = useFavorites();
+
+  // ── REACTIVE PROPERTY STATE ────────────────────────────────────────────────
+  const [currentProperty, setCurrentProperty] = useState<any>(() => {
+    const found = ALL_REAL_PROPERTIES.find(
+      p => String(p.id).toLowerCase() === String(propertyId).toLowerCase()
+    );
+    if (found) return buildPropertyObject(found);
+    if (PROPERTIES_CATALOG[propertyId]) return PROPERTIES_CATALOG[propertyId];
+    return null;
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    const loadData = async () => {
+      // 1. Intentar resolver de inmediato desde ALL_REAL_PROPERTIES
+      const realProp = ALL_REAL_PROPERTIES.find(
+        p => String(p.id).toLowerCase() === String(propertyId).toLowerCase()
+      );
+      if (realProp) {
+        if (active) setCurrentProperty(buildPropertyObject(realProp));
+        return;
+      }
+
+      // 2. Intentar buscar en la base de datos real del backend (API real sin caché)
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const res = await fetch(`${apiBaseUrl}/properties/${propertyId}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            if (active) {
+              setCurrentProperty(buildPropertyObject(data));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching property from backend:', err);
+      }
+
+      // 3. Intentar buscar en la base de datos local dinámica
+      try {
+        const res = await fetch(`/api/local/properties/${propertyId}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            if (active) {
+              setCurrentProperty(buildPropertyObject(data));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching property from local DB:', err);
+      }
+
+      // 4. Fallback de localStorage
+      try {
+        const cachedRaw = localStorage.getItem('propio_properties_data') || localStorage.getItem('propio_admin_properties');
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          const found = Array.isArray(parsed) && parsed.find(p => p.id === propertyId || p.code === propertyId);
+          if (found) {
+            if (active) {
+              setCurrentProperty(buildPropertyObject(found));
+              return;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 5. Fallback de search params
+      const title = searchParams?.get('title');
+      const priceStr = searchParams?.get('price') || searchParams?.get('price_usd');
+      if (title || priceStr) {
+        const price = priceStr ? Number(priceStr) : 0;
+        if (active) setCurrentProperty({
+          id: propertyId, code: `PRP-${propertyId.toUpperCase()}`,
+          title: title || 'Inmueble Destacado', price,
+          priceBob: price, beds: 3, baths: 2, m2: 150,
+          address: searchParams?.get('location') || '', city: 'Santa Cruz, Bolivia',
+          verified: false, offerType: 'VENTA',
+          description: 'Excelente propiedad con ubicación privilegiada en Santa Cruz de la Sierra. Amplios espacios, acabados de primera calidad, excelente iluminación natural y todos los servicios básicos garantizados. Cercana a transporte, centros comerciales y colegios.',
+          amenities: ["DOCUMENTACIÓN AL DÍA", "LOTE PREMIUM", "PRIVACIDAD ABSOLUTA", "SEGURIDAD 24/7", "PARQUEO PRIVADO"],
+          coordinates: { lat: -17.78629, lng: -63.18117 },
+          images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80']
+        });
+      } else {
+        if (active) setCurrentProperty(null);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, [propertyId, searchParams]);
+
+  const nearbyPropertiesList = useMemo(() => {
+    let allProps: any[] = [];
+
+    // ponytail: consumir de la base de datos maestra unificada del ERP
+    if (typeof window !== 'undefined') {
+      const globalRaw = localStorage.getItem('propio_master_global_database') || 
+                        localStorage.getItem('propio_properties_data') || 
+                        localStorage.getItem('propio_admin_properties');
+      if (globalRaw) {
+        try {
+          const parsed = JSON.parse(globalRaw);
+          if (parsed && Array.isArray(parsed)) {
+            allProps = parsed;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (allProps.length === 0) {
+      allProps = [...ALL_REAL_PROPERTIES];
+    }
+
+    if (contextProperties && contextProperties.length > 0) {
+      contextProperties.forEach((p: any) => {
+        if (p && p.id && !allProps.some(ap => String(ap.id) === String(p.id))) {
+          allProps.push(p);
+        }
+      });
+    }
+    
+    // Add catalog properties
+    const catalogProps = Object.values(PROPERTIES_CATALOG);
+    catalogProps.forEach((cp) => {
+      if (!allProps.some(ap => String(ap.id) === String(cp.id))) {
+        allProps.push(cp);
+      }
+    });
+
+    if (!currentProperty) {
+      return [];
+    }
+
+    // Filter current property (exclusión estricta)
+    const others = allProps.filter(
+      p => p && String(p.id) !== String(currentProperty?.id) && String(p.code) !== String(currentProperty?.id) && String(p.code) !== String(currentProperty?.code)
+    );
+
+    // ponytail: parseo numérico inline absoluto de coordenadas
+    const parseNumber = (val: any) => {
+      if (val === null || val === undefined) return NaN;
+      const num = Number(String(val).trim());
+      return isNaN(num) ? NaN : num;
+    };
+
+    const getCoords = (p: any) => {
+      if (!p) return null;
+      let lat = NaN;
+      let lng = NaN;
+      if (p.coordinates) {
+        lat = parseNumber(p.coordinates.lat || p.coordinates.latitude);
+        lng = parseNumber(p.coordinates.lng || p.coordinates.longitude);
+      }
+      if (isNaN(lat) || isNaN(lng)) {
+        lat = parseNumber(p.latitude || p.lat);
+        lng = parseNumber(p.longitude || p.lng);
+      }
+      return (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : null;
+    };
+
+    const cleanStr = (str: any) => String(str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    
+    const rawCenter = currentProperty?.coordinates || currentProperty || {};
+    const centerLat = parseNumber(rawCenter.lat || rawCenter.latitude);
+    const centerLng = parseNumber(rawCenter.lng || rawCenter.longitude);
+    const center = (!isNaN(centerLat) && !isNaN(centerLng)) ? { lat: centerLat, lng: centerLng } : { lat: -17.7833, lng: -63.1833 };
+
+    const mapped = others
+      .map(p => {
+        const coords = getCoords(p);
+        // Si no tiene coordenadas válidas de origen, creamos una coordenada cercana básica con dispersión
+        let finalLat = center.lat;
+        let finalLng = center.lng;
+
+        if (coords) {
+          finalLat = coords.lat;
+          finalLng = coords.lng;
+        } else {
+          // Dispersión básica fija no matemática compleja
+          const seed = String(p.id).charCodeAt(0) || 1;
+          const offsetLat = ((seed % 10) - 5) * 0.0015;
+          const offsetLng = (((seed * 3) % 10) - 5) * 0.0015;
+          finalLat = center.lat + offsetLat;
+          finalLng = center.lng + offsetLng;
+        }
+
+        const isUsd = (p.offerType === 'VENTA' || !p.priceBob);
+        let label = '';
+        if (isUsd) {
+          const priceVal = p.price || 0;
+          if (priceVal >= 1000000) {
+            label = `$ ${(priceVal / 1000000).toFixed(1).replace('.0', '')}M`;
+          } else {
+            label = `$ ${Math.round(priceVal / 1000)}K`;
+          }
+        } else {
+          const priceVal = p.priceBob || (p.price * 10);
+          if (priceVal >= 1000000) {
+            label = `Bs. ${(priceVal / 1000000).toFixed(1).replace('.0', '')}M`;
+          } else {
+            label = `Bs. ${Math.round(priceVal / 1000)}K`;
+          }
+        }
+
+        const priceFormatted = `Bs. ${(p.priceBob || p.price * 10).toLocaleString('es-BO')} / USD ${(p.price || 0).toLocaleString()}`;
+
+        // ponytail: coincidencia de zona segura por texto puro
+        const pLoc = cleanStr(p.location || p.zone || p.city || "");
+        const cLoc = cleanStr(currentProperty.location || currentProperty.zone || currentProperty.city || "");
+        
+        // Buscar si comparten palabras clave como Equipetrol, Urubo, Norte, Sur, etc.
+        const keywords = cLoc.split(/[\s,.-]+/).filter(w => w.length > 2);
+        if (keywords.length === 0) keywords.push("santa cruz");
+
+        const isMatch = keywords.some(kw => pLoc.includes(kw)) || pLoc.includes("santa cruz") || cLoc.includes(pLoc) || pLoc.includes(cLoc);
+        if (!isMatch) return null;
+
+        return {
+          id: p.id,
+          lat: finalLat,
+          lng: finalLng,
+          label,
+          title: p.title,
+          priceFormatted,
+          imageUrl: p.imageUrl || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80',
+          location: p.location || p.zone || 'Santa Cruz, Bolivia'
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    // ponytail: límite estricto de 12 propiedades
+    return mapped.slice(0, 12);
+  }, [currentProperty, contextProperties]);
+
+  const combinedMapProperties = useMemo(() => {
+    if (!currentProperty) return [];
+    
+    // Element A: The property currently being viewed
+    const mainPin = {
+      id: currentProperty.id,
+      lat: currentProperty.coordinates?.lat || currentProperty.lat || -17.7833,
+      lng: currentProperty.coordinates?.lng || currentProperty.lng || -63.1833,
+      label: `Bs. ${(currentProperty.priceBob || currentProperty.price * 10).toLocaleString('es-BO')}`,
+      title: currentProperty.title,
+      priceFormatted: `Bs. ${(currentProperty.priceBob || currentProperty.price * 10).toLocaleString('es-BO')} / USD ${(currentProperty.price || 0).toLocaleString()}`,
+      imageUrl: currentProperty.imageUrl || (currentProperty.images && currentProperty.images[0]) || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80',
+      location: currentProperty.location || currentProperty.zone || 'Propiedad Consultada',
+      isMain: true
+    };
+    
+    // Element B: The nearby properties
+    const nearbyPins = nearbyPropertiesList.map(item => ({
+      ...item,
+      isMain: false
+    }));
+    
+    return [mainPin, ...nearbyPins];
+  }, [currentProperty, nearbyPropertiesList]);
+
   const [isFavorited, setIsFavorited] = useState<boolean>(initialIsFavorited);
   const [token, setToken] = useState<string | null>(initialToken);
   const [authLoaded, setAuthLoaded] = useState<boolean>(!!initialToken);
@@ -527,6 +436,7 @@ export function PropertyDetailClient({
     if (!authLoaded) return; // Esperar a que la autenticación se haya cargado del localStorage
 
     const recordPropertyView = async () => {
+      if (!currentProperty || !currentProperty.id) return;
       const activeToken = token || getToken();
       
       // AUDITORÍA DE ID REAL: Extraemos explícitamente el identificador interno de base de datos
@@ -548,25 +458,26 @@ export function PropertyDetailClient({
 
       // Local storage fallback for view history
       try {
-        const localViews = localStorage.getItem('propio_recent_views');
+        const localViews = localStorage.getItem('propio_client_recently_viewed');
         let viewsArray: string[] = localViews ? JSON.parse(localViews) : [];
-        viewsArray = viewsArray.filter(id => id !== propertyDbId);
-        viewsArray.unshift(propertyDbId);
-        localStorage.setItem('propio_recent_views', JSON.stringify(viewsArray.slice(0, 10)));
+        if (!viewsArray.includes(propertyDbId)) {
+          viewsArray.unshift(propertyDbId);
+          localStorage.setItem('propio_client_recently_viewed', JSON.stringify(viewsArray.slice(0, 10)));
+        }
       } catch (err) {
         console.error('Error writing to local recent views:', err);
       }
     };
 
     recordPropertyView();
-  }, [currentProperty.id, token, authLoaded]);
+  }, [currentProperty?.id, token, authLoaded]);
 
   // Sincronizar el estado de favoritos con el contexto global de favoritos
   useEffect(() => {
-    if (!loading) {
+    if (!loading && currentProperty) {
       setIsFavorited(isFavGlobal(currentProperty.id));
     }
-  }, [favorites, currentProperty.id, isFavGlobal, loading]);
+  }, [favorites, currentProperty?.id, isFavGlobal, loading]);
 
   const handleFavoriteToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -615,9 +526,16 @@ export function PropertyDetailClient({
   }, [showAppointmentModal]);
 
   // ─── Estados Interactivos de la Calculadora Hipotecaria Real ───
-  const [downPayment, setDownPayment] = useState<number>(Math.round(currentProperty.price * 0.2));
+  const [downPayment, setDownPayment] = useState<number>(Math.round((currentProperty?.price || 0) * 0.2));
   const [interestRate, setInterestRate] = useState<number>(5.5); // Tasa anual en %
   const [loanTerm, setLoanTerm] = useState<number>(20); // Plazo en años
+
+  // Sincronizador de enganche: reacciona cuando el precio real llega del backend
+  useEffect(() => {
+    if (currentProperty?.price) {
+      setDownPayment(Math.round(currentProperty.price * 0.2));
+    }
+  }, [currentProperty?.price]);
 
   // Estados interactivos 3D y Plano
   const [active3DRoom, setActive3DRoom] = useState<'fachada' | 'cocina' | 'sala'>('fachada');
@@ -628,11 +546,25 @@ export function PropertyDetailClient({
   };
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
 
-  const currentAgent = staffAgents.find(a => a.id === selectedAgent) || staffAgents[0];
+  const currentAgent = staffAgents.find(a => a.id === selectedAgent) || staffAgents[0] || {
+    id: 'default',
+    name: 'Asesor Inmobiliario',
+    phone: '59172345678',
+    avatar: '👨‍💼',
+    agency: 'Propio Inmobiliaria',
+    email: 'contacto@propioinmuebles.com'
+  };
 
   // Cálculo matemático en tiempo real para la calculadora hipotecaria
   const mortgageResults = useMemo(() => {
-    const principal = currentProperty.price - downPayment;
+    if (!currentProperty?.price) return {
+      monthlyPrincipalInterest: 0,
+      monthlyTax: 0,
+      monthlyInsurance: 0,
+      totalMonthly: 0,
+      percentages: { principalInterest: 0, tax: 0, insurance: 0 }
+    };
+    const principal = (currentProperty?.price || 0) - downPayment;
     if (principal <= 0) {
       return {
         monthlyPrincipalInterest: 0,
@@ -655,10 +587,10 @@ export function PropertyDetailClient({
     }
 
     // Impuesto predial anual simulado: 0.1% de la propiedad, mensualizado
-    const monthlyTax = (currentProperty.price * 0.001) / 12;
+    const monthlyTax = ((currentProperty?.price || 0) * 0.001) / 12;
     
     // Seguro de hogar anual simulado: 0.05% de la propiedad, mensualizado
-    const monthlyInsurance = (currentProperty.price * 0.0005) / 12;
+    const monthlyInsurance = ((currentProperty?.price || 0) * 0.0005) / 12;
 
     const totalMonthly = monthlyPrincipalInterest + monthlyTax + monthlyInsurance;
 
@@ -677,47 +609,83 @@ export function PropertyDetailClient({
         insurance: pctInsurance
       }
     };
-  }, [currentProperty.price, downPayment, interestRate, loanTerm]);
+  }, [currentProperty?.price, downPayment, interestRate, loanTerm]);
 
-  const whatsappMsg = encodeURIComponent(
-    `Hola ${currentAgent.name}, me interesa el inmueble "${currentProperty.title}" (${currentProperty.code}). ¿Podríamos coordinar una cita de atención premium?`
-  );
-  const whatsappUrl = `https://wa.me/${currentAgent.phone.replace(/\D/g, '')}?text=${whatsappMsg}`;
+  // ── ESCUDO GLOBAL DEFINITIVO ─────────────────────────────────────────────
+  // Todos los hooks de React ya han sido declarados. A partir de aquí es seguro
+  // hacer un early return condicional sin violar las reglas de hooks.
+  if (!currentProperty || !currentProperty.id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0b0b0f] gap-4">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-700 border-t-emerald-400 animate-spin" />
+        <p className="text-slate-400 text-sm font-semibold tracking-wide animate-pulse">
+          Cargando detalles de la propiedad…
+        </p>
+      </div>
+    );
+  }
+
+  const property = currentProperty as any;
+  // ponytail: dual-status check — backend stores 'APPROVED', admin UI may persist either
+  const isFullyVerified = (() => {
+    const docs: any[] = Array.isArray(property.documents) ? property.documents : [];
+    if (docs.length === 0) return !!(property.isVerified || property.verified);
+    return docs.every((d: any) => ['APPROVED', 'APROBADO'].includes(String(d.status || '').toUpperCase().trim()));
+  })();
+  const nombreContacto = property.agente?.nombre || property.propietario?.nombre || property.agent?.name || property.owner?.name || currentAgent.name || "Asesor Inmobiliario";
+  const telefonoContacto = property.agente?.telefono || property.propietario?.telefono || property.agent?.phone || property.owner?.phone || currentAgent.phone || "59172345678";
+  const telefonoLimpio = telefonoContacto.replace(/\D/g, ''); // Deja solo los números
+
+  // Construcción de la plantilla estricta requerida por el cliente
+  const mensajeWhatsAppText = `Hola ${nombreContacto}, me comunico desde propioinmuebles.com Me interesa el inmueble "${property.title || ''}" (${property.code || property.id || ''}) ¿Podriamos coordinar una visita al inmueble?`;
+  const urlWhatsAppFinal = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensajeWhatsAppText)}`;
+  const whatsappUrl = urlWhatsAppFinal;
+  const whatsappMsg = encodeURIComponent(mensajeWhatsAppText);
 
   const handleActionClick = async (e: React.MouseEvent, actionType: 'visita' | 'whatsapp' | 'oferta' | 'reserva') => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (actionType === 'visita' || actionType === 'reserva') {
+      setShowAppointmentModal(true);
+      return;
+    }
+
     const tokenVal = getToken();
     const userVal = getCurrentUser();
     const isAuthenticated = !!(userVal && tokenVal);
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+    if (actionType === 'whatsapp') {
+      if (isAuthenticated) {
+        try {
+          await fetch(`${apiBaseUrl}/dashboard/inquiries`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tokenVal}`,
+            },
+            body: JSON.stringify({
+              propertyId: currentProperty.id,
+              message: `Contacto de WhatsApp iniciado por el cliente. Mensaje enviado: ${decodeURIComponent(whatsappMsg)}`,
+            }),
+          });
+        } catch (err) {
+          console.error('Error saving WhatsApp inquiry:', err);
+        }
+      }
+      window.open(whatsappUrl, '_blank');
+      return;
+    }
+
+    // Otras acciones requieren autenticación
     if (!isAuthenticated) {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
-    
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
-    if (actionType === 'visita') {
-      setShowAppointmentModal(true);
-    } else if (actionType === 'whatsapp') {
-      try {
-        await fetch(`${apiBaseUrl}/dashboard/inquiries`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenVal}`,
-          },
-          body: JSON.stringify({
-            propertyId: currentProperty.id,
-            message: `Contacto de WhatsApp iniciado por el cliente. Mensaje enviado: ${decodeURIComponent(whatsappMsg)}`,
-          }),
-        });
-      } catch (err) {
-        console.error('Error saving WhatsApp inquiry:', err);
-      }
-      window.open(whatsappUrl, '_blank');
-    } else if (actionType === 'oferta') {
-      const amountStr = prompt('Ingrese el monto de su oferta en USD:', String(currentProperty.price * 0.95));
+    if (actionType === 'oferta') {
+      const amountStr = prompt('Ingrese el monto de su oferta en Bs.:', String(Math.round(currentProperty.price * 0.95)));
       if (!amountStr) return;
       const amount = parseFloat(amountStr);
       if (isNaN(amount) || amount <= 0) {
@@ -744,56 +712,70 @@ export function PropertyDetailClient({
       } catch (err) {
         console.error('Error saving offer:', err);
       }
-    } else if (actionType === 'reserva') {
-      try {
-        // Registrar una oferta de reserva mínima del 1% del precio
-        await fetch(`${apiBaseUrl}/dashboard/offers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenVal}`,
-          },
-          body: JSON.stringify({
-            propertyId: currentProperty.id,
-            amount: currentProperty.price * 0.01,
-          }),
-        });
-      } catch (err) {
-        console.error('Error recording reservation offer:', err);
-      }
-      setShowQR(true);
     }
+  };
+
+  const resetAppointmentState = () => {
+    setAppointmentName('');
+    setAppointmentWhatsApp('');
+    setAppointmentEmail('');
+    setAppointmentDate('');
+    setAppointmentTime('');
+    setAppointmentSuccessMsg('');
+    setShowAppointmentModal(false);
   };
 
   const handleAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const tokenVal = getToken();
-    if (tokenVal) {
-      try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const scheduledAt = `${appointmentDate}T${appointmentTime}:00`;
-        const res = await fetch(`${apiBaseUrl}/dashboard/meetings`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenVal}`,
-          },
-          body: JSON.stringify({
-            propertyId: currentProperty.id,
-            scheduledAt,
-          }),
-        });
-        if (!res.ok) {
-          console.error('Error recording meeting on backend');
-        }
-      } catch (err) {
-        console.error('Error saving meeting:', err);
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const scheduledAt = `${appointmentDate}T${appointmentTime}:00`;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (tokenVal) {
+        headers['Authorization'] = `Bearer ${tokenVal}`;
       }
+
+      const res = await fetch(`${apiBaseUrl}/appointments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          propertyId: currentProperty.id,
+          scheduledAt,
+          clientName: appointmentName,
+          clientPhone: appointmentWhatsApp,
+          clientEmail: appointmentEmail,
+          notes: 'Visita guiada agendada desde el detalle de la propiedad.',
+          type: 'visita',
+        }),
+      });
+      if (!res.ok) {
+        console.error('Error recording meeting on backend');
+      }
+    } catch (err) {
+      console.error('Error saving meeting:', err);
     }
     setAppointmentSuccessMsg(
       `¡Visita programada con éxito! Confirmación: Se agendó para el ${appointmentDate} a las ${appointmentTime}. Recibirás un mensaje automático al WhatsApp ${appointmentWhatsApp}.`
     );
   };
+
+  if (!currentProperty) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md border border-slate-100 flex flex-col items-center gap-4 animate-scaleUp">
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-[#0a1931] mb-2" />
+          <h2 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Cargando ficha técnica del inmueble...</h2>
+          <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+            Buscando los detalles y especificaciones del inmueble en el catálogo. Por favor espere.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-700 antialiased selection:bg-[#b9fa3c]/30">
@@ -1012,10 +994,19 @@ export function PropertyDetailClient({
                 </div>
               )}
 
-              {/* Mapa de Entorno */}
+               {/* Mapa de Entorno */}
               {activeTab === 'mapa' && (
                 <div className="w-full h-full bg-slate-200">
-                  <MiniMap center={currentProperty.coordinates} />
+                  <MapWrapper
+                    properties={ALL_REAL_PROPERTIES.filter((p: any) => p && p.offerType === currentProperty.offerType)}
+                    activePropertyId={currentProperty.id}
+                    selectedPropertyId={null}
+                    onSelectProperty={(id) => router.push(`/properties/${id}`)}
+                    currency="BOB"
+                    center={[currentProperty.coordinates?.lat || -17.7833, currentProperty.coordinates?.lng || -63.1833]}
+                    zoom={15}
+                    currentPropertyId={currentProperty.id}
+                  />
                 </div>
               )}
 
@@ -1041,37 +1032,75 @@ export function PropertyDetailClient({
                 </div>
               </div>
 
-              {/* Favoritos */}
-              <button 
-                onClick={handleFavoriteToggle}
-                className="absolute top-4 right-4 z-10 p-3 rounded-full bg-white/95 backdrop-blur shadow hover:scale-110 active:scale-95 transition-all text-[#04045E]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill={isFavorited ? '#b9fa3c' : 'none'} viewBox="0 0 24 24" stroke={isFavorited ? '#b9fa3c' : 'currentColor'} strokeWidth={2.5} className="w-5 h-5 transition-transform duration-300">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                </svg>
-              </button>
+              {/* Favoritos y Sticker de Verificación Flotante (Alineamiento Derecho Premium) */}
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+                {(() => {
+                  const requiredTypes = ['FR', 'CT', 'TS', 'IM', 'PU', 'CI'];
+                  const rigidPrefixMap: Record<string, string> = {
+                    FR: 'FOLIO REAL',
+                    CT: 'CERTIFICAD',
+                    TS: 'TESTIMONIO',
+                    IM: 'IMPUESTOS ',
+                    PU: 'PLANO DE U',
+                    OD: 'OTROS DOCU',
+                    CI: 'CÉDULA DE '
+                  };
+                  const docs = currentProperty.documents || [];
+                  const allApproved = Array.isArray(docs) && requiredTypes.every(type => {
+                    const prefix = rigidPrefixMap[type];
+                    const doc = docs.find((d: any) => 
+                      d.fileType?.toUpperCase() === type ||
+                      (prefix && String(d.docName || d.name || d.fileType || '').toUpperCase().includes(prefix))
+                    );
+                    return doc?.status === 'APPROVED';
+                  });
+
+                  return allApproved ? (
+                    <span className="bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3.5 py-2.5 rounded-full tracking-wider uppercase shadow-sm border border-[#04045E]/10">
+                      DOCUMENTACION VERIFICADA
+                    </span>
+                  ) : null;
+                })()}
+                <button 
+                  onClick={handleFavoriteToggle}
+                  className="p-3 rounded-full bg-white/95 backdrop-blur shadow hover:scale-110 active:scale-95 transition-all text-[#04045E] flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill={isFavorited ? '#b9fa3c' : 'none'} viewBox="0 0 24 24" stroke={isFavorited ? '#b9fa3c' : 'currentColor'} strokeWidth={2.5} className="w-5 h-5 transition-transform duration-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Cabecera Técnica de Datos en Texto Limpio */}
             <div className="space-y-3 pt-2">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 
-                <div className="flex items-baseline gap-3">
+                <div className="flex items-baseline gap-3 flex-wrap">
                   <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[#04045E] font-sans">
-                    ${currentProperty.price.toLocaleString()}
+                    Bs. {(currentProperty.priceBob || currentProperty.price * 10).toLocaleString('es-BO')}
                   </h1>
-                  <span className="text-slate-400 text-xs font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                    {(currentProperty.price / currentProperty.m2).toFixed(0)} USD/m²
+                  <span className="text-slate-500 text-sm font-bold bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                    USD {currentProperty.price.toLocaleString()}
+                  </span>
+                  <span className="text-slate-450 text-xs font-semibold bg-neutral-50 px-2 py-1 rounded border border-slate-200">
+                    {currentProperty.m2 > 0 ? `${((currentProperty.priceBob || currentProperty.price * 10) / currentProperty.m2).toFixed(0)} Bs./m²` : 'Precio total'}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {currentProperty.verified && (
-                    <span className="bg-[#b9fa3c] text-[#04045E] text-[9px] font-black px-3 py-1.5 rounded-full border border-[#04045E]/10 tracking-widest uppercase shadow-sm">
-                      ✓ Verificado Oro
+                  <DaysOnMarketBadge propertyId={currentProperty.id} size="sm" />
+                  {isFullyVerified && (
+                    <span
+                      className="inline-flex items-center gap-1.5 bg-emerald-700 text-white text-[9px] font-black px-3 py-1.5 rounded-full border border-emerald-500/40 shadow-md uppercase tracking-widest"
+                      style={{ animation: 'seal-pulse 2.4s ease-in-out infinite' }}
+                    >
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Documentación Verificada
                     </span>
                   )}
-                  <DaysOnMarketBadge propertyId={currentProperty.id} size="sm" />
                 </div>
               </div>
 
@@ -1081,11 +1110,11 @@ export function PropertyDetailClient({
                 <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
                 <span className="flex items-center gap-1"><strong className="text-base font-black text-[#04045E]">{currentProperty.baths}</strong> baños</span>
                 <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-                <span className="flex items-center gap-1"><strong className="text-base font-black text-[#04045E]">{currentProperty.m2}</strong> m² construidos</span>
+                <span className="flex items-center gap-1"><strong className="text-base font-black text-[#04045E]">{currentProperty.m2 || currentProperty.specs?.area || currentProperty.area || 0}</strong> m² construidos</span>
               </div>
 
               <p className="text-sm md:text-base text-slate-500 font-bold tracking-wide">
-                {currentProperty.address} • <span className="text-slate-400 font-semibold">{currentProperty.city}</span>
+                {currentProperty.address || currentProperty.location} {currentProperty.city && currentProperty.city !== currentProperty.location && <span className="text-slate-400 font-semibold">• {currentProperty.city}</span>}
               </p>
             </div>
           </section>
@@ -1233,25 +1262,62 @@ export function PropertyDetailClient({
             </>
           )}
 
-          {/* 7. MINI MAPA ENTORNO INFERIOR */}
+           {/* 7. MINI MAPA ENTORNO INFERIOR */}
           <section className="space-y-3">
             <h3 className="text-sm font-black uppercase tracking-wider text-[#000033]">MÁS OPCIONES</h3>
             <div className="w-full h-80 bg-slate-100 border border-slate-200 rounded-3xl overflow-hidden relative shadow-inner">
-              <MiniMap center={currentProperty.coordinates} isInteractive={false} />
+              <MapWrapper
+                properties={ALL_REAL_PROPERTIES.filter((p: any) => p && p.offerType === currentProperty.offerType)}
+                activePropertyId={currentProperty.id}
+                selectedPropertyId={null}
+                onSelectProperty={(id) => router.push(`/properties/${id}`)}
+                currency="BOB"
+                center={[currentProperty.coordinates?.lat || -17.7833, currentProperty.coordinates?.lng || -63.1833]}
+                zoom={15}
+                currentPropertyId={currentProperty.id}
+              />
             </div>
-            {/* Sello Documental */}
-            <div className="pt-2 flex items-center gap-2 text-xs font-bold font-sans">
-              <span className="text-slate-400 uppercase tracking-widest text-[9px]">Sello documental:</span>
-              {currentProperty.verified ? (
-                <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider text-[9px] font-black">
-                  ✓ documentación verificada
-                </span>
-              ) : (
-                <span className="text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 uppercase tracking-wider text-[9px] font-black">
-                  ✗ No verificado
-                </span>
+
+              {/* Insignias de Documentación con Hover Tooltips */}
+              {currentProperty.documentsList && Array.isArray(currentProperty.documentsList) && currentProperty.documentsList.some((d: any) => d.isMarked) ? (
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {currentProperty.documentsList.map((doc: any) => {
+                    const hasFile = !!doc.fileData;
+                    const isMarked = doc.isMarked;
+                    if (!isMarked) return null;
+
+                    return (
+                      <div key={doc.id} className="relative group inline-block">
+                        <span
+                          title={!hasFile ? "No subió ningún documento" : undefined}
+                          className={`px-2.5 py-1 rounded-full border text-[9px] uppercase tracking-wider font-black select-none inline-flex items-center gap-1 ${
+                            hasFile
+                              ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                              : 'text-rose-600 bg-rose-50 border-rose-100 opacity-60 cursor-not-allowed'
+                          }`}
+                        >
+                          {doc.name} {!hasFile && '⚠️'}
+                        </span>
+                        {!hasFile && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 scale-0 group-hover:scale-100 transition-all bg-slate-900 text-white text-[8px] font-black uppercase py-1 px-2 rounded whitespace-nowrap shadow z-30">
+                            No subió ningún documento
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {/* Alerta de Documentos nulos */}
+              {String(currentProperty.id).startsWith('PROP-CUSTOM-') && 
+               (!currentProperty.documentsList || 
+                currentProperty.documentsList.length === 0 || 
+                currentProperty.documentsList.every((d: any) => !d.fileData)) && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 text-center p-3 rounded-2xl font-black text-[10px] uppercase tracking-wider mt-2">
+                  No subió ningún documento
+                </div>
               )}
-            </div>
           </section>
 
           <hr className="border-slate-200/80" />
@@ -1286,10 +1352,11 @@ export function PropertyDetailClient({
                   <p className="text-xs font-semibold text-slate-400 mt-0.5">{currentAgent.agency}</p>
                   
                   {/* Calificación */}
-                  <div className="flex items-center gap-1 mt-1 text-amber-500 text-xs">
-                    <span>★</span>
-                    <span className="text-slate-500 font-bold text-[11px]">{currentAgent.stars} Certificación Oro</span>
-                  </div>
+                  {(currentAgent.verified || currentAgent.isVerified) && (
+                    <span className="inline-block bg-[#04045E] text-[#b9fa3c] text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider mt-1">
+                      DOCUMENTACION VERIFICADA
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1318,19 +1385,23 @@ export function PropertyDetailClient({
                 Solicitar visita guiada
               </button>
 
-              <button 
+              <a
+                href={urlWhatsAppFinal}
                 onClick={(e) => handleActionClick(e, 'whatsapp')}
-                className="w-full bg-[#000033] hover:bg-[#000044] text-white font-black py-4 px-6 rounded-2xl shadow-sm text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer text-center"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex flex-col items-center justify-center bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold py-3 px-4 rounded-2xl transition-all duration-200 shadow-md uppercase tracking-wider text-center group active:scale-[0.99]"
               >
-                Contactar por WhatsApp
-              </button>
+                <span className="text-xs tracking-wider">Contactar por WhatsApp</span>
+                <span className="text-[10px] text-slate-400 font-medium tracking-normal lowercase normal-case mt-0.5 group-hover:text-slate-300">
+                  (Contactar ahora / Agendar una cita)
+                </span>
+              </a>
 
-              <button 
-                onClick={(e) => handleActionClick(e, 'oferta')}
-                className="w-full bg-[#006AFF] hover:bg-blue-700 text-white font-black py-4 px-6 rounded-2xl shadow-sm text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer text-center"
-              >
-                Enviar Oferta de Compra
-              </button>
+              <p className="text-xs text-slate-500 font-medium text-center mt-2.5">
+                Chatea en WhatsApp con el <span className="font-bold text-slate-700">+{telefonoLimpio}</span>
+              </p>
+
             </div>
 
           </div>
@@ -1371,7 +1442,7 @@ export function PropertyDetailClient({
             </div>
 
             <div className="space-y-1">
-              <p className="text-[#04045E] font-black text-lg">${(currentProperty.price * 0.01).toLocaleString()} USD</p>
+              <p className="text-[#04045E] font-black text-lg">Bs. {Math.round((currentProperty.priceBob || currentProperty.price * 10) * 0.01).toLocaleString('es-BO')}</p>
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Reserva mínima del 1% · {currentProperty.code}</p>
             </div>
 
@@ -1391,10 +1462,7 @@ export function PropertyDetailClient({
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h4 className="text-sm font-black text-[#000033] uppercase tracking-wide">Agendar Visita Guiada</h4>
               <button 
-                onClick={() => {
-                  setShowAppointmentModal(false);
-                  setAppointmentSuccessMsg('');
-                }}
+                onClick={resetAppointmentState}
                 className="text-slate-400 hover:text-black font-bold text-lg cursor-pointer bg-transparent border-none"
               >
                 ✕
@@ -1408,10 +1476,7 @@ export function PropertyDetailClient({
                   {appointmentSuccessMsg}
                 </p>
                 <button
-                  onClick={() => {
-                    setShowAppointmentModal(false);
-                    setAppointmentSuccessMsg('');
-                  }}
+                  onClick={resetAppointmentState}
                   className="w-full bg-[#000033] hover:bg-[#000044] text-white font-sans font-bold py-3 rounded-xl text-xs uppercase tracking-widest transition-all"
                 >
                   Cerrar
@@ -1486,23 +1551,23 @@ export function PropertyDetailClient({
       )}
 
       {/* Barra de Contacto Fija en la Base para Móviles (Zillow / Airbnb Style) */}
-      <div className="lg:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-fadeIn">
+      <div className="lg:hidden fixed bottom-0 left-0 w-full z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-fadeIn">
         <div className="flex flex-col">
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Precio</span>
-          <span className="text-sm font-black text-[#000033]">Bs. ${(currentProperty.priceBob || currentProperty.price * 10).toLocaleString()}</span>
+          <span className="text-sm font-black text-[#000033]">Bs. {(currentProperty.priceBob || currentProperty.price * 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</span>
         </div>
         <div className="flex gap-2 flex-1 max-w-[240px]">
           <button 
             onClick={(e) => handleActionClick(e, 'reserva')}
-            className="flex-1 bg-[#ccff00] hover:bg-[#b5e600] text-[#000033] font-heading font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] border border-[#ccff00]/10 cursor-pointer"
+            className="flex-1 bg-[#D4FF00] hover:bg-[#c2eb00] text-[#000033] font-sans font-black py-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all active:scale-[0.98] cursor-pointer"
           >
-            Reservar
+            RESERVAR
           </button>
           <button 
             onClick={(e) => handleActionClick(e, 'whatsapp')}
-            className="flex-1 bg-[#000033] hover:bg-opacity-95 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-[0.98] text-center cursor-pointer"
+            className="flex-1 bg-[#0B1354] hover:bg-[#080d3b] text-white font-sans font-black py-3 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-[0.98] text-center cursor-pointer"
           >
-            WhatsApp
+            WHATSAPP
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 // Monkey patch window.fetch de forma síncrona en el ámbito del módulo (solo en el cliente)
 if (typeof window !== 'undefined' && !(window as any).__fetch_intercepted) {

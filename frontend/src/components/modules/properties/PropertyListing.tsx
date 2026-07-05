@@ -38,7 +38,7 @@ export const PropertyListing: React.FC<PropertyListingProps> = ({
           No encontramos inmuebles con esos filtros, intenta ajustar tu búsqueda
         </p>
         <p className="text-[10px] text-linear-ink-subtle font-bold uppercase tracking-widest mt-6 pt-4 border-t border-linear-hairline">
-          💡 Sugerencia: Desactiva el "Sello Oro" o amplía el rango de precios.
+          💡 Sugerencia: Desactiva "Documentación verificada" o amplía el rango de precios.
         </p>
       </div>
     );
@@ -48,7 +48,9 @@ export const PropertyListing: React.FC<PropertyListingProps> = ({
     <div className="grid grid-cols-1 gap-6">
       {properties.map((property) => (
         <PropertyCard
+          property={property}
           key={property.id}
+          propertyId={property.id}
           title={property.title}
           price={property.price}
           priceBob={property.priceBob}

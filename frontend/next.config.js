@@ -97,6 +97,23 @@ const nextConfig = {
         source: '/asociate',
         destination: '/servicios',
       },
+      {
+        source: '/agent/:path*',
+        destination: '/agente/:path*',
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: '/propietario/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
     ];
   },
 };

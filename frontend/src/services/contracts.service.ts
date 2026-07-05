@@ -1,4 +1,4 @@
-import { apiClient } from './api.client';
+﻿import { apiClient } from './api.client';
 
 export interface Contract {
   id: string;
@@ -29,28 +29,7 @@ export interface Contract {
   createdAt?: string | Date;
 }
 
-let mockContracts: Contract[] = [
-  {
-    id: 'contract-1',
-    propertyId: '1',
-    property: {
-      id: '1',
-      title: 'Apartaestudio moderno en Laureles',
-      address: 'Circular 4# 70-10',
-      location: 'Laureles',
-    },
-    tenantId: 'tenant-1',
-    tenant: { id: 'tenant-1', name: 'Admin', email: 'admin@propio.com.bo' },
-    ownerId: 'owner-1',
-    owner: { id: 'owner-1', name: 'Juan', email: 'owner@propio.com.bo' },
-    startDate: '2026-05-22',
-    endDate: '2027-05-22',
-    monthlyAmount: 1000.00,
-    status: 'VIGENTE',
-    observations: 'Contrato inicial de prueba para MVP.',
-    createdAt: '2026-05-22T12:00:00Z',
-  }
-];
+let mockContracts: Contract[] = [];
 
 export const contractsService = {
   async getContracts(token?: string): Promise<Contract[]> {
@@ -128,5 +107,86 @@ export const contractsService = {
       }
       return { message: 'Contrato eliminado correctamente (Simulado).' };
     }
+  },
+
+  async getContractDocuments(contractId: string, token?: string): Promise<any[]> {
+    try {
+      return await apiClient.getWithAuth<any[]>(`/contracts/${contractId}/documents`, token || 'mock-admin-token');
+    } catch (error) {
+      console.warn('API de backend inalcanzable. Cargando documentos desde local storage.');
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`propio_contracts_documents_${contractId}`);
+        return local ? JSON.parse(local) : [];
+      }
+      return [];
+    }
+  },
+
+  async uploadContractDocuments(contractId: string, files: File[], token?: string): Promise<any> {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      return await apiClient.postMultipartWithAuth<any>(
+        `/contracts/${contractId}/documents`,
+        formData,
+        token || 'mock-admin-token'
+      );
+    } catch (error) {
+      console.warn('API de backend inalcanzable. Subiendo documentos simulados a local storage.');
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`propio_contracts_documents_${contractId}`);
+        const docs = local ? JSON.parse(local) : [];
+        
+        const newDocs = await Promise.all(files.map(async file => {
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+
+          return {
+            id: 'doc-mock-' + Math.random().toString(36).substr(2, 9),
+            contractId,
+            originalName: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size,
+            uploadedAt: new Date().toISOString(),
+            dataBase64: base64
+          };
+        }));
+
+        const updatedDocs = [...docs, ...newDocs];
+        localStorage.setItem(`propio_contracts_documents_${contractId}`, JSON.stringify(updatedDocs));
+        
+        return {
+          message: `${files.length} documento(s) subido(s) exitosamente (Simulado).`,
+          uploaded: newDocs.map(({ dataBase64, ...rest }) => rest)
+        };
+      }
+      return { message: 'Simulación fallida fuera del navegador.', uploaded: [] };
+    }
+  },
+
+  async deleteContractDocument(contractId: string, documentId: string, token?: string): Promise<any> {
+    try {
+      return await apiClient.deleteWithAuth<any>(
+        `/contracts/${contractId}/documents/${documentId}`,
+        token || 'mock-admin-token'
+      );
+    } catch (error) {
+      console.warn('API de backend inalcanzable. Eliminando documento desde local storage.');
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`propio_contracts_documents_${contractId}`);
+        if (local) {
+          let docs = JSON.parse(local);
+          docs = docs.filter((d: any) => d.id !== documentId);
+          localStorage.setItem(`propio_contracts_documents_${contractId}`, JSON.stringify(docs));
+        }
+      }
+      return { message: 'Documento eliminado correctamente (Simulado).' };
+    }
   }
 };
+
