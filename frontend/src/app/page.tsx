@@ -284,16 +284,37 @@ function HomeContent() {
     const user = getCurrentUser() as any;
     const filters = user && user.id ? { userId: user.id } : undefined;
     
-    // 1. Obtener total de propiedades registradas en producción
-    propertiesService.getProperties(filters)
-      .then((data) => {
-        if (data && Array.isArray(data)) {
-          setTotalProperties(data.length);
+    // 1. Obtener total de propiedades unificadas (backend + db.json) sin filtros restrictivos
+    const fetchTotalCount = async () => {
+      try {
+        const [backendProps, localRes] = await Promise.all([
+          propertiesService.getProperties({ verifiedOnly: false }).catch(() => []),
+          fetch('/api/local/properties', { cache: 'no-store' })
+            .then(res => res.json())
+            .catch(() => ({ properties: [] }))
+        ]);
+
+        const localProps = localRes?.properties || [];
+        const combinedMap = new Map<string, any>();
+
+        if (Array.isArray(backendProps)) {
+          backendProps.forEach((p: any) => {
+            if (p && p.id) combinedMap.set(p.id, p);
+          });
         }
-      })
-      .catch((err) => {
-        console.error("Error fetching total properties:", err);
-      });
+
+        if (Array.isArray(localProps)) {
+          localProps.forEach((p: any) => {
+            if (p && p.id) combinedMap.set(p.id, p);
+          });
+        }
+
+        setTotalProperties(combinedMap.size);
+      } catch (err) {
+        console.error("Error fetching total properties count:", err);
+      }
+    };
+    fetchTotalCount();
 
     // 2. Cargar propiedades dinámicas unificadas para el carrusel de inversiones
     const loadInversiones = async () => {

@@ -863,8 +863,11 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                           <p className="text-[9px] text-slate-400 font-semibold line-clamp-2 leading-tight">{descMap[id]}</p>
                         </div>
                         <span className="block text-[10px] font-mono font-black text-slate-700 pt-1">
-                          {id === 'plan-cierre-garantizado' && !plan.price.includes('%') ? 'Comisión: ' : ''}
-                          {id === 'plan-gratis' ? 'Gratis' : `Bs. ${plan.price.replace(/[^\d.]/g, '')}${plan.billingCycle}`}
+                          {id === 'plan-cierre-garantizado' ? (
+                            `Comisión: ${plan.price.replace(/[^\d.]/g, '')}% ${plan.billingCycle}`
+                          ) : (
+                            id === 'plan-gratis' ? 'Gratis' : `Bs. ${plan.price.replace(/[^\d.]/g, '')}${plan.billingCycle}`
+                          )}
                         </span>
                       </div>
                     );
@@ -893,11 +896,13 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                             />
                           </div>
                            <div>
-                            <label className="block text-[7px] font-black text-slate-450 uppercase mb-0.5">PRECIO (EDITABLE) (Bs.)</label>
+                            <label className="block text-[7px] font-black text-slate-450 uppercase mb-0.5">
+                              {id === 'plan-cierre-garantizado' ? 'COMISIÓN (EDITABLE) (%)' : 'PRECIO (EDITABLE) (Bs.)'}
+                            </label>
                             <input 
                               type="text" 
                               value={plan.price}
-                              placeholder={`Bs. ${id === 'plan-venta-pro' ? '199' : plan.price}`}
+                              placeholder={id === 'plan-cierre-garantizado' ? '1.5' : `Bs. ${id === 'plan-venta-pro' ? '199' : plan.price}`}
                               onChange={(e) => setEditablePlans(prev => ({
                                 ...prev,
                                 [id]: { ...prev[id], price: e.target.value }
@@ -1484,7 +1489,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
                       Precio
                     </h4>
                     <p className="font-bold text-slate-800">
-                      ${selectedPropertyDetails.price.toLocaleString()} USD
+                      Bs. {selectedPropertyDetails.price.toLocaleString()}
                     </p>
                   </div>
                   <div>
