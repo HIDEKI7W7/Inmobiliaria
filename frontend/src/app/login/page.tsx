@@ -48,8 +48,7 @@ export default function LoginPage() {
       if (payload && payload.exp && payload.exp > Math.floor(Date.now() / 1000)) {
         // Rehidratar localStorage si solo estaba en cookie
         try { localStorage.setItem('propio_token', token); } catch (_e) {}
-        const redirectPath = payload.role === 'ADMIN' ? '/admin/dashboard' : (payload.role === 'AGENTE' ? '/agente/dashboard' : getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted));
-        router.replace(redirectPath);
+        router.replace(getRedirectPathByRole(payload.role, payload.objective, payload.onboardingCompleted));
       }
     }
   }, [router]);
@@ -235,50 +234,53 @@ export default function LoginPage() {
           }
         }
 
-        // Inyectar credenciales maestras de alta seguridad y antiguas por defecto
-        localUsers.push({
-          id: 'usr-admin-master',
-          name: 'Administrador Principal',
-          email: 'admin@propio.bo',
-          username: 'admin@propio.bo',
-          password: 'M4rs_Tech.2026!Admin',
-          role: 'ADMIN',
-          phone: '',
-        });
-        localUsers.push({
-          id: 'usr-admin-old',
-          name: 'Administrador Demo',
-          email: 'admin@propio.com.bo',
-          username: 'admin@propio.com.bo',
-          password: 'admin123',
-          role: 'ADMIN',
-          phone: '',
-        });
-        localUsers.push({
-          id: 'usr-agente-master',
-          name: 'Asesor Estrella',
-          email: 'agente@propio.bo',
-          username: 'agente@propio.bo',
-          password: 'Sky_Tech.2026!Agent',
-          role: 'AGENTE',
-          phone: '',
-        });
-        localUsers.push({
-          id: 'usr-agente-old',
-          name: 'Agente Demo',
-          email: 'agent@propio.com.bo',
-          username: 'agent@propio.com.bo',
-          password: 'agent123',
-          role: 'AGENTE',
-          phone: '',
-        });
-
         const emailNormalizado = email.trim().toLowerCase();
         const matchedUser = localUsers.find(
           (u) => u.email?.toLowerCase() === emailNormalizado || u.username?.toLowerCase() === emailNormalizado
         );
 
+        if (matchedUser) {
+          if (matchedUser.password !== password) {
+            setError(t('Credenciales invalidas'));
+            setIsLoading(false);
+            return;
+          }
 
+          const header = window.btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+          const payloadObj = {
+            userId: matchedUser.id,
+            email: matchedUser.email,
+            name: matchedUser.name,
+            whatsappPhone: matchedUser.phone,
+            role: matchedUser.role,
+            onboardingCompleted: true,
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
+          };
+          const payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(payloadObj))));
+          const mockToken = `${header}.${payload}.signature`;
+
+          saveToken(mockToken);
+          setIsLoading(false);
+          setSuccessMsg(`${t("¡Bienvenido, Asesor")} ${matchedUser.name}!`);
+
+          const redirectPath = matchedUser.role === 'ADMIN' ? '/admin/dashboard' : '/agente/dashboard';
+
+          setTimeout(() => {
+            try {
+              router.push(redirectPath);
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
+                  window.location.href = redirectPath;
+                }
+              }, 150);
+            } catch (e) {
+              if (typeof window !== 'undefined') {
+                window.location.href = redirectPath;
+              }
+            }
+          }, 1200);
+          return;
+        }
 
         // Standard backend authentication fallback
         const loginRes = await fetch('/api/auth/login', {
@@ -477,6 +479,42 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Botones de Autenticación Social COLORIDOS Y REALES */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-8 w-full">
+            <a
+              href={`${socialAuthBaseUrl}/auth/google`}
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+              title={t("Google")}
+            >
+              <img src="/images/logos/google_logo_colorful.svg" alt="Google" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-slate-700 sm:hidden">{t("Google")}</span>
+            </a>
+            <a
+              href={`${socialAuthBaseUrl}/auth/apple`}
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-black cursor-pointer shadow-sm"
+              title={t("Apple")}
+            >
+              <img src="/images/logos/apple_logo_white.svg" alt="Apple" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-white sm:hidden">{t("Apple")}</span>
+            </a>
+            <a
+              href={`${socialAuthBaseUrl}/auth/facebook`}
+              className="flex justify-center items-center py-3 w-full sm:flex-1 border border-slate-200 rounded-xl hover:opacity-90 transition-opacity bg-[#1877F2] cursor-pointer shadow-sm"
+              title={t("Facebook")}
+            >
+              <img src="/images/logos/facebook_logo_white.svg" alt="Facebook" className="h-5 mr-2 sm:mr-0" />
+              <span className="text-xs font-bold text-white sm:hidden">{t("Facebook")}</span>
+            </a>
+          </div>
+
+          <div className="relative flex py-2 items-center mb-6">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink mx-4 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+              {isRegister ? t('O REGÍSTRATE CON TU CORREO') : t('O CONTINÚA CON TU CORREO')}
+            </span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
           {/* Campos de Entrada Estructurados */}
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Nombre Completo (Solo en Registro) */}
@@ -591,7 +629,32 @@ export default function LoginPage() {
             </button>
           </form>
 
-
+          {/* Credenciales Demo */}
+          {!isRegister && (
+            <div className="pt-8 border-t border-slate-200 space-y-4">
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                {t("Acceso de Prueba Rápido")}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[
+                  { label: 'Admin',       email: 'admin@propio.com.bo',     pass: 'admin123',  role: 'ADMIN' },
+                  { label: 'Agente',      email: 'agent@propio.com.bo',     pass: 'agent123',  role: 'AGENTE' },
+                  { label: 'Propietario', email: 'owner@propio.com.bo',     pass: 'owner123',  role: 'PROPIETARIO' },
+                  { label: 'Cliente',     email: 'client@propio.com.bo',    pass: 'client123', role: 'CLIENTE' },
+                ].map((demo) => (
+                  <button
+                    key={demo.label}
+                    type="button"
+                    className="bg-[#F8FAFC] hover:bg-[#000033] border border-slate-200 rounded-xl px-3.5 py-2 text-[10px] font-bold text-slate-600 hover:text-white transition-all cursor-pointer select-none uppercase tracking-wider"
+                    onClick={() => handleQuickLogin(demo.email, demo.pass, demo.role, demo.label)}
+                    disabled={isLoading}
+                  >
+                    <span className="font-bold text-[#000033] group-hover:text-white">{demo.label}</span> · {demo.email.split('@')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer del Formulario */}
