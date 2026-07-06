@@ -94,6 +94,10 @@ const nextConfig = {
         destination: '/login?register=true',
       },
       {
+        source: '/register',
+        destination: '/login?register=true',
+      },
+      {
         source: '/asociate',
         destination: '/servicios',
       },

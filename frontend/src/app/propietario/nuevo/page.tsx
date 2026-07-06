@@ -22,6 +22,18 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export default function SmartCaptureForm() {
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user && user.role?.toUpperCase() === 'CLIENTE') {
+      setIsAuthorized(false);
+      router.replace('/');
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [router]);
+
   let setContextProperties: any = null;
   try {
     const context = useFavorites();
@@ -455,6 +467,18 @@ export default function SmartCaptureForm() {
       });
     }
   };
+
+  if (isAuthorized === null) {
+    return (
+      <div className="min-h-screen bg-[#000022] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#ccff00]"></div>
+      </div>
+    );
+  }
+
+  if (isAuthorized === false) {
+    return null;
+  }
 
   const checklistOk = isChecklistComplete();
 

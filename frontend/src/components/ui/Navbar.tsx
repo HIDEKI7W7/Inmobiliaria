@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { getCurrentUser, removeToken, getRedirectPathByRole, getToken } from '@/utils/session';
 import { useFavorites } from '@/context/FavoritesContext';
+import { ClientBlockModal } from './ClientBlockModal';
 
 const NAV_LINKS = [
   { href: '/properties?category=VENTA', label: 'COMPRAR' },
@@ -54,6 +55,7 @@ export const Navbar = () => {
   const [user, setUser] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [redirectPath, setRedirectPath] = useState('/cliente');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -168,13 +170,16 @@ export const Navbar = () => {
 
   // ── Lógica de redirección para "Publicar Gratis" ──────────────────────────
   // Si hay sesión activa con rol PROPIETARIO → va al asistente de publicación
-  // Cualquier otro caso (sin sesión, AGENTE, ADMIN) → va al registro público
+  // Si el rol es CLIENTE → se muestra el modal de bloqueo
+  // Cualquier otro caso (sin sesión, AGENTE, ADMIN) → va a la ruta correspondiente o al registro
   const handlePublicar = (e: React.MouseEvent) => {
     e.preventDefault();
     const user = getCurrentUser();
     if (user) {
       const role = user.role?.toUpperCase();
-      if (role === 'ADMIN') {
+      if (role === 'CLIENTE') {
+        setIsBlockModalOpen(true);
+      } else if (role === 'ADMIN') {
         router.push('/admin'); // Admin dashboard
       } else if (role === 'AGENTE') {
         router.push('/agente/propiedades'); // Agent properties dashboard
@@ -408,6 +413,7 @@ export const Navbar = () => {
         </div>
       </div>
 
+      <ClientBlockModal isOpen={isBlockModalOpen} onClose={() => setIsBlockModalOpen(false)} />
     </nav>
   );
 };
