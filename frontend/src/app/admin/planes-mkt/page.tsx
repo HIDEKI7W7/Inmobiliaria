@@ -733,7 +733,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
   };
 
   return (
-    <div className="flex w-full min-h-screen md:h-screen md:overflow-hidden bg-[#F8FAFC] font-sans antialiased flex-col md:flex-row">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans antialiased">
       {/* LEFT SIDEBAR */}
       <AdminSidebar
         activeTab="marketing_planes"
@@ -745,7 +745,7 @@ const FROZEN_PLANS_DATA: Record<string, { name: string; price: string; billingCy
       />
 
       {/* MAIN CONTAINER */}
-      <div className="flex-1 flex flex-col min-h-screen md:h-full md:overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 px-8 flex justify-between items-center z-20 shrink-0 select-none">
           <div className="flex items-center gap-2">

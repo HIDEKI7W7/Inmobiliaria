@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { resolveApiUrl } from '@/utils/resolveApiUrl';
 
 export const dynamic = 'force-dynamic';
@@ -43,16 +43,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Configurar respuesta y cookie HTTP-Only segura
-    const nextResponse = NextResponse.json(data);
-    const isProduction = process.env.NODE_ENV === 'production';
-
     nextResponse.cookies.set('propio_token', backendToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: 'lax', // Use 'lax' in both dev and prod to guarantee cross-port and cross-subdomain access
       maxAge: 604800, // 7 días en segundos
       path: '/',
+      domain: isProduction ? '.propioinmuebles.com' : undefined, // Allow sharing between www and root domains in prod
     });
 
     return nextResponse;

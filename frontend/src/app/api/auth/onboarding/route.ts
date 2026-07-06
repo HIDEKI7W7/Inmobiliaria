@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { resolveApiUrl } from '@/utils/resolveApiUrl';
 
 export const dynamic = 'force-dynamic';
@@ -72,9 +72,10 @@ export async function PATCH(request: NextRequest) {
       nextResponse.cookies.set('propio_token', backendToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: 604800, // 7 días
         path: '/',
+        domain: isProduction ? '.propioinmuebles.com' : undefined,
       });
     }
 

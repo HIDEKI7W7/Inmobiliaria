@@ -82,14 +82,13 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_DB_PASSWORD@ep-your-project.us-east-2
 JWT_SECRET="YOUR_JWT_SECRET"
 CORS_ORIGIN="https://propioinmuebles.com"
 FRONTEND_URL="https://propioinmuebles.com"
-BACKEND_URL="https://api.propioinmuebles.com"
 CORS_ALLOWED_ORIGINS="https://propioinmuebles.com,https://www.propioinmuebles.com"
 PORT=4000
 NEXT_PUBLIC_API_URL="https://api.propioinmuebles.com/api"
 NODE_ENV=production
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
-GOOGLE_CALLBACK_URL="https://api.propioinmuebles.com/api/auth/google/callback"
+PHOTON_URL="https://photon.komoot.io"
 ENVEOF
 else
   echo "✅ Archivo .env raíz ya existe. Omitiendo creación."
@@ -105,13 +104,12 @@ DIRECT_URL="postgresql://neondb_owner:YOUR_DB_PASSWORD@ep-your-project.us-east-2
 JWT_SECRET="YOUR_JWT_SECRET"
 CORS_ORIGIN="https://propioinmuebles.com"
 FRONTEND_URL="https://propioinmuebles.com"
-BACKEND_URL="https://api.propioinmuebles.com"
 CORS_ALLOWED_ORIGINS="https://propioinmuebles.com,https://www.propioinmuebles.com"
 PORT=4000
 NODE_ENV=production
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
-GOOGLE_CALLBACK_URL="https://api.propioinmuebles.com/api/auth/google/callback"
+PHOTON_URL="https://photon.komoot.io"
 BACKENDENVEOF
 else
   echo "✅ Archivo backend/.env.production ya existe. Omitiendo creación."
@@ -124,6 +122,7 @@ if [ ! -f "$APP_DIR/frontend/.env.production" ]; then
   cat > "$APP_DIR/frontend/.env.production" << 'FRONTENVEOF'
 NEXT_PUBLIC_API_URL="https://api.propioinmuebles.com/api"
 NODE_ENV=production
+JWT_SECRET="YOUR_JWT_SECRET"
 FRONTENVEOF
 else
   echo "✅ Archivo frontend/.env.production ya existe. Omitiendo creación."

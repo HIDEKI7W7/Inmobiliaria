@@ -66,39 +66,6 @@ export class AuthService {
       role: 'CLIENTE',
       onboardingCompleted: true,
     },
-    // Nuevas credenciales complejas y robustas (2026)
-    {
-      id: 'admin-complex',
-      email: 'dev.admin.root2026@propioinmuebles.com',
-      passwordHash: bcrypt.hashSync('P@ssw0rd!Admin2026_RootSecure', 10),
-      name: 'Administrador Complejo',
-      role: 'ADMIN',
-      onboardingCompleted: true,
-    },
-    {
-      id: 'agent-complex',
-      email: 'dev.agent.field2026@propioinmuebles.com',
-      passwordHash: bcrypt.hashSync('P@ssw0rd!Agent2026_FieldSecure', 10),
-      name: 'Agente Complejo',
-      role: 'AGENTE',
-      onboardingCompleted: true,
-    },
-    {
-      id: 'owner-complex',
-      email: 'dev.owner.host2026@propioinmuebles.com',
-      passwordHash: bcrypt.hashSync('P@ssw0rd!Owner2026_HostSecure', 10),
-      name: 'Propietario Complejo',
-      role: 'PROPIETARIO',
-      onboardingCompleted: true,
-    },
-    {
-      id: 'client-complex',
-      email: 'dev.client.buyer2026@propioinmuebles.com',
-      passwordHash: bcrypt.hashSync('P@ssw0rd!Client2026_BuyerSecure', 10),
-      name: 'Cliente Complejo',
-      role: 'CLIENTE',
-      onboardingCompleted: true,
-    },
   ];
 
   constructor(
@@ -114,7 +81,7 @@ export class AuthService {
 
     let user: StoredUser | null = null;
     const normalizedEmail = String(email).toLowerCase().trim();
-    const isMockEmail = normalizedEmail.endsWith('@propio.com.bo') || normalizedEmail.endsWith('@propioinmuebles.com');
+    const isMockEmail = normalizedEmail.endsWith('@propio.com.bo');
 
     if (isMockEmail) {
       this.logger.log(`Email de demostración detectado: ${normalizedEmail}. Saltando consulta a BD y usando memoria de desarrollo.`);

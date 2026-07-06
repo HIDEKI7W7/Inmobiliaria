@@ -5,11 +5,12 @@ import axios from 'axios';
 export class MapsService {
   private readonly logger = new Logger(MapsService.name);
   private readonly userAgent = 'MarsTechInmobiliariaApp/1.0 (contact@marstech.com)';
+  private readonly photonUrl = process.env.PHOTON_URL || 'https://photon.komoot.io';
 
   async reverseGeocode(lat: number, lng: number) {
-    this.logger.log(`[ReverseGeocode] Coordenadas: lat=${lat}, lng=${lng}`);
+    this.logger.log(`[ReverseGeocode] Coordenadas: lat=${lat}, lng=${lng} usando URL: ${this.photonUrl}`);
     try {
-      const response = await axios.get('https://photon.komoot.io/reverse', {
+      const response = await axios.get(`${this.photonUrl}/reverse`, {
         params: { lat, lon: lng },
         headers: {
           'Accept-Language': 'es',
@@ -60,7 +61,7 @@ export class MapsService {
         params.lon = lng;
       }
 
-      const response = await axios.get('https://photon.komoot.io/api', {
+      const response = await axios.get(`${this.photonUrl}/api`, {
         params,
         headers: {
           'Accept-Language': 'es',

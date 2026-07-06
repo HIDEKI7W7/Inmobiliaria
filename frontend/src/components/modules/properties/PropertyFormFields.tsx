@@ -815,22 +815,7 @@ export default function PropertyFormFields({
           lng={formData.longitude}
           onChange={(lat, lng) => onChange({ latitude: lat, longitude: lng })}
           onAddressChange={(addr) => {
-            if (addr) {
-              const currentAddress = formData.address || '';
-              // Regex para detectar y aislar el número de puerta (ej. "Av. América 456", "Calle 3 #12", "Nro 99")
-              const doorNumberRegex = /(?:nro|no|num|#|\b)\s*(\d+[a-zA-Z]?)\b/i;
-              const match = currentAddress.match(doorNumberRegex);
-              
-              let finalAddress = addr;
-              if (match && match[1]) {
-                const doorNumber = match[1];
-                // Si la calle que retorna Photon no contiene el número, lo fusionamos limpiamente
-                if (!addr.includes(doorNumber)) {
-                  finalAddress = `${addr} Nro. ${doorNumber}`;
-                }
-              }
-              onChange({ address: finalAddress });
-            }
+            if (addr) onChange({ address: addr });
           }}
         />
       </div>

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -6,13 +6,14 @@ export async function POST() {
   try {
     const response = NextResponse.json({ message: 'Sesión cerrada con éxito.' });
     
-    // Purgar cookie httpOnly propio_token
+    const isProduction = process.env.NODE_ENV === 'production';
     response.cookies.set('propio_token', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: 'lax',
       expires: new Date(0),
       path: '/',
+      domain: isProduction ? '.propioinmuebles.com' : undefined,
     });
 
     return response;

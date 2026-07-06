@@ -19,23 +19,14 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Obtener y parsear los orígenes permitidos desde las variables de entorno
-  let allowedOrigins: string[] = [];
-  
-  if (process.env.NODE_ENV === 'production') {
-    // Modo producción estricto: solo el dominio oficial y sus subdominios seguros
-    allowedOrigins = [
-      'https://propioinmuebles.com',
-      'https://www.propioinmuebles.com',
-      'https://api.propioinmuebles.com'
-    ];
-  } else {
-    const allowedOriginsString = process.env.CORS_ALLOWED_ORIGINS || '';
-    allowedOrigins = allowedOriginsString
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean);
+  const allowedOriginsString = process.env.CORS_ALLOWED_ORIGINS || '';
+  const allowedOrigins = allowedOriginsString
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
-    // Solo agregar localhosts como fallback para desarrollo local si NO estamos en producción
+  // Agregar localhosts como fallback únicamente en desarrollo local
+  if (process.env.NODE_ENV !== 'production') {
     allowedOrigins.push(
       'http://localhost:3000',
       'http://localhost:3001',
@@ -46,17 +37,20 @@ async function bootstrap() {
     );
   }
 
-
   // Habilitar CORS para permitir llamadas seguras desde el frontend de Next.js
+  const isProduction = process.env.NODE_ENV === 'production';
+
   app.enableCors({
     origin: (origin, callback) => {
       // Permitir peticiones sin origen (como clientes REST, apps móviles o SSR local)
       if (!origin) return callback(null, true);
       
+      const cleanOrigin = origin.replace(/\/$/, '');
       const isAllowed = allowedOrigins.some((allowedOrigin) => {
-        if (allowedOrigin === '*') return true;
+        if (allowedOrigin === '*') return !isProduction; // Desactivar wildcard en producción
+        const cleanAllowed = allowedOrigin.replace(/\/$/, '');
         // Coincidencia exacta o comodines de subdominios
-        return allowedOrigin === origin || origin.endsWith(allowedOrigin.replace('*.', '.'));
+        return cleanAllowed === cleanOrigin || cleanOrigin.endsWith(cleanAllowed.replace('*.', '.'));
       });
 
       if (isAllowed) {
@@ -67,7 +61,7 @@ async function bootstrap() {
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie',
   });
 
   // TSK-4.2 — Filtro global de excepciones: sanitiza errores de Prisma/DB antes

@@ -131,12 +131,6 @@ export default function LeafletMap({ lat, lng, onChange, onAddressChange }: Leaf
     }, 500);
   }, [addLog]);
 
-  // [CALLBACK_REFS] - Guardamos las funciones actualizadas en refs para evitar Stale Closures en Leaflet
-  const handleDragEndRef = useRef(handleDragEnd);
-  const handleMapClickRef = useRef(handleMapClick);
-  useEffect(() => { handleDragEndRef.current = handleDragEnd; }, [handleDragEnd]);
-  useEffect(() => { handleMapClickRef.current = handleMapClick; }, [handleMapClick]);
-
   // [INIT_MAPA] - Se ejecuta una sola vez al montar
   useEffect(() => {
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
@@ -172,8 +166,8 @@ export default function LeafletMap({ lat, lng, onChange, onAddressChange }: Leaf
 
       mapRef.current = map;
 
-      // Suscribir el clic al mapa con wrapper que lee la ref actual
-      map.on('click', (e: any) => handleMapClickRef.current(e));
+      // Suscribir el clic al mapa con handler estable
+      map.on('click', handleMapClick);
 
       // Crear el ÚNICO marcador desde el inicio
       const customIcon = L.divIcon({
@@ -195,7 +189,7 @@ export default function LeafletMap({ lat, lng, onChange, onAddressChange }: Leaf
         draggable: true,
       }).addTo(map);
 
-      marker.on('dragend', (e: any) => handleDragEndRef.current(e));
+      marker.on('dragend', handleDragEnd);
       markerRef.current = marker;
 
       // Redimensionar por si el DOM aún no estaba listo

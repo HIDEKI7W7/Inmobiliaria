@@ -32,7 +32,6 @@ const PROD_ENV = [
   `JWT_SECRET=ea82a472bb58ffcdcf9e54a558b9f3d61b369c0d54020c68abef68dae178120d`,
   `CORS_ORIGIN=${DOMAIN}`,
   `FRONTEND_URL=${DOMAIN}`,
-  `BACKEND_URL=${DOMAIN}`,
   `CORS_ALLOWED_ORIGINS=${DOMAIN},https://www.propioinmuebles.com`,
   `NEXT_PUBLIC_API_URL=${DOMAIN}/api`,
   `GOOGLE_CLIENT_ID=1047060533529-voghc370q9c4u041pric7f2lqvb606kg.apps.googleusercontent.com`,
@@ -200,18 +199,6 @@ NGINXEOF
   // Mostrar últimas líneas del build
   const buildLog = (buildOut + buildErr).split('\n').slice(-20).join('\n');
   console.log(buildLog);
-
-  // Ejecutar migraciones Prisma
-  log('FASE 3 — Esperando 15s para que el backend esté listo y aplicando migraciones...');
-  await new Promise((resolve) => setTimeout(resolve, 15000));
-  const { stdout: migOut, stderr: migErr } = await ssh.execCommand(
-    `docker exec propio-backend npx prisma migrate deploy 2>&1`
-  );
-  if (migOut.includes('No pending migrations') || migOut.includes('Database schema is up to date') || migOut.includes('migrations applied') || migOut.includes('Successfully applied')) {
-    ok('Migraciones de Prisma aplicadas correctamente.');
-  } else {
-    console.log('   prisma migrate:', (migOut + migErr).trim().slice(0, 300));
-  }
 
   // Estado final
   log('RESULTADO FINAL:');

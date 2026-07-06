@@ -332,48 +332,8 @@ async function main() {
     });
   }
 
-  // Nuevas credenciales complejas y robustas (2026)
-  usersData.push({
-    id: 'admin-complex',
-    email: 'dev.admin.root2026@propioinmuebles.com',
-    password: await bcrypt.hash('P@ssw0rd!Admin2026_RootSecure', 10),
-    name: 'Administrador Complejo',
-    role: Role.ADMIN,
-    onboardingCompleted: true
-  });
-  
-  agentIds.push('agent-complex');
-  usersData.push({
-    id: 'agent-complex',
-    email: 'dev.agent.field2026@propioinmuebles.com',
-    password: await bcrypt.hash('P@ssw0rd!Agent2026_FieldSecure', 10),
-    name: 'Agente Complejo',
-    role: Role.AGENTE,
-    onboardingCompleted: true
-  });
-
-  ownerIds.push('owner-complex');
-  usersData.push({
-    id: 'owner-complex',
-    email: 'dev.owner.host2026@propioinmuebles.com',
-    password: await bcrypt.hash('P@ssw0rd!Owner2026_HostSecure', 10),
-    name: 'Propietario Complejo',
-    role: Role.PROPIETARIO,
-    onboardingCompleted: true
-  });
-
-  ownerIds.push('client-complex');
-  usersData.push({
-    id: 'client-complex',
-    email: 'dev.client.buyer2026@propioinmuebles.com',
-    password: await bcrypt.hash('P@ssw0rd!Client2026_BuyerSecure', 10),
-    name: 'Cliente Complejo',
-    role: Role.CLIENTE,
-    onboardingCompleted: true
-  });
-
   await prisma.user.createMany({ data: usersData });
-  console.log(`✅ Creados 54 usuarios exitosamente (5 ADMIN + 1 complejo, 15 AGENTE + 1 complejo, 30 PROPIETARIO + 2 complejos).`);
+  console.log(`✅ Creados 50 usuarios exitosamente (5 ADMIN, 15 AGENTE, 30 PROPIETARIO).`);
 
   // 3. Creación de 10,000 propiedades con geolocalización realista
   console.log('🏢 Generando y guardando 10,000 propiedades en la base de datos...');
