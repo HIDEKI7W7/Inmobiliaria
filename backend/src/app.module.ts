@@ -37,6 +37,7 @@ import { CollaborationsModule } from './modules/collaborations/collaborations.mo
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { PermissionsGuard } from './modules/auth/permissions.guard';
 import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module';
+import { MapsModule } from './modules/maps/maps.module';
 
 /**
  * TSK-7.1 — Configuración del ThrottlerModule (Rate Limiting)
@@ -93,6 +94,7 @@ import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module
     CollaborationsModule,
     PermissionsModule,
     ExchangeRateModule,
+    MapsModule,
   ],
   controllers: [],
   providers: [

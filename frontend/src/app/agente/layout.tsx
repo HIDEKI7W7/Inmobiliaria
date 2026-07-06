@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -154,7 +154,7 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans antialiased">
+    <div className="flex w-full min-h-screen md:h-screen md:overflow-hidden bg-[#F8FAFC] font-sans antialiased flex-col md:flex-row">
       
       {/* OVERLAY BACKDROP EN MOBILE AL ABRIR LA SIDEBAR */}
       {isSidebarOpen && (
@@ -266,7 +266,7 @@ export default function AgenteLayout({ children }: { children: React.ReactNode }
       </aside>
 
       {/* CONTENEDOR DEL CONTENIDO PRINCIPAL - AISLADO */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen md:h-full md:overflow-hidden">
         
         {/* Cabecera superior fija - flex-shrink-0 */}
         <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex justify-between items-center z-20 flex-shrink-0 select-none">

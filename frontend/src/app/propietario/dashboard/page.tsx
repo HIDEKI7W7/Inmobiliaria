@@ -221,10 +221,10 @@ export default function PropietarioDashboard() {
     if (updates.zona !== undefined) setEditZona(updates.zona);
     
     if (editingProperty) {
-      setEditingProperty({
-        ...editingProperty,
+      setEditingProperty((prev: any) => prev ? ({
+        ...prev,
         ...updates
-      } as any);
+      }) : null);
     }
   };
 

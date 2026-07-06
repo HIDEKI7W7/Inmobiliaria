@@ -182,9 +182,14 @@ export default function SmartCaptureForm() {
   };
 
   const updateFormData = (fields: Partial<typeof formData>) => {
-    const updated = { ...formData, ...fields };
-    setFormData(updated);
-    handlePersistDraft(updated, documents, selectedAttributes, step);
+    setFormData((prev) => {
+      const updated = { ...prev, ...fields };
+      // Persistir el borrador asíncronamente con el estado atómico actualizado
+      setTimeout(() => {
+        handlePersistDraft(updated, documents, selectedAttributes, step);
+      }, 0);
+      return updated;
+    });
   };
 
   const updateDocuments = (fields: Partial<typeof documents>) => {
@@ -536,18 +541,18 @@ export default function SmartCaptureForm() {
             
             {/* Stepper */}
             <div className="space-y-4">
-              <div className="hidden md:flex items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-                <div className={`flex items-center gap-2 pb-2 ${step >= 1 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>1</span> Datos Básicos
+              <div className="hidden md:flex items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400 flex-wrap gap-x-6 gap-y-2">
+                <div className={`flex items-center gap-2 pb-2 shrink-0 ${step >= 1 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${step >= 1 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>1</span> Datos Básicos
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 2 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>2</span> Ubicación
+                <div className={`flex items-center gap-2 pb-2 shrink-0 ${step >= 2 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${step >= 2 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>2</span> Ubicación
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 3 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>3</span> Legal
+                <div className={`flex items-center gap-2 pb-2 shrink-0 ${step >= 3 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${step >= 3 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>3</span> Legal
                 </div>
-                <div className={`flex items-center gap-2 pb-2 ${step >= 4 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 4 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>4</span> Fotos
+                <div className={`flex items-center gap-2 pb-2 shrink-0 ${step >= 4 ? 'text-[#000033] border-b-2 border-[#ccff00] font-black' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${step >= 4 ? 'bg-[#ccff00] text-[#000033] font-bold' : 'bg-slate-100 text-slate-400'}`}>4</span> Fotos
                 </div>
               </div>
               <div className="flex md:hidden items-center justify-between border-b border-slate-100 pb-4 text-xs font-bold uppercase tracking-wider text-slate-400 select-none">

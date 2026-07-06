@@ -184,7 +184,10 @@ export default function AgentProperties() {
     if (updates.zona !== undefined) setEditZona(updates.zona);
 
     if (editingProperty) {
-      setEditingProperty({ ...editingProperty, ...updates } as any);
+      setEditingProperty((prev: any) => prev ? ({
+        ...prev,
+        ...updates
+      }) : null);
     }
   };
 

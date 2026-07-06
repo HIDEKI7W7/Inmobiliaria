@@ -40,6 +40,40 @@ export const ZONAS_POR_DEPARTAMENTO: Record<string, string[]> = {
 
 export const DEPARTAMENTOS = Object.keys(DEPARTAMENTOS_COORDS);
 
+// Coordenadas límite (Bounding Boxes) estrictas para los departamentos de Bolivia
+export const BOUNDS_BOLIVIA: Record<string, { minLon: number; minLat: number; maxLon: number; maxLat: number }> = {
+  "La Paz": { minLon: -68.22, minLat: -16.57, maxLon: -68.05, maxLat: -16.43 },
+  "Santa Cruz": { minLon: -63.28, minLat: -17.88, maxLon: -63.12, maxLat: -17.72 },
+  "Cochabamba": { minLon: -66.25, minLat: -17.45, maxLon: -66.08, maxLat: -17.33 },
+  "Oruro": { minLon: -67.22, minLat: -18.05, maxLon: -67.08, maxLat: -17.90 },
+  "Potosí": { minLon: -65.82, minLat: -19.65, maxLon: -65.68, maxLat: -19.50 },
+  "Tarija": { minLon: -64.80, minLat: -21.60, maxLon: -64.65, maxLat: -21.45 },
+  "Chuquisaca": { minLon: -65.33, minLat: -19.10, maxLon: -65.18, maxLat: -18.95 },
+  "Beni": { minLon: -65.00, minLat: -14.95, maxLon: -64.80, maxLat: -14.75 },
+  "Pando": { minLon: -68.85, minLat: -11.10, maxLon: -68.68, maxLat: -10.92 }
+};
+
+// Genera un bounding box de +/- 0.15 grados alrededor del centro del departamento/ciudad para restringir búsquedas
+export const getBoundingBoxQueryParam = (locationName: string): string => {
+  const normalizedKey = Object.keys(BOUNDS_BOLIVIA).find(
+    (key) => key.toLowerCase() === locationName.toLowerCase()
+  );
+  const bounds = normalizedKey ? BOUNDS_BOLIVIA[normalizedKey] : null;
+  if (!bounds) {
+    const coords = DEPARTAMENTOS_COORDS[locationName];
+    if (!coords) return '';
+    const offset = 0.15; // Aproximadamente 15-20 km
+    const minLon = coords.lng - offset;
+    const maxLon = coords.lng + offset;
+    const minLat = coords.lat - offset;
+    const maxLat = coords.lat + offset;
+    // Nominatim viewbox format: left,top,right,bottom (min_lon, max_lat, max_lon, min_lat)
+    return `&viewbox=${minLon.toFixed(4)},${maxLat.toFixed(4)},${maxLon.toFixed(4)},${minLat.toFixed(4)}&bounded=1`;
+  }
+  // Nominatim viewbox format: left,top,right,bottom (min_lon, max_lat, max_lon, min_lat)
+  return `&viewbox=${bounds.minLon.toFixed(4)},${bounds.maxLat.toFixed(4)},${bounds.maxLon.toFixed(4)},${bounds.minLat.toFixed(4)}&bounded=1`;
+};
+
 export const PROPERTY_TYPES = [
   { value: 'DEPARTAMENTO', label: 'Departamento', emoji: '🏢' },
   { value: 'CASA', label: 'Casa', emoji: '🏠' },
@@ -207,10 +241,10 @@ export default function PropertyFormFields({
     }
   };
 
-  // [DECLARACION_ESTADOS_GEOCODING_FIX_FINAL] - Estados locales para el autocompletado de calles
-  const [sugerencias, setSugerencias] = useState<any[]>([]);
+   const [sugerencias, setSugerencias] = useState<any[]>([]);
   const [buscando, setBuscando] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sincronizar el tipo de cambio oficial del BCB de manera dinámica
   useEffect(() => {
@@ -265,7 +299,7 @@ export default function PropertyFormFields({
     }
   }, [formData.location, onChange]);
 
-  // [ESTADOS_AUTOCOMPLETE_Y_DEBOUNCE_MIG] - Búsqueda asíncrona Nominatim con debounce de 300ms
+  // [ESTADOS_AUTOCOMPLETE_Y_DEBOUNCE_MIG] - Búsqueda asíncrona Photon (Komoot) con debounce de 300ms
   useEffect(() => {
     if (!formData.address || formData.address.trim().length <= 3) {
       setSugerencias([]);
@@ -277,13 +311,11 @@ export default function PropertyFormFields({
       (key) => key.toLowerCase() === (formData.location || '').toLowerCase()
     ) || formData.location;
 
-    // Eliminar números de puerta (ej. "785", "#456", "N° 12") para que Nominatim encuentre la calle
-    const cleanedAddress = formData.address
-      .replace(/(?:No|N°|#)?\s*\d+\w*\b/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    // Separación de calle y número mediante Regex (ej: "colon 463" -> calle: "colon", número: "463")
+    const numberMatch = formData.address.match(/(.*?)(?:\s+(?:No|N°|#)?\s*\d+[\w-]*\s*)$/i);
+    const calle = numberMatch && numberMatch[1] ? numberMatch[1].trim() : formData.address.trim();
 
-    if (cleanedAddress.length < 3) {
+    if (calle.length < 3) {
       setSugerencias([]);
       return;
     }
@@ -291,37 +323,21 @@ export default function PropertyFormFields({
     setBuscando(true);
     const delayDebounceFn = setTimeout(async () => {
       try {
-        // 1. Intento primario: Búsqueda específica en la zona y departamento
-        const query = `${cleanedAddress}, ${formData.zona || ''}, ${normalizedLoc || ''}, Bolivia`;
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=10&addressdetails=1`
-        );
+        const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+        const query = `${calle}, ${formData.zona || ''}`;
+        const coords = DEPARTAMENTOS_COORDS[normalizedLoc] || { lat: -16.50, lng: -68.15 };
+        const url = `${apiBase}/maps/autocomplete?query=${encodeURIComponent(query)}&lat=${coords.lat}&lng=${coords.lng}`;
         
+        const res = await fetch(url);
         let data = [];
         if (res.ok) {
-          data = await res.json();
-        }
-
-        // 2. Fallback amplio: Si hay pocos resultados (<= 1) y hay zona, buscar en todo el departamento
-        if ((!data || data.length <= 1) && formData.zona) {
-          const fallbackQuery = `${cleanedAddress}, ${normalizedLoc || ''}, Bolivia`;
-          const fallbackRes = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=bo&limit=10&addressdetails=1`
-          );
-          if (fallbackRes.ok) {
-            const fallbackData = await fallbackRes.json();
-            if (fallbackData && fallbackData.length > 0) {
-              const merged = [...(data || []), ...fallbackData];
-              const unique = merged.filter(
-                (item, idx, self) =>
-                  self.findIndex((t) => t.display_name === item.display_name) === idx
-              );
-              data = unique.slice(0, 10);
-            }
+          const payload = await res.json();
+          if (payload && payload.success && Array.isArray(payload.results)) {
+            data = payload.results;
           }
         }
 
-        setSugerencias(Array.isArray(data) ? data : []);
+        setSugerencias(data);
       } catch (err) {
         console.error('Error fetching suggestions:', err);
         setSugerencias([]);
@@ -333,75 +349,83 @@ export default function PropertyFormFields({
     return () => clearTimeout(delayDebounceFn);
   }, [formData.address, formData.zona, formData.location]);
 
-  // Helper para extraer la dirección corta (Calle + Número) libre de redundancia geográfica
+  // Helper para extraer la dirección corta (Calle) libre de redundancia geográfica
   const getShortAddress = (item: any): string => {
-    const addressObj = item.address || {};
-    const road = addressObj.road || 
-                 addressObj.pedestrian || 
-                 addressObj.footway || 
-                 addressObj.cycleway ||
-                 addressObj.path ||
-                 addressObj.suburb || 
-                 addressObj.neighbourhood || 
-                 addressObj.square ||
-                 addressObj.amenity ||
-                 '';
-                 
-    const houseNumber = addressObj.house_number || '';
-    
-    if (road) {
-      return houseNumber ? `${road} ${houseNumber}` : road;
+    return item.street || '';
+  };
+
+  // Helper para extraer el resto del display_name para datos secundarios (ciudad, provincia, país)
+  const getSecondaryAddress = (item: any): string => {
+    if (item.formattedAddress && item.street) {
+      let rest = item.formattedAddress;
+      if (rest.startsWith(item.street)) {
+        rest = rest.substring(item.street.length);
+      }
+      return rest.replace(/^[\s,]+/, '').trim();
     }
-    
-    // Fallback: primer segmento antes de la primera coma
-    if (item.display_name) {
-      return item.display_name.split(',')[0].trim();
-    }
-    
-    return '';
+    return item.city || '';
   };
 
   // [LOGICA_SELECCION_Y_FLYTO_MAPA] - Selección de una sugerencia de dirección
   const handleSeleccionarSugerencia = (item: any) => {
+    const numberMatch = formData.address.match(/(?:\s+(?:No|N°|#)?\s*(\d+[\w-]*)\s*)$/i);
+    const typedNumber = numberMatch && numberMatch[1] ? numberMatch[1] : '';
+
+    const shortAddr = getShortAddress(item);
+    
+    // Si el usuario ingresó un número y el shortAddr de la API no lo tiene, se lo concatenamos
+    let finalAddress = shortAddr;
+    if (typedNumber && !shortAddr.includes(typedNumber)) {
+      finalAddress = `${shortAddr} #${typedNumber}`;
+    }
+
     onChange({
-      address: getShortAddress(item),
+      address: finalAddress,
       latitude: parseFloat(item.lat),
-      longitude: parseFloat(item.lon),
+      longitude: parseFloat(item.lng ?? item.lon),
     });
     setSugerencias([]);
+
+    // Enfocar el input y posicionar el cursor al final para que el usuario digite el número de puerta
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const len = finalAddress.length;
+        inputRef.current.setSelectionRange(len, len);
+      }
+    }, 50);
   };
 
-  // [LOGICA_GEOCODING_NOMINATIM_CORS_BLINDAJE] - Búsqueda en pérdida de foco (onBlur) libre de CORS
+  // [LOGICA_GEOCODING_NOMINATIM_CORS_BLINDAJE] - Búsqueda en pérdida de foco (onBlur) libre de CORS (Photon)
   const ejecutarGeocodificacionNacional = async () => {
     if (!formData.address || formData.address.trim().length < 4) return;
     
     setIsSearching(true);
     try {
-      const query = `${formData.address}, ${formData.zona || ''}, ${formData.location || ''}, Bolivia`;
-      
-      // Inyección de Headers correctos y User-Agent legítimo para evitar el bloqueo de CORS de Nominatim
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=10&addressdetails=1`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            // Identifica tu app para cumplir las políticas de uso de OpenStreetMap
-            'User-Agent': 'PropioInmobiliariaBolivia/1.0 (contacto@propio.com.bo)'
-          }
-        }
-      );
+      const normalizedLoc = Object.keys(DEPARTAMENTOS_COORDS).find(
+        (key) => key.toLowerCase() === (formData.location || '').toLowerCase()
+      ) || formData.location;
 
-      if (!response.ok) throw new Error('Network response was not ok');
+      // Separación de calle y número mediante Regex (ej: "colon 463" -> calle: "colon", número: "463")
+      const numberMatch = formData.address.match(/(.*?)(?:\s+(?:No|N°|#)?\s*\d+[\w-]*\s*)$/i);
+      const calle = numberMatch && numberMatch[1] ? numberMatch[1].trim() : formData.address.trim();
+
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+      const query = `${calle}, ${formData.zona || ''}`;
+      const coords = DEPARTAMENTOS_COORDS[normalizedLoc] || { lat: -16.50, lng: -68.15 };
+      const url = `${apiBase}/maps/autocomplete?query=${encodeURIComponent(query)}&lat=${coords.lat}&lng=${coords.lng}`;
       
-      const data = await response.json();
-      if (data && data.length > 0) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Response was not ok');
+      
+      const payload = await response.json();
+      if (payload && payload.success && Array.isArray(payload.results) && payload.results.length > 0) {
+        const data = payload.results;
         setSugerencias(data);
         // Si se invoca desde pérdida de foco (onBlur), toma el primer resultado directo
         const primerResultado = data[0];
         const nuevaLat = parseFloat(primerResultado.lat);
-        const nuevaLng = parseFloat(primerResultado.lon);
+        const nuevaLng = parseFloat(primerResultado.lng ?? primerResultado.lon);
         
         if (!isNaN(nuevaLat) && !isNaN(nuevaLng)) {
           onChange({
@@ -719,6 +743,7 @@ export default function PropertyFormFields({
           <input
             type="text"
             required
+            ref={inputRef}
             disabled={!formData.location || !formData.zona}
             placeholder={
               formData.location && formData.zona
@@ -741,27 +766,43 @@ export default function PropertyFormFields({
           )}
         </div>
 
-        {/* [JSX_INPUT_DIRECCION_CON_DROPDOWN_FLOTANTE] */}
+        {/* [JSX_INPUT_DIRECCION_CON_DROPDOWN_FLOTANTE] - Estilo Google Maps Premium */}
         {sugerencias.length > 0 && (
-          <ul className="absolute left-0 right-0 top-full z-[1000] mt-1 max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
-            {sugerencias.map((item, idx) => (
-              <li
-                key={idx}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={() => {
-                  handleSeleccionarSugerencia(item);
-                }}
-                className="flex items-center gap-2.5 cursor-pointer px-4 py-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors border-b border-gray-100 last:border-none"
-              >
-                <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                </svg>
-                <span className="truncate">{item.display_name}</span>
-              </li>
-            ))}
+          <ul className="absolute left-0 right-0 top-full z-[1000] mt-1.5 max-h-60 overflow-y-auto rounded-[16px] border border-slate-100 bg-white shadow-2xl py-1.5 animate-fadeIn">
+            {sugerencias.map((item, idx) => {
+              const short = getShortAddress(item);
+              const numberMatch = formData.address.match(/(?:\s+(?:No|N°|#)?\s*(\d+[\w-]*)\s*)$/i);
+              const typedNumber = numberMatch && numberMatch[1] ? numberMatch[1] : '';
+              
+              // Agregar el número que el usuario ingresó para que figure destacado en negrita (ej: "Socabaya 7")
+              const mainText = typedNumber && !short.includes(typedNumber) ? `${short} ${typedNumber}` : short;
+              const secondaryText = getSecondaryAddress(item);
+              return (
+                <li
+                  key={idx}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={() => {
+                    handleSeleccionarSugerencia(item);
+                  }}
+                  className="flex items-center gap-3.5 cursor-pointer px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 shrink-0 text-slate-400">
+                    <svg className="w-4.5 h-4.5 text-slate-450" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex items-baseline min-w-0 gap-2 flex-wrap md:flex-nowrap leading-tight">
+                    <span className="font-bold text-slate-800 text-sm truncate">{mainText}</span>
+                    {secondaryText && (
+                      <span className="text-slate-400 text-xs truncate font-normal">{secondaryText}</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -773,6 +814,9 @@ export default function PropertyFormFields({
           lat={formData.latitude}
           lng={formData.longitude}
           onChange={(lat, lng) => onChange({ latitude: lat, longitude: lng })}
+          onAddressChange={(addr) => {
+            if (addr) onChange({ address: addr });
+          }}
         />
       </div>
 

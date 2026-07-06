@@ -6104,8 +6104,7 @@ function AdminConsole() {
   return (
     <AgentProvider value={{ agents, setAgents }}>
     <>
-      {/* [CONGELAR_SKELETON_PADRE_ADMIN] */}
-      <div className="flex w-screen h-screen overflow-hidden bg-[#fbf9f9] text-slate-800 font-sans antialiased select-none">
+      <div className="flex w-full min-h-screen md:h-screen md:overflow-hidden bg-[#fbf9f9] text-slate-800 font-sans antialiased select-none flex-col md:flex-row">
       
       {/* 1. LEFT SIDEBAR */}
       <AdminSidebar
@@ -6127,7 +6126,7 @@ function AdminConsole() {
       />
 
       {/* 2. MAIN CONTENT AREA */}
-      <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen md:h-full md:overflow-hidden relative">
         
         {/* Fixed Header */}
         {/* Fixed Header */}
@@ -14277,8 +14276,8 @@ function AdminConsole() {
                 </div>
               </div>
 
-              {/* Botón inferior Guardar Cambios */}
-              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
+              {/* Botón inferior Guardar Cambios - Sticky y shrink-0 para asegurar visibilidad al 100% zoom */}
+              <div className="sticky bottom-0 bg-white flex justify-end gap-2 mt-6 pt-4 pb-2 border-t border-slate-100 shrink-0 z-10">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -14288,7 +14287,7 @@ function AdminConsole() {
                     setSelectedProperty(null);
                     setModalPropertyData(null);
                   }}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>

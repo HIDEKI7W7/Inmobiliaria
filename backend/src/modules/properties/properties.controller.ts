@@ -20,6 +20,32 @@ export class PropertiesController {
     return { total };
   }
 
+  @Get('reverse-geocode')
+  async reverseGeocode(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+  ) {
+    if (!lat || !lng) {
+      throw new Error('Parámetros lat y lng son obligatorios');
+    }
+    const axios = require('axios');
+    try {
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'es',
+            'User-Agent': 'MarsTechInmobiliariaApp/1.0 (contact@marstech.com)'
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('[Reverse Geocode Proxy Error]:', error.message || error);
+      throw new Error('Error al consultar geocodificación inversa desde el servidor');
+    }
+  }
+
   @Get('owner')
   @UseGuards(AuthGuard)
   async findOwnerProperties(@Req() req: any, @Query() query: any) {
