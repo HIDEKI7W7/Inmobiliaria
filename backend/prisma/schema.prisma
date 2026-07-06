@@ -108,6 +108,7 @@ model Property {
   @@index([status])
   @@index([latitude, longitude])
   @@index([status, latitude, longitude])
+  @@index([status, isVerified, deletedAt])
   @@index([status, type])
   @@index([type])
   @@map("properties")

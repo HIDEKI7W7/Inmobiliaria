@@ -1431,7 +1431,7 @@ function PropertiesContent() {
 
         {/* Contenido listado scrollable de la bottom sheet */}
         {isMobileExpanded && (
-              <div className="flex-1 overflow-y-auto touch-pan-y flex flex-col gap-4 pb-20 px-4">
+              <div className="flex flex-col gap-4 pb-20 max-h-[calc(100vh-160px)] overflow-y-auto touch-pan-y flex-1">
                 {displayProperties.map(p => (
                   <div key={p.id} className="w-full">
                     <ListingCard

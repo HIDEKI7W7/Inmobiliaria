@@ -1568,7 +1568,6 @@ export class PropertiesService implements OnModuleInit {
       select: {
         id: true,
         title: true,
-        description: true,
         price: true,
         minPrice: true,
         currency: true,
@@ -1594,7 +1593,6 @@ export class PropertiesService implements OnModuleInit {
         createdAt: true,
         ownerId: true,
         agentId: true,
-        documents: true,
         owner: {
           select: {
             id: true,

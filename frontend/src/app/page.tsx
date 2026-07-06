@@ -331,17 +331,10 @@ function HomeContent() {
 
     // 2. Cargar propiedades dinámicas unificadas para el carrusel de inversiones
     const loadInversiones = async () => {
-      try {
-        const [backendProps, localRes] = await Promise.all([
-          propertiesService.getProperties({ verifiedOnly: true }).catch(() => []),
-          fetch('/api/local/properties', { cache: 'no-store' })
-            .then(res => res.json())
-            .catch(() => ({ properties: [] }))
-        ]);
+      // Mapa para consolidar los resultados unificados progresivamente
+      const combinedMap = new Map<string, any>();
 
-        const localProps = localRes?.properties || [];
-        const combinedMap = new Map<string, any>();
-
+      const updateCarouselState = (backendProps: any[], localProps: any[]) => {
         // Incorporar elementos desde base de datos NestJS
         if (Array.isArray(backendProps)) {
           backendProps.forEach((p: any) => {
@@ -413,10 +406,32 @@ function HomeContent() {
         });
 
         setInversiones(finalInversiones);
+      };
+
+      // Fase 1: Carga local inmediata para acelerar FCP
+      let loadedLocalProps: any[] = [];
+      try {
+        const localRes = await fetch('/api/local/properties', { cache: 'no-store' });
+        if (localRes.ok) {
+          const localData = await localRes.json();
+          loadedLocalProps = localData?.properties || [];
+          updateCarouselState([], loadedLocalProps);
+        }
       } catch (err) {
-        console.error('Error cargando inversiones dinámicas:', err);
-        setInversiones(INVERSIONES_MOCKS);
+        console.error("Error al cargar propiedades locales en primer paso:", err);
+        updateCarouselState([], []);
       }
+
+      // Fase 2: Petición no bloqueante asíncrona al backend
+      propertiesService.getProperties({ verifiedOnly: true })
+        .then((backendProps) => {
+          if (backendProps && backendProps.length > 0) {
+            updateCarouselState(backendProps, loadedLocalProps);
+          }
+        })
+        .catch((err) => {
+          console.error("Error al cargar propiedades del backend:", err);
+        });
     };
 
     loadInversiones();
