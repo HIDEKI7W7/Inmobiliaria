@@ -49,7 +49,7 @@ export default function RootLayout({
             <Suspense fallback={<div className="h-16 bg-[#000033]" />}>
               <Navbar />
             </Suspense>
-            <main className="flex-grow flex flex-col overflow-x-hidden">
+            <main className="flex-grow flex flex-col">
               {children}
             </main>
             <Footer />

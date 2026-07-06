@@ -234,21 +234,49 @@ function HomeContent() {
     el.scrollBy({ left: cardWidth, behavior: 'smooth' });
   };
 
+  // ponytail: debounce scroll checks to instantly reset position between set boundaries for seamless loops
   const handleScroll = () => {
-    // No-op (native scrolling only)
+    const el = carouselRef.current;
+    if (!el) return;
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      const singleSetWidth = el.scrollWidth / 3;
+      if (el.scrollLeft >= singleSetWidth * 1.8) {
+        el.scrollLeft = el.scrollLeft - singleSetWidth;
+      }
+      else if (el.scrollLeft <= singleSetWidth * 0.5) {
+        el.scrollLeft = el.scrollLeft + singleSetWidth;
+      }
+    }, 150);
   };
 
   const [propertyCount, setPropertyCount] = useState<number | null>(null);
   const [inversiones, setInversiones] = useState<any[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Return the unique properties without any duplication
+  // ponytail: duplicate array three times for virtual infinite looping in both directions
   const displayInversiones = React.useMemo(() => {
-    return inversiones;
+    if (inversiones.length === 0) return [];
+    return [...inversiones, ...inversiones, ...inversiones];
   }, [inversiones]);
 
   // Hook de favoritos global
   const { favorites, toggleFavorite } = useFavorites();
+
+  // ponytail: scroll to the middle set on mount / load so there's buffer in both directions
+  useEffect(() => {
+    if (inversiones.length > 0 && carouselRef.current) {
+      const el = carouselRef.current;
+      setTimeout(() => {
+        const singleSetWidth = el.scrollWidth / 3;
+        el.scrollLeft = singleSetWidth;
+      }, 50);
+    }
+  }, [inversiones]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -433,7 +461,7 @@ function HomeContent() {
     <div className="min-h-screen bg-[#F8FAFC] text-neutral-900 font-sans antialiased flex flex-col">
       
       {/* ─── HERO SECTION + FILTERS ABOVE THE FOLD ─── */}
-      <section className="relative min-h-[calc(100vh-60px)] lg:h-[calc(100vh-60px)] flex flex-col justify-between bg-[#000033] lg:overflow-hidden pt-8 pb-12 lg:pt-10 lg:pb-16 z-10 shrink-0">
+      <section className="relative min-h-[calc(100vh-60px)] lg:h-[calc(100vh-60px)] flex flex-col justify-between bg-[#000033] overflow-hidden pt-8 pb-12 lg:pt-10 lg:pb-16 z-10 shrink-0">
         <div className="absolute inset-0 opacity-40 z-0">
           <img
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2200&q=85"
@@ -577,9 +605,9 @@ function HomeContent() {
             className="flex gap-6 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-6 scroll-smooth px-8 lg:px-20 -mx-8 lg:-mx-20"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {displayInversiones.map((property: any) => (
+            {displayInversiones.map((property: any, idx: number) => (
               <PropertyInversionCard 
-                key={property.id} 
+                key={`${property.id}-${idx}`} 
                 property={property} 
                 isFavorite={favoriteIds.has(String(property.id))}
                 onFavoriteToggle={toggleFavorite}
