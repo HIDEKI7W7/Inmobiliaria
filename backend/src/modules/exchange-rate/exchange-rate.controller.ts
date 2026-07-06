@@ -11,6 +11,11 @@ export class ExchangeRateController {
     return this.exchangeRateService.getCurrentRate();
   }
 
+  @Get('official')
+  async getOfficialRate() {
+    return this.exchangeRateService.getOfficialRate();
+  }
+
   @Post('sync')
   @UseGuards(AuthGuard)
   async syncRate() {

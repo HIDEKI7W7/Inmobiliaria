@@ -14,6 +14,12 @@ export class PropertiesController {
     return this.propertiesService.findAll(query);
   }
 
+  @Get('count-active')
+  async countActive() {
+    const total = await this.propertiesService.countActive();
+    return { total };
+  }
+
   @Get('owner')
   @UseGuards(AuthGuard)
   async findOwnerProperties(@Req() req: any, @Query() query: any) {

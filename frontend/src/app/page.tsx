@@ -255,7 +255,7 @@ function HomeContent() {
     }, 150);
   };
 
-  const [totalProperties, setTotalProperties] = useState<number | null>(null);
+  const [propertyCount, setPropertyCount] = useState<number | null>(null);
   const [inversiones, setInversiones] = useState<any[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -284,34 +284,48 @@ function HomeContent() {
     const user = getCurrentUser() as any;
     const filters = user && user.id ? { userId: user.id } : undefined;
     
-    // 1. Obtener total de propiedades unificadas (backend + db.json) sin filtros restrictivos
+    // 1. Obtener total de propiedades activas del backend (NestJS + Prisma) con fallback local
     const fetchTotalCount = async () => {
       try {
-        const [backendProps, localRes] = await Promise.all([
-          propertiesService.getProperties({ verifiedOnly: false }).catch(() => []),
-          fetch('/api/local/properties', { cache: 'no-store' })
-            .then(res => res.json())
-            .catch(() => ({ properties: [] }))
-        ]);
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
 
-        const localProps = localRes?.properties || [];
-        const combinedMap = new Map<string, any>();
+        const res = await fetch(`${apiBaseUrl}/properties/count-active`, {
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-        if (Array.isArray(backendProps)) {
-          backendProps.forEach((p: any) => {
-            if (p && p.id) combinedMap.set(p.id, p);
-          });
+        if (res.ok) {
+          const data = await res.json();
+          // Mapeo blindado y validación de tipos
+          const parsedCount = data && typeof data === 'object' && 'total' in data
+            ? Number(data.total)
+            : Number(data);
+          
+          if (!isNaN(parsedCount)) {
+            setPropertyCount(parsedCount);
+          } else {
+            throw new Error('El conteo recibido no es un formato numérico válido.');
+          }
+        } else {
+          throw new Error('Failed to fetch count-active');
         }
-
-        if (Array.isArray(localProps)) {
-          localProps.forEach((p: any) => {
-            if (p && p.id) combinedMap.set(p.id, p);
-          });
-        }
-
-        setTotalProperties(combinedMap.size);
       } catch (err) {
-        console.error("Error fetching total properties count:", err);
+        console.error("Error fetching total properties count from API, using local db.json fallback:", err);
+        try {
+          const localRes = await fetch('/api/local/properties', { cache: 'no-store' });
+          if (localRes.ok) {
+            const localData = await localRes.json();
+            const count = Array.isArray(localData.properties) ? localData.properties.length : 17;
+            setPropertyCount(count || 17);
+          } else {
+            setPropertyCount(17);
+          }
+        } catch {
+          setPropertyCount(17);
+        }
       }
     };
     fetchTotalCount();
@@ -634,7 +648,7 @@ function HomeContent() {
             </h2>
             
             <p className="text-slate-300 text-sm sm:text-base max-w-lg leading-relaxed font-medium mb-6">
-              Explora más de <span className="text-white font-extrabold">{totalProperties !== null ? totalProperties : '1532'}+</span> propiedades en todo el país. Publica o promociona tu hogar ideal hoy mismo.
+              Explora más de <span className="text-white font-extrabold">{propertyCount !== null ? propertyCount : 17}+</span> propiedades en todo el país. Publica o promociona tu hogar ideal hoy mismo.
             </p>
             
             <div className="flex flex-wrap items-center justify-center gap-4 mt-6">

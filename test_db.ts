@@ -3,19 +3,14 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Cleaning contaminated properties from DB...');
   try {
-    const deleteResult = await prisma.property.deleteMany({
-      where: {
-        title: 'Propiedad de Catálogo'
-      }
+    const properties = await prisma.property.findMany({});
+    console.log(`Total properties in DB: ${properties.length}`);
+    properties.forEach(p => {
+      console.log(`- ID: ${p.id}, Title: ${p.title}, Status: ${p.status}, DeletedAt: ${p.deletedAt}`);
     });
-    console.log('Delete result:', deleteResult);
-
-    const remainingCount = await prisma.property.count();
-    console.log(`Remaining property count: ${remainingCount}`);
   } catch (err) {
-    console.error('Failed to clean Neon DB:', err);
+    console.error('Failed to query Neon DB:', err);
   } finally {
     await prisma.$disconnect();
   }

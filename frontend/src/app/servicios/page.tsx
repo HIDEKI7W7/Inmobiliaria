@@ -5,7 +5,7 @@ import { WHATSAPP_LINK } from '@/utils/whatsapp';
 
 export default function ServiciosPage() {
   const [plans, setPlans] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [commissionRate, setCommissionRate] = useState(1.5);
 
   const handleSelectPlan = (planName: string) => {
@@ -36,10 +36,18 @@ export default function ServiciosPage() {
     const fetchPlans = async () => {
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        
+        // Timeout de 1.2 segundos para evitar bloquear la UI si el backend está inactivo o lento
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+
         const res = await fetch(`${apiBaseUrl}/marketing-plans`, {
           cache: 'no-store',
-          next: { revalidate: 0 }
+          next: { revalidate: 0 },
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const data = await res.json();
           setPlans(data);
@@ -49,7 +57,15 @@ export default function ServiciosPage() {
       } catch (err) {
         console.warn('Error fetching marketing plans, falling back to local db.json:', err);
         try {
-          const localRes = await fetch('/api/local/marketing-plans', { cache: 'no-store' });
+          const controllerLocal = new AbortController();
+          const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 1000);
+
+          const localRes = await fetch('/api/local/marketing-plans', { 
+            cache: 'no-store',
+            signal: controllerLocal.signal
+          });
+          clearTimeout(timeoutIdLocal);
+
           if (localRes && localRes.ok) {
             const localData = await localRes.json();
             if (Array.isArray(localData.plans) && localData.plans.length > 0) {

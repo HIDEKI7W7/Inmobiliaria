@@ -212,10 +212,34 @@ export default function PropertyFormFields({
   const [buscando, setBuscando] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  // Tipo de cambio fijo de la plataforma: 1 USD = 9.76 Bs.
-  // Se aplica siempre al montar para sobreescribir cualquier valor obsoleto en caché.
+  // Sincronizar el tipo de cambio oficial del BCB de manera dinámica
   useEffect(() => {
-    onChange({ exchangeRate: '9.76' });
+    const fetchOfficialRate = async () => {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+        const res = await fetch(`${apiBaseUrl}/exchange-rate/official`, {
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object' && data.officialRate) {
+            onChange({ exchangeRate: String(data.officialRate) });
+            return;
+          }
+        }
+        throw new Error('Respuesta inválida del servidor');
+      } catch (err) {
+        console.warn('Error al obtener tipo de cambio oficial del BCB. Cargando fallback seguro: 9.83');
+        onChange({ exchangeRate: '9.83' });
+      }
+    };
+    fetchOfficialRate();
   }, []);
 
 
@@ -223,8 +247,12 @@ export default function PropertyFormFields({
   const prevLocationRef = useRef(formData.location);
   useEffect(() => {
     if (formData.location && formData.location !== prevLocationRef.current) {
-      const coords = DEPARTAMENTOS_COORDS[formData.location];
-      const defaultZones = ZONAS_POR_DEPARTAMENTO[formData.location] || ["Central"];
+      const normalizedLoc = Object.keys(DEPARTAMENTOS_COORDS).find(
+        (key) => key.toLowerCase() === (formData.location || '').toLowerCase()
+      ) || formData.location;
+
+      const coords = DEPARTAMENTOS_COORDS[normalizedLoc];
+      const defaultZones = ZONAS_POR_DEPARTAMENTO[normalizedLoc] || ["Central"];
       const defaultZona = defaultZones[0];
       if (coords) {
         onChange({
@@ -237,40 +265,106 @@ export default function PropertyFormFields({
     }
   }, [formData.location, onChange]);
 
-  // [ESTADOS_AUTOCOMPLETE_Y_DEBOUNCE_MIG] - Búsqueda asíncrona Nominatim con debounce de 400ms
+  // [ESTADOS_AUTOCOMPLETE_Y_DEBOUNCE_MIG] - Búsqueda asíncrona Nominatim con debounce de 300ms
   useEffect(() => {
     if (!formData.address || formData.address.trim().length <= 3) {
       setSugerencias([]);
       return;
     }
+
+    // Normalizar la ubicación por si viene en mayúsculas (ej. SANTA CRUZ)
+    const normalizedLoc = Object.keys(DEPARTAMENTOS_COORDS).find(
+      (key) => key.toLowerCase() === (formData.location || '').toLowerCase()
+    ) || formData.location;
+
+    // Eliminar números de puerta (ej. "785", "#456", "N° 12") para que Nominatim encuentre la calle
+    const cleanedAddress = formData.address
+      .replace(/(?:No|N°|#)?\s*\d+\w*\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (cleanedAddress.length < 3) {
+      setSugerencias([]);
+      return;
+    }
+
     setBuscando(true);
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const query = `${formData.address}, ${formData.zona || ''}, ${formData.location || ''}`;
+        // 1. Intento primario: Búsqueda específica en la zona y departamento
+        const query = `${cleanedAddress}, ${formData.zona || ''}, ${normalizedLoc || ''}, Bolivia`;
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=5&addressdetails=1`
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=10&addressdetails=1`
         );
+        
+        let data = [];
         if (res.ok) {
-          const data = await res.json();
-          setSugerencias(Array.isArray(data) ? data : []);
-        } else {
-          setSugerencias([]);
+          data = await res.json();
         }
+
+        // 2. Fallback amplio: Si hay pocos resultados (<= 1) y hay zona, buscar en todo el departamento
+        if ((!data || data.length <= 1) && formData.zona) {
+          const fallbackQuery = `${cleanedAddress}, ${normalizedLoc || ''}, Bolivia`;
+          const fallbackRes = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=bo&limit=10&addressdetails=1`
+          );
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            if (fallbackData && fallbackData.length > 0) {
+              const merged = [...(data || []), ...fallbackData];
+              const unique = merged.filter(
+                (item, idx, self) =>
+                  self.findIndex((t) => t.display_name === item.display_name) === idx
+              );
+              data = unique.slice(0, 10);
+            }
+          }
+        }
+
+        setSugerencias(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching suggestions:', err);
         setSugerencias([]);
       } finally {
         setBuscando(false);
       }
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [formData.address, formData.zona, formData.location]);
 
+  // Helper para extraer la dirección corta (Calle + Número) libre de redundancia geográfica
+  const getShortAddress = (item: any): string => {
+    const addressObj = item.address || {};
+    const road = addressObj.road || 
+                 addressObj.pedestrian || 
+                 addressObj.footway || 
+                 addressObj.cycleway ||
+                 addressObj.path ||
+                 addressObj.suburb || 
+                 addressObj.neighbourhood || 
+                 addressObj.square ||
+                 addressObj.amenity ||
+                 '';
+                 
+    const houseNumber = addressObj.house_number || '';
+    
+    if (road) {
+      return houseNumber ? `${road} ${houseNumber}` : road;
+    }
+    
+    // Fallback: primer segmento antes de la primera coma
+    if (item.display_name) {
+      return item.display_name.split(',')[0].trim();
+    }
+    
+    return '';
+  };
+
   // [LOGICA_SELECCION_Y_FLYTO_MAPA] - Selección de una sugerencia de dirección
   const handleSeleccionarSugerencia = (item: any) => {
     onChange({
-      address: item.display_name,
+      address: getShortAddress(item),
       latitude: parseFloat(item.lat),
       longitude: parseFloat(item.lon),
     });
@@ -287,7 +381,7 @@ export default function PropertyFormFields({
       
       // Inyección de Headers correctos y User-Agent legítimo para evitar el bloqueo de CORS de Nominatim
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=5&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=bo&limit=10&addressdetails=1`,
         {
           method: 'GET',
           headers: {
@@ -311,7 +405,8 @@ export default function PropertyFormFields({
         
         if (!isNaN(nuevaLat) && !isNaN(nuevaLng)) {
           onChange({
-            address: primerResultado.display_name,
+            // Mantener la dirección tal como la escribió el usuario (con su número de puerta customizado)
+            address: formData.address || getShortAddress(primerResultado),
             latitude: nuevaLat,
             longitude: nuevaLng
           });
@@ -605,9 +700,14 @@ export default function PropertyFormFields({
             onChange={(e) => onChange({ zona: e.target.value })}
             className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
           >
-            {(ZONAS_POR_DEPARTAMENTO[formData.location] || ["Central"]).map((z) => (
-              <option key={z} value={z}>{z}</option>
-            ))}
+            {(() => {
+              const normalizedLoc = Object.keys(ZONAS_POR_DEPARTAMENTO).find(
+                (key) => key.toLowerCase() === (formData.location || '').toLowerCase()
+              ) || formData.location;
+              return (ZONAS_POR_DEPARTAMENTO[normalizedLoc] || ["Central"]).map((z) => (
+                <option key={z} value={z}>{z}</option>
+              ));
+            })()}
           </select>
         </div>
       </div>
@@ -619,11 +719,20 @@ export default function PropertyFormFields({
           <input
             type="text"
             required
-            placeholder="Ej. Calle Aniceto Padilla #456"
+            disabled={!formData.location || !formData.zona}
+            placeholder={
+              formData.location && formData.zona
+                ? "Ej. Calle Aniceto Padilla #456"
+                : "Primero selecciona ciudad y zona..."
+            }
             value={formData.address}
             onChange={(e) => onChange({ address: e.target.value })}
             onBlur={ejecutarGeocodificacionNacional}
-            className="w-full px-4 py-3.5 border border-slate-200 rounded-xl outline-none focus:border-[#000033] bg-[#F8FAFC] text-slate-900 font-medium text-sm transition-colors"
+            className={`w-full px-4 py-3.5 border rounded-xl outline-none focus:border-[#000033] text-sm transition-colors ${
+              formData.location && formData.zona
+                ? 'border-slate-200 bg-[#F8FAFC] text-slate-900'
+                : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed select-none'
+            }`}
           />
           {(buscando || isSearching) && (
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
