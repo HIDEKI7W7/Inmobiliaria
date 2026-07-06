@@ -234,49 +234,21 @@ function HomeContent() {
     el.scrollBy({ left: cardWidth, behavior: 'smooth' });
   };
 
-  // ponytail: debounce scroll checks to instantly reset position between set boundaries for seamless loops
   const handleScroll = () => {
-    const el = carouselRef.current;
-    if (!el) return;
-
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
-    scrollTimeoutRef.current = setTimeout(() => {
-      const singleSetWidth = el.scrollWidth / 3;
-      if (el.scrollLeft >= singleSetWidth * 1.8) {
-        el.scrollLeft = el.scrollLeft - singleSetWidth;
-      }
-      else if (el.scrollLeft <= singleSetWidth * 0.5) {
-        el.scrollLeft = el.scrollLeft + singleSetWidth;
-      }
-    }, 150);
+    // No-op (native scrolling only)
   };
 
   const [propertyCount, setPropertyCount] = useState<number | null>(null);
   const [inversiones, setInversiones] = useState<any[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
-  // ponytail: duplicate array three times for virtual infinite looping in both directions
+  // Return the unique properties without any duplication
   const displayInversiones = React.useMemo(() => {
-    if (inversiones.length === 0) return [];
-    return [...inversiones, ...inversiones, ...inversiones];
+    return inversiones;
   }, [inversiones]);
 
   // Hook de favoritos global
   const { favorites, toggleFavorite } = useFavorites();
-
-  // ponytail: scroll to the middle set on mount / load so there's buffer in both directions
-  useEffect(() => {
-    if (inversiones.length > 0 && carouselRef.current) {
-      const el = carouselRef.current;
-      setTimeout(() => {
-        const singleSetWidth = el.scrollWidth / 3;
-        el.scrollLeft = singleSetWidth;
-      }, 50);
-    }
-  }, [inversiones]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -605,9 +577,9 @@ function HomeContent() {
             className="flex gap-6 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-6 scroll-smooth px-8 lg:px-20 -mx-8 lg:-mx-20"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {displayInversiones.map((property: any, idx: number) => (
+            {displayInversiones.map((property: any) => (
               <PropertyInversionCard 
-                key={`${property.id}-${idx}`} 
+                key={property.id} 
                 property={property} 
                 isFavorite={favoriteIds.has(String(property.id))}
                 onFavoriteToggle={toggleFavorite}
