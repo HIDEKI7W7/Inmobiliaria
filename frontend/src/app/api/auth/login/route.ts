@@ -43,6 +43,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Configurar respuesta y cookie HTTP-Only segura
+    const nextResponse = NextResponse.json(data);
+    const isProduction = process.env.NODE_ENV === 'production';
+
     nextResponse.cookies.set('propio_token', backendToken, {
       httpOnly: true,
       secure: isProduction,
