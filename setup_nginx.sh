@@ -99,11 +99,11 @@ systemctl reload nginx
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║              ✅ NGINX + SSL CONFIGURADO                  ║"
-╠══════════════════════════════════════════════════════════╣"
+echo "╠══════════════════════════════════════════════════════════╣"
 echo "║  HTTPS -> https://propioinmuebles.com    -> port 3000   ║"
 echo "║  HTTPS -> https://www.propioinmuebles.com -> port 3000   ║"
 echo "║  HTTPS -> https://api.propioinmuebles.com -> port 4000   ║"
 echo "║                                                          ║"
 echo "║  🔒 SSL Auto-Renovación habilitada por systemd timer.    ║"
-╚══════════════════════════════════════════════════════════╝
+echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
