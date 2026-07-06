@@ -19,21 +19,32 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Obtener y parsear los orígenes permitidos desde las variables de entorno
-  const allowedOriginsString = process.env.CORS_ALLOWED_ORIGINS || '';
-  const allowedOrigins = allowedOriginsString
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  let allowedOrigins: string[] = [];
+  
+  if (process.env.NODE_ENV === 'production') {
+    // Modo producción estricto: solo el dominio oficial y sus subdominios seguros
+    allowedOrigins = [
+      'https://propioinmuebles.com',
+      'https://www.propioinmuebles.com',
+      'https://api.propioinmuebles.com'
+    ];
+  } else {
+    const allowedOriginsString = process.env.CORS_ALLOWED_ORIGINS || '';
+    allowedOrigins = allowedOriginsString
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
 
-  // Agregar localhosts como fallback para desarrollo local
-  allowedOrigins.push(
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3002'
-  );
+    // Solo agregar localhosts como fallback para desarrollo local si NO estamos en producción
+    allowedOrigins.push(
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3002'
+    );
+  }
 
 
   // Habilitar CORS para permitir llamadas seguras desde el frontend de Next.js

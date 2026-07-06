@@ -322,7 +322,7 @@ function ComunicadosDashboard() {
   }, [readCount, totalCount]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans antialiased">
+    <div className="flex w-full min-h-screen md:h-screen md:overflow-hidden bg-[#F8FAFC] font-sans antialiased flex-col md:flex-row">
       {/* LEFT SIDEBAR */}
       <AdminSidebar
         activeTab="announcements"
@@ -334,7 +334,7 @@ function ComunicadosDashboard() {
       />
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-screen md:h-full md:overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 px-8 flex justify-between items-center z-20 shrink-0 select-none">
           <div className="flex items-center gap-2">

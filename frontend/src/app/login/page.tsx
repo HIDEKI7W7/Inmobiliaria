@@ -18,6 +18,48 @@ export default function LoginPage() {
   const socialAuthBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
   const t = (key: string) => key;
 
+  // Estados para atajo de desarrollo (Easter Egg)
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [showDemoEasterEgg, setShowDemoEasterEgg] = useState(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    };
+  }, []);
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+
+    const newClicks = logoClicks + 1;
+    setLogoClicks(newClicks);
+
+    if (newClicks >= 5) {
+      setShowDemoEasterEgg(true);
+      setLogoClicks(0);
+      setSuccessMsg(t("¡Atajo de desarrollo activado! Panel de prueba revelado."));
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } else {
+      clickTimeoutRef.current = setTimeout(() => {
+        setLogoClicks(0);
+        router.push('/');
+      }, 800);
+    }
+  };
+
+  const demoUsers = [
+    { label: 'Admin',       email: 'dev.admin.root2026@propioinmuebles.com',     pass: 'P@ssw0rd!Admin2026_RootSecure',  role: 'ADMIN' },
+    { label: 'Agente',      email: 'dev.agent.field2026@propioinmuebles.com',     pass: 'P@ssw0rd!Agent2026_FieldSecure',  role: 'AGENTE' },
+    { label: 'Propietario', email: 'dev.owner.host2026@propioinmuebles.com',     pass: 'P@ssw0rd!Owner2026_HostSecure',  role: 'PROPIETARIO' },
+    { label: 'Cliente',     email: 'dev.client.buyer2026@propioinmuebles.com',    pass: 'P@ssw0rd!Client2026_BuyerSecure', role: 'CLIENTE' },
+  ];
+
+  const isDemoVisible = (process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === 'true') || showDemoEasterEgg;
+
+
   // Estados de control de formulario
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
@@ -140,6 +182,7 @@ export default function LoginPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
+          credentials: 'include',
         });
 
         const loginData = await loginRes.json();
@@ -168,17 +211,8 @@ export default function LoginPage() {
           }
 
           setTimeout(() => {
-            try {
-              router.push(redirectPath);
-              setTimeout(() => {
-                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
-                  window.location.href = redirectPath;
-                }
-              }, 150);
-            } catch (e) {
-              if (typeof window !== 'undefined') {
-                window.location.href = redirectPath;
-              }
+            if (typeof window !== 'undefined') {
+              window.location.href = redirectPath;
             }
           }, 1200);
         } else {
@@ -266,17 +300,8 @@ export default function LoginPage() {
           const redirectPath = matchedUser.role === 'ADMIN' ? '/admin/dashboard' : '/agente/dashboard';
 
           setTimeout(() => {
-            try {
-              router.push(redirectPath);
-              setTimeout(() => {
-                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
-                  window.location.href = redirectPath;
-                }
-              }, 150);
-            } catch (e) {
-              if (typeof window !== 'undefined') {
-                window.location.href = redirectPath;
-              }
+            if (typeof window !== 'undefined') {
+              window.location.href = redirectPath;
             }
           }, 1200);
           return;
@@ -287,6 +312,7 @@ export default function LoginPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
+          credentials: 'include',
         });
 
         const loginData = await loginRes.json();
@@ -319,17 +345,8 @@ export default function LoginPage() {
           setSuccessMsg(`${t("¡Bienvenido,")} ${authResponse.user.name || authResponse.user.email}!`);
 
           setTimeout(() => {
-            try {
-              router.push(redirectPath);
-              setTimeout(() => {
-                if (typeof window !== 'undefined' && window.location.pathname !== redirectPath) {
-                  window.location.href = redirectPath;
-                }
-              }, 150);
-            } catch (e) {
-              if (typeof window !== 'undefined') {
-                window.location.href = redirectPath;
-              }
+            if (typeof window !== 'undefined') {
+              window.location.href = redirectPath;
             }
           }, 800);
         }
@@ -392,13 +409,9 @@ export default function LoginPage() {
         };
         const target = redirectPath[roleUpper] || '/';
 
-        router.push(target);
-        // Fallback hard-navigation si el router de Next.js se demora
-        setTimeout(() => {
-          if (typeof window !== 'undefined' && window.location.pathname !== target) {
-            window.location.href = target;
-          }
-        }, 400);
+        if (typeof window !== 'undefined') {
+          window.location.href = target;
+        }
       } catch (err: any) {
         setError('Error al iniciar sesión de prueba: ' + (err?.message || String(err)));
         setIsLoading(false);
@@ -413,7 +426,7 @@ export default function LoginPage() {
       <div className="w-full md:w-1/2 flex flex-col justify-between px-4 sm:px-6 py-8 md:p-16 bg-white min-h-screen relative overflow-y-auto">
         {/* Cabecera / Logo */}
         <div className="flex justify-between items-center w-full">
-          <Link href="/" className="flex items-center gap-2 select-none group transition-transform">
+          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2 select-none group transition-transform">
             <svg viewBox="0 0 100 100" className="w-8 h-8 group-hover:scale-105 transition-transform" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 fillRule="evenodd"
@@ -596,18 +609,13 @@ export default function LoginPage() {
           </form>
 
           {/* Credenciales Demo */}
-          {!isRegister && (
+          {!isRegister && isDemoVisible && (
             <div className="pt-8 border-t border-slate-200 space-y-4">
               <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                 {t("Acceso de Prueba Rápido")}
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {[
-                  { label: 'Admin',       email: 'admin@propio.com.bo',     pass: 'admin123',  role: 'ADMIN' },
-                  { label: 'Agente',      email: 'agent@propio.com.bo',     pass: 'agent123',  role: 'AGENTE' },
-                  { label: 'Propietario', email: 'owner@propio.com.bo',     pass: 'owner123',  role: 'PROPIETARIO' },
-                  { label: 'Cliente',     email: 'client@propio.com.bo',    pass: 'client123', role: 'CLIENTE' },
-                ].map((demo) => (
+                {demoUsers.map((demo) => (
                   <button
                     key={demo.label}
                     type="button"

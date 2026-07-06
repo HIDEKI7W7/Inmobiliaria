@@ -22,19 +22,37 @@ export class AuthController {
   }
 
   // TSK-7.1: Máx 10 intentos de login por minuto por IP (protección brute-force)
+  private getCookieHeaders(token: string, user: any, maxAge = 604800): string[] {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secure = isProduction ? '; Secure' : '';
+    const domain = isProduction ? '; Domain=.propioinmuebles.com' : '';
+    const sameSite = '; SameSite=Lax';
+
+    if (maxAge === 0) {
+      return [
+        `propio_token=; Path=/; Max-Age=0; HttpOnly${sameSite}${domain}${secure}`,
+        `propio_user=; Path=/; Max-Age=0${sameSite}${domain}${secure}`
+      ];
+    }
+
+    const tokenVal = encodeURIComponent(token || '');
+    const userVal = encodeURIComponent(JSON.stringify(user || {}));
+
+    return [
+      `propio_token=${tokenVal}; Path=/; Max-Age=${maxAge}; HttpOnly${sameSite}${domain}${secure}`,
+      `propio_user=${userVal}; Path=/; Max-Age=${maxAge}${sameSite}${domain}${secure}`
+    ];
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(body);
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     
     // Emitimos la cookie HttpOnly con el token real para el middleware y backend
     // Emitimos una cookie no-HttpOnly legible por JS con la info de perfil público para presentación visual
-    res.setHeader('Set-Cookie', [
-      `propio_token=${encodeURIComponent(result.backendToken)}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict${secure}`,
-      `propio_user=${encodeURIComponent(JSON.stringify(result.user))}; Path=/; Max-Age=604800; SameSite=Strict${secure}`
-    ]);
+    res.setHeader('Set-Cookie', this.getCookieHeaders(result.backendToken, result.user));
     
     return result;
   }
@@ -47,13 +65,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    
     // Vaciamos ambas cookies de forma segura e inmediata
-    res.setHeader('Set-Cookie', [
-      `propio_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict${secure}`,
-      `propio_user=; Path=/; Max-Age=0; SameSite=Strict${secure}`
-    ]);
+    res.setHeader('Set-Cookie', this.getCookieHeaders('', null, 0));
     
     return { success: true, message: 'Sesión cerrada exitosamente en el servidor' };
   }
@@ -102,11 +115,7 @@ export class AuthController {
     const result = await this.authService.completeOnboarding(user.id, body);
     
     // Al actualizar el onboarding, regeneramos el token con el nuevo rol e información actualizada
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    res.setHeader('Set-Cookie', [
-      `propio_token=${encodeURIComponent(result.backendToken)}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict${secure}`,
-      `propio_user=${encodeURIComponent(JSON.stringify(result.user))}; Path=/; Max-Age=604800; SameSite=Strict${secure}`
-    ]);
+    res.setHeader('Set-Cookie', this.getCookieHeaders(result.backendToken, result.user));
     
     return result;
   }
@@ -145,12 +154,8 @@ export class AuthController {
 
   private async finishSocialLogin(profile: OAuthProfile, res: Response) {
     const result = await this.authService.socialLogin(profile);
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
 
-    res.setHeader('Set-Cookie', [
-      `propio_token=${encodeURIComponent(result.token)}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict${secure}`,
-      `propio_user=${encodeURIComponent(JSON.stringify(result.user))}; Path=/; Max-Age=604800; SameSite=Strict${secure}`
-    ]);
+    res.setHeader('Set-Cookie', this.getCookieHeaders(result.token, result.user));
 
     return res.redirect(result.redirectUrl);
   }

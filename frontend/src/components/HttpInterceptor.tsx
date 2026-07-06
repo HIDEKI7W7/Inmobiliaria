@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 // Monkey patch window.fetch de forma síncrona en el ámbito del módulo (solo en el cliente)
 if (typeof window !== 'undefined' && !(window as any).__fetch_intercepted) {
@@ -9,9 +9,12 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_intercepted) {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
     
     if (urlStr.includes('/api/') || urlStr.startsWith(apiBaseUrl)) {
+      init = init || {};
+      // Inyectar credentials: 'include' para permitir cookies cruzadas (HttpOnly) en local y prod
+      init.credentials = 'include';
+
       const token = localStorage.getItem('propio_token');
       if (token) {
-        init = init || {};
         
         // Asegurar que Headers existan
         if (!init.headers) {
