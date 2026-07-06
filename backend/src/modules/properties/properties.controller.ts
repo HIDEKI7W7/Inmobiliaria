@@ -166,7 +166,7 @@ export class PropertiesController {
 
     // ponytail: strip Helmet headers to bypass CSP/X-Frame-Options frame blocking on localhost:3000
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000");
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 https://propioinmuebles.com https://www.propioinmuebles.com");
     res.removeHeader('X-Frame-Options');
 
     return res.sendFile(path.resolve(filePath));
