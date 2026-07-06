@@ -1433,7 +1433,7 @@ export class PropertiesService implements OnModuleInit {
     
     // Status filter
     if (query.status && query.status !== 'ALL' && query.status !== 'TODOS') {
-      where.status = query.status.toUpperCase();
+      where.status = query.status.toUpperCase() === 'ACTIVE' ? 'APROBADO' : query.status.toUpperCase();
     }
 
     // City / Location filter
@@ -1452,8 +1452,9 @@ export class PropertiesService implements OnModuleInit {
       where.type = query.type.toUpperCase();
     }
 
-    if (query.verifiedOnly === 'true' || query.verifiedOnly === '1') {
+    if (query.verifiedOnly === 'true' || query.verifiedOnly === '1' || (query as any).verified === 'true' || (query as any).verified === true) {
       where.isVerified = true;
+      where.status = 'APROBADO';
     }
 
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -1778,13 +1779,21 @@ export class PropertiesService implements OnModuleInit {
     const nextCursor = hasNextPage ? (pageData[pageData.length - 1]?.id ?? null) : null;
 
     return {
-      data: pageData.map((p) => ({
-        ...p,
-        verified: p.isVerified, // alias para compatibilidad con frontend
-        imageUrl:
-          p.imageUrl ??
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
-      })),
+      data: pageData.map((p) => {
+        const rawImages = p.images || (p.imageUrl ? [p.imageUrl] : []);
+        // Map images to [{ url: String }] or keep string array based on input
+        const mappedImages = rawImages.map((img: any) => 
+          typeof img === 'string' ? { url: img } : img
+        );
+        return {
+          ...p,
+          verified: p.isVerified, // alias para compatibilidad con frontend
+          imageUrl:
+            p.imageUrl ??
+            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80',
+          images: mappedImages,
+        };
+      }),
       meta: {
         count: pageData.length,
         limit,

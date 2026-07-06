@@ -1,5 +1,6 @@
 'use client';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
@@ -334,7 +335,7 @@ function HomeContent() {
     const loadInversiones = async () => {
       try {
         const [backendProps, localRes] = await Promise.all([
-          propertiesService.getProperties({ verifiedOnly: false }).catch(() => []),
+          propertiesService.getProperties({ verifiedOnly: true }).catch(() => []),
           fetch('/api/local/properties', { cache: 'no-store' })
             .then(res => res.json())
             .catch(() => ({ properties: [] }))
@@ -357,32 +358,41 @@ function HomeContent() {
           });
         }
 
-        // ponytail: filter properties that have all documents approved by the administrator
+        // Filtro para traer únicamente propiedades aprobadas y verificadas
         const verifiedDocsProps = Array.from(combinedMap.values())
           .filter((p: any) => {
             if (!p || !p.id) return false;
-            if (String(p.status || '').toUpperCase().trim() !== 'APROBADO') return false;
-            const docs = p.documents || [];
-            if (docs.length === 0) return false;
-            return docs.every((d: any) => d && (d.status === 'APROBADO' || d.status === 'APPROVED'));
+            const isVerified = p.isVerified || p.verified || false;
+            const isApproved = String(p.status || '').toUpperCase().trim() === 'APROBADO';
+            return isVerified && isApproved;
           });
 
         // Deterministic Weekly Seed (semana actual de 2026)
         const weekSeed = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
         
-        let selectedProps: any[] = [];
+        const selectedProps: any[] = [];
         const sourceList = verifiedDocsProps.length > 0 ? verifiedDocsProps : INVERSIONES_MOCKS;
         
-        // Extract exactly 6 properties deterministically based on seed
-        for (let i = 0; i < 6; i++) {
+        // Extract unique properties deterministically without duplicating
+        const numToExtract = Math.min(sourceList.length, 6);
+        const indicesUsed = new Set<number>();
+        for (let i = 0; i < numToExtract; i++) {
           const index = (weekSeed + i) % sourceList.length;
-          selectedProps.push(sourceList[index]);
+          if (!indicesUsed.has(index)) {
+            selectedProps.push(sourceList[index]);
+            indicesUsed.add(index);
+          }
         }
 
         const finalInversiones = selectedProps.map((p: any) => {
           const price = Number(p.priceBob || p.price_bs || (p.price * 9.76)) || 3000;
-          const images = p.images || (p.imageUrl ? [p.imageUrl] : []);
-          const image = images[0] || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=900&q=85';
+          
+          // Resolver imagen de forma defensiva (soporte de URL directa, array de strings, y array de objetos con .url)
+          const rawImages = p.images || (p.imageUrl ? [p.imageUrl] : []);
+          const firstImage = rawImages[0];
+          const image = typeof firstImage === 'object' && firstImage !== null
+            ? (firstImage.url || firstImage.imageUrl || '')
+            : (firstImage || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=900&q=85');
 
           const cityStr = typeof p.location === 'object' && p.location 
             ? (p.location.city || p.location.address || 'Cochabamba') 

@@ -25,8 +25,9 @@ export const propertiesService = {
       
       const queryString = params.toString();
       const path = queryString ? `/properties?${queryString}` : '/properties';
-      const data = await apiClient.get<any[]>(path);
-      return data.map((p: any) => ({
+      const response = await apiClient.get<any>(path);
+      const dataList = Array.isArray(response) ? response : (response?.data || []);
+      return dataList.map((p: any) => ({
         ...p,
         lat: p.lat ?? p.latitude ?? -17.3895,
         lng: p.lng ?? p.longitude ?? -66.1568,
