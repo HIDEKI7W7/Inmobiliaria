@@ -22,6 +22,8 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # 2. Configuración base HTTP para el Frontend (propioinmuebles.com -> puerto 3000)
+# REMOCIÓN DE CABECERAS DE UPGRADE: Se eliminan 'Upgrade' y 'Connection: upgrade' para evitar
+# que Next.js interprete las peticiones HTTP normales como WebSockets y lance TypeError en base-server.js.
 echo "📝 Creando configuración de Nginx para el Frontend..."
 cat > /etc/nginx/sites-available/propioinmuebles << 'NGINXEOF'
 server {
@@ -35,13 +37,10 @@ server {
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 60s;
     }
 }
@@ -64,23 +63,21 @@ server {
     location / {
         proxy_pass http://localhost:4000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 60s;
     }
 }
 NGINXEOF
 
-# 4. Habilitar sitios y remover default
+# 4. Habilitar sitios y remover default/confictivos
 echo "🔗 Activando configuraciones y limpiando archivos por defecto..."
 ln -sf /etc/nginx/sites-available/propioinmuebles /etc/nginx/sites-enabled/
 ln -sf /etc/nginx/sites-available/api.propioinmuebles /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-enabled/propio.conf
 
 # Verificar configuración inicial
 nginx -t
@@ -93,8 +90,7 @@ echo "  ✅ Configuración HTTP básica de Nginx cargada con éxito."
 echo "🔒 Solicitando certificados SSL de Let's Encrypt vía Certbot..."
 echo "⚠️  Nota: Asegúrate de que los DNS A Records de propioinmuebles.com, www.propioinmuebles.com y api.propioinmuebles.com ya apunten a la IP pública de este VPS."
 
-# Ejecutar obtención de certificados (interactivo o automatizado si se provee email)
-# Reemplazar 'soporte@propioinmuebles.com' con el correo de administración real
+# Ejecutar obtención de certificados
 certbot --nginx -d propioinmuebles.com -d www.propioinmuebles.com -d api.propioinmuebles.com --non-interactive --agree-tos -m soporte@propioinmuebles.com --redirect
 
 # Recargar Nginx con los certificados inyectados por Certbot
@@ -103,11 +99,11 @@ systemctl reload nginx
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║              ✅ NGINX + SSL CONFIGURADO                  ║"
-echo "╠══════════════════════════════════════════════════════════╣"
+╠══════════════════════════════════════════════════════════╣"
 echo "║  HTTPS -> https://propioinmuebles.com    -> port 3000   ║"
 echo "║  HTTPS -> https://www.propioinmuebles.com -> port 3000   ║"
 echo "║  HTTPS -> https://api.propioinmuebles.com -> port 4000   ║"
 echo "║                                                          ║"
 echo "║  🔒 SSL Auto-Renovación habilitada por systemd timer.    ║"
-echo "╚══════════════════════════════════════════════════════════╝"
+╚══════════════════════════════════════════════════════════╝
 echo ""
