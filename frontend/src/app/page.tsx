@@ -433,7 +433,7 @@ function HomeContent() {
     <div className="min-h-screen bg-[#F8FAFC] text-neutral-900 font-sans antialiased flex flex-col">
       
       {/* ─── HERO SECTION + FILTERS ABOVE THE FOLD ─── */}
-      <section className="relative min-h-[calc(100vh-60px)] lg:h-[calc(100vh-60px)] flex flex-col justify-between bg-[#000033] overflow-hidden pt-8 pb-12 lg:pt-10 lg:pb-16 z-10 shrink-0">
+      <section className="relative min-h-[calc(100vh-60px)] lg:h-[calc(100vh-60px)] flex flex-col justify-between bg-[#000033] lg:overflow-hidden pt-8 pb-12 lg:pt-10 lg:pb-16 z-10 shrink-0">
         <div className="absolute inset-0 opacity-40 z-0">
           <img
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2200&q=85"

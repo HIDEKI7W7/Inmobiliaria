@@ -20,10 +20,6 @@
   }
 }
 
-html {
-  height: 100%;
-}
-
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -33,7 +29,6 @@ body {
     )
     rgb(var(--background-start-rgb));
   font-family: var(--font-inter), sans-serif;
-  min-height: 100%;
 }
 
 /* Efectos Premium y Glassmorphism de la marca Propio */
