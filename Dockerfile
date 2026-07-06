@@ -38,6 +38,8 @@ RUN cd frontend && npm ci --fetch-timeout=300000 --fetch-retries=5 --fetch-retry
 COPY frontend ./frontend/
 # Cambiar a entorno de producción para compilar Next.js
 ENV NODE_ENV=production
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 # Compilar frontend Next.js
 RUN cd frontend && npm run build
 

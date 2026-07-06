@@ -38,6 +38,66 @@ import {
   deleteLocalExpense,
   persistProperty
 } from '@/utils/localDb';
+interface TopScrollWrapperProps {
+  children: React.ReactElement;
+  minWidth?: string;
+}
+
+const TopScrollWrapper: React.FC<TopScrollWrapperProps> = ({ children, minWidth = '1280px' }) => {
+  const topScrollRef = React.useRef<HTMLDivElement>(null);
+  const bottomScrollRef = React.useRef<HTMLDivElement>(null);
+  const isSyncingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const topDiv = topScrollRef.current;
+    const bottomDiv = bottomScrollRef.current;
+    if (!topDiv || !bottomDiv) return;
+
+    const handleTopScroll = () => {
+      if (isSyncingRef.current) return;
+      isSyncingRef.current = true;
+      bottomDiv.scrollLeft = topDiv.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncingRef.current = false;
+      });
+    };
+
+    const handleBottomScroll = () => {
+      if (isSyncingRef.current) return;
+      isSyncingRef.current = true;
+      topDiv.scrollLeft = bottomDiv.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncingRef.current = false;
+      });
+    };
+
+    topDiv.addEventListener('scroll', handleTopScroll, { passive: true });
+    bottomDiv.addEventListener('scroll', handleBottomScroll, { passive: true });
+
+    return () => {
+      topDiv.removeEventListener('scroll', handleTopScroll);
+      bottomDiv.removeEventListener('scroll', handleBottomScroll);
+    };
+  }, []);
+
+  const childWithRef = React.cloneElement(children, {
+    ref: bottomScrollRef
+  });
+
+  return (
+    <div className="flex flex-col w-full">
+      {/* Top Scrollbar Container */}
+      <div 
+        ref={topScrollRef}
+        className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent h-2.5 shrink-0 z-10"
+      >
+        <div style={{ width: minWidth, height: '1px' }} />
+      </div>
+      {childWithRef}
+    </div>
+  );
+};
+
 interface Property {
   id: string;
   title: string;
@@ -235,6 +295,7 @@ interface Owner {
   properties: string[]; // List of property titles
   plan: PlanKey;
   status: string;
+  createdAt?: string;
 }
 
 interface Constructora {
@@ -249,6 +310,7 @@ interface Constructora {
   stock: number;
   esquemaComision: string;
   etapa: string;
+  createdAt?: string;
 }
 
 interface Collaboration {
@@ -265,6 +327,83 @@ interface Collaboration {
   agenteVendedorGestionaCierre?: boolean; // true = Agente1 gestiona split de cierre
   captadorFeeIndependiente?: boolean;     // true = fee del Captador es NO-tradicional (plataforma Propio)
 }
+const ITEMS_PER_PAGE = 10;
+
+const renderPagination = (
+  currentPage: number,
+  totalPages: number,
+  onPageChange: (page: number) => void,
+  totalItems: number,
+  itemsPerPage: number
+) => {
+  if (totalPages <= 1) return null;
+
+  const pages: (number | string)[] = [];
+  const maxVisiblePages = 5;
+
+  if (totalPages <= maxVisiblePages) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push('...');
+
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) pages.push('...');
+    pages.push(totalPages);
+  }
+
+  const startIdx = (currentPage - 1) * itemsPerPage + 1;
+  const endIdx = Math.min(currentPage * itemsPerPage, totalItems);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-slate-50 border-t border-slate-200/80 rounded-b-3xl select-none">
+      <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+        Mostrando <span className="text-[#04045E] font-black">{startIdx}</span>-
+        <span className="text-[#04045E] font-black">{endIdx}</span> de{" "}
+        <span className="text-[#04045E] font-black">{totalItems}</span> registros
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-600 transition-all text-xs font-black shadow-2xs cursor-pointer"
+        >
+          &lt;
+        </button>
+        {pages.map((p, idx) => (
+          <button
+            key={idx}
+            onClick={() => typeof p === 'number' && onPageChange(p)}
+            disabled={p === '...'}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black transition-all shadow-2xs cursor-pointer ${
+              p === currentPage
+                ? "bg-[#04045E] text-white border border-[#04045E]"
+                : p === '...'
+                ? "text-slate-400 bg-transparent cursor-default border-0"
+                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-600 transition-all text-xs font-black shadow-2xs cursor-pointer"
+        >
+          &gt;
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function AdminConsole() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -276,6 +415,29 @@ function AdminConsole() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isSavingAudit, setIsSavingAudit] = useState(false);
+
+  // Pagination States
+  const [propertiesPage, setPropertiesPage] = useState(1);
+  const [agentsPage, setAgentsPage] = useState(1);
+  const [prospectsPage, setProspectsPage] = useState(1);
+  const [ownersPage, setOwnersPage] = useState(1);
+  const [developersPage, setDevelopersPage] = useState(1);
+  const [contractsPage, setContractsPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [expensesPage, setExpensesPage] = useState(1);
+
+  // Reset pagination on tab change
+  useEffect(() => {
+    setPropertiesPage(1);
+    setAgentsPage(1);
+    setProspectsPage(1);
+    setOwnersPage(1);
+    setDevelopersPage(1);
+    setContractsPage(1);
+    setPaymentsPage(1);
+    setExpensesPage(1);
+  }, [activeTab]);
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1267,8 +1429,8 @@ function AdminConsole() {
   // Search and Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedZone, setSelectedZone] = useState('ALL');
-  const [startDate, setStartDate] = useState('2026-05-01');
-  const [endDate, setEndDate] = useState('2026-06-21');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('todos');
 
   // Column Dropdown Filters States
@@ -2461,9 +2623,16 @@ function AdminConsole() {
         }
       }
 
+      // 6. Date Range filter
+      const startLimit = startDate ? new Date(startDate) : null;
+      const endLimit = endDate ? new Date(endDate) : null;
+      const aDate = (agt as any).dateJoined ? new Date((agt as any).dateJoined) : ((agt as any).createdAt ? new Date((agt as any).createdAt) : null);
+      if (startLimit && (!aDate || aDate < startLimit)) return false;
+      if (endLimit && (!aDate || aDate > endLimit)) return false;
+
       return true;
     }).sort((a: any, b: any) => String(b.id || '').localeCompare(String(a.id || '')));
-  }, [agents, selectedAgentNames, selectedAgentCommission, selectedAgentSplit, selectedAgentSales, selectedAgentRating]);
+  }, [agents, selectedAgentNames, selectedAgentCommission, selectedAgentSplit, selectedAgentSales, selectedAgentRating, startDate, endDate]);
 
   // Computed agent KPIs derived from reactive agents state
   const computedAgentKpis = React.useMemo(() => {
@@ -2520,6 +2689,14 @@ function AdminConsole() {
       }
       // 6. Source (checkboxes)
       if (selectedProspectSources.length > 0 && !selectedProspectSources.includes(pr.source.toUpperCase())) return false;
+
+      // 7. Date Range filter
+      const startLimit = startDate ? new Date(startDate) : null;
+      const endLimit = endDate ? new Date(endDate) : null;
+      const prDate = pr.createdAt ? new Date(pr.createdAt) : ((pr as any).date ? new Date((pr as any).date) : null);
+      if (startLimit && (!prDate || prDate < startLimit)) return false;
+      if (endLimit && (!prDate || prDate > endLimit)) return false;
+
       return true;
     }).sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -2527,7 +2704,7 @@ function AdminConsole() {
       if (dateB !== dateA) return dateB - dateA;
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
-  }, [prospects, selectedProspectIds, selectedProspectNames, prospectContactSearch, selectedProspectInterests, prospectBudgetFilter, selectedProspectSources]);
+  }, [prospects, selectedProspectIds, selectedProspectNames, prospectContactSearch, selectedProspectInterests, prospectBudgetFilter, selectedProspectSources, startDate, endDate]);
 
   const [owners, setOwners] = useState<Owner[]>([
     { id: 'OWN-201', name: 'René Vargas', email: 'rene@mail.com', phone: '+591 798 12345', properties: ['PROP-REAL-001', 'PROP-REAL-005', 'PROP-REAL-009', 'PROP-RENT-003', 'PROP-RENT-007'], plan: 'venta_pro', status: 'Verificado' },
@@ -2638,6 +2815,13 @@ function AdminConsole() {
         }
       }
 
+      // Date Range filter
+      const startLimit = startDate ? new Date(startDate) : null;
+      const endLimit = endDate ? new Date(endDate) : null;
+      const oDate = own.createdAt ? new Date(own.createdAt) : null;
+      if (startLimit && (!oDate || oDate < startLimit)) return false;
+      if (endLimit && (!oDate || oDate > endLimit)) return false;
+
       return true;
     }).sort((a: any, b: any) => {
       const numA = parseInt(String(a.id || '').replace(/\D/g, ''), 10) || 0;
@@ -2647,7 +2831,7 @@ function AdminConsole() {
       }
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
-  }, [resolvedOwners, selectedOwnerIds, ownerIdSearch, selectedOwnerNames, ownerNameSearch, ownerContactSearch]);
+  }, [resolvedOwners, selectedOwnerIds, ownerIdSearch, selectedOwnerNames, ownerNameSearch, ownerContactSearch, startDate, endDate]);
 
   const calculatedRevenue = React.useMemo(() => {
     return filteredOwners.reduce((sum: number, own: Owner) => {
@@ -2691,10 +2875,18 @@ function AdminConsole() {
       if (selectedDevRepresentantes.length > 0 && !selectedDevRepresentantes.includes(dev.representante)) {
         return false;
       }
+
+      // Date Range filter
+      const startLimit = startDate ? new Date(startDate) : null;
+      const endLimit = endDate ? new Date(endDate) : null;
+      const dDate = dev.createdAt ? new Date(dev.createdAt) : null;
+      if (startLimit && (!dDate || dDate < startLimit)) return false;
+      if (endLimit && (!dDate || dDate > endLimit)) return false;
+
       return true;
     });
     return list.sort((a, b) => b.id.localeCompare(a.id));
-  }, [developers, selectedDevIds, selectedDevEmpresas, selectedDevNits, selectedDevRepresentantes]);
+  }, [developers, selectedDevIds, selectedDevEmpresas, selectedDevNits, selectedDevRepresentantes, startDate, endDate]);
 
   const uniqueContractIds = React.useMemo(() => Array.from(new Set(contracts.map(c => c.id))), [contracts]);
   const uniqueContractProperties = React.useMemo(() => Array.from(new Set(contracts.map(c => c.property?.title || c.propertyId))), [contracts]);
@@ -2724,10 +2916,10 @@ function AdminConsole() {
   const filteredContracts = React.useMemo(() => {
     return contracts.filter((cnt: any) => {
       // 1. Date filters
-      if (filterContractDateStart && new Date(cnt.startDate) < new Date(filterContractDateStart)) {
+      if (startDate && new Date(cnt.startDate) < new Date(startDate)) {
         return false;
       }
-      if (filterContractDateEnd && new Date(cnt.endDate) > new Date(filterContractDateEnd)) {
+      if (endDate && new Date(cnt.endDate) > new Date(endDate)) {
         return false;
       }
 
@@ -2772,7 +2964,7 @@ function AdminConsole() {
       if (dateB !== dateA) return dateB - dateA;
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
-  }, [contracts, filterContractDateStart, filterContractDateEnd, filterContractDocState, selectedContractIds, selectedContractProperties, selectedContractTenants, selectedContractStatuses]);
+  }, [contracts, startDate, endDate, filterContractDocState, selectedContractIds, selectedContractProperties, selectedContractTenants, selectedContractStatuses]);
 
 
   // Production Kanban for Marketing Planes
@@ -5848,7 +6040,14 @@ function AdminConsole() {
       }
     }
 
-    return matchesSearch && matchesPlan && matchesAge && matchesStatus && matchesDocumentation && matchesSucursal;
+    const startLimit = startDate ? new Date(startDate) : null;
+    const endLimit = endDate ? new Date(endDate) : null;
+    const pDate = p.createdAt ? new Date(p.createdAt) : null;
+    let matchesDate = true;
+    if (startLimit && (!pDate || pDate < startLimit)) matchesDate = false;
+    if (endLimit && (!pDate || pDate > endLimit)) matchesDate = false;
+
+    return matchesSearch && matchesPlan && matchesAge && matchesStatus && matchesDocumentation && matchesSucursal && matchesDate;
   }).sort((a, b) => {
     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -6485,6 +6684,21 @@ function AdminConsole() {
                       />
                     </div>
 
+                      {/* Date Range Filter */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
+                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black text-slate-400 uppercase">Hasta</span>
+                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                        </div>
+                        {(startDate || endDate) && (
+                          <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 rounded-lg px-2 py-1 hover:bg-rose-50 transition-all cursor-pointer">✕ Limpiar</button>
+                        )}
+                      </div>
+
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => {
@@ -6526,8 +6740,9 @@ function AdminConsole() {
                       </span>
                     </div>
                     {/* [PROTECCION_ANTI_APLASTAMIENTO_FILAS_TABLA] */}
-                    <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
-                      <table className="w-full min-w-[1000px] table-auto text-left border-collapse">
+                    <TopScrollWrapper minWidth="1280px">
+                      <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+                      <table className="w-full min-w-[1280px] table-auto text-left border-collapse">
                         <thead className="relative z-40 bg-slate-50">
                           <tr className="bg-slate-50 text-[13px] font-semibold uppercase text-slate-600 border-b border-slate-200/80 select-none">
                             <th className="py-5 px-6 border-b border-slate-200/80 font-semibold text-[13px] tracking-wide">Detalles Inmueble</th>
@@ -6703,9 +6918,13 @@ function AdminConsole() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                           {filteredProperties.map((p, index) => {
-                              const dynamicId = p.id || `temp-prop-${index}-${p.createdAt ? new Date(p.createdAt).getTime() : Date.now()}`;
-                              if (!p.id) {
+                           {(() => {
+                             const propertiesTotalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+                             const currentPropertiesPage = Math.max(1, Math.min(propertiesPage, propertiesTotalPages || 1));
+                             const paginatedProperties = filteredProperties.slice((currentPropertiesPage - 1) * ITEMS_PER_PAGE, currentPropertiesPage * ITEMS_PER_PAGE);
+                             return paginatedProperties.map((p, index) => {
+                               const dynamicId = p.id || `temp-prop-${index}-${p.createdAt ? new Date(p.createdAt).getTime() : Date.now()}`;
+                               if (!p.id) {
                                 p.id = dynamicId;
                               }
                               const timeClass = getMarketTimeClass(p.createdAt?.toString());
@@ -7013,7 +7232,6 @@ function AdminConsole() {
                                                   ${Number(p.price || 0).toLocaleString()} USD
                                                 </span>
                                               </div>
-
                                               {/* Map Engine - Iframe OpenStreetMap (Ponytail approach: robust, lightweight, native) */}
                                               <div className="flex-1 w-full rounded-xl overflow-hidden relative border border-slate-100 bg-slate-50">
                                                 <iframe
@@ -7031,10 +7249,17 @@ function AdminConsole() {
                                   </td>
                                 </tr>
                               );
-                            })}
+                             });
+                           })()}
                         </tbody>
                       </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const propertiesTotalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+                      const currentPropertiesPage = Math.max(1, Math.min(propertiesPage, propertiesTotalPages || 1));
+                      return renderPagination(currentPropertiesPage, propertiesTotalPages, setPropertiesPage, filteredProperties.length, ITEMS_PER_PAGE);
+                    })()}
                   </div>
                 </div>
               )}
@@ -7065,7 +7290,21 @@ function AdminConsole() {
                   </div>
 
                   {/* Toolbar */}
-                  <div className="flex justify-end gap-2 bg-white p-4 rounded-2xl border border-slate-200">
+                  <div className="flex flex-wrap justify-end items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+                    {/* Date Range Filter */}
+                    <div className="flex items-center gap-2 text-xs mr-auto">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Hasta</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      {(startDate || endDate) && (
+                        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 rounded-lg px-2 py-1 hover:bg-rose-50 transition-all cursor-pointer">✕ Limpiar</button>
+                      )}
+                    </div>
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -7091,8 +7330,9 @@ function AdminConsole() {
                   {/* Dual Tables: Fuerza de ventas & Historial Colaboración */}
                   <div className="space-y-6 bg-white p-6 rounded-3xl border border-slate-200">
                     <h3 className="text-xs font-black text-[#04045E] uppercase tracking-wider border-b pb-3 mb-4">Fuerza de Ventas</h3>
-                    <div className="overflow-x-auto pb-32 scrollbar-thin scrollbar-thumb-slate-200">
-                      <table className="w-full min-w-[1000px] table-auto text-left border-collapse">
+                    <TopScrollWrapper minWidth="1280px">
+                      <div className="overflow-x-auto pb-32 scrollbar-thin scrollbar-thumb-slate-200">
+                      <table className="w-full min-w-[1280px] table-auto text-left border-collapse">
                         <thead className="relative z-40 bg-slate-50">
                           <tr className="bg-slate-50 text-[13px] font-semibold uppercase text-slate-600 border-b border-slate-200/80 select-none">
                             <th className="py-5 px-6 border-b border-slate-200/80 font-semibold text-[13px] tracking-wide">ID Agente</th>
@@ -7305,15 +7545,18 @@ function AdminConsole() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                          {filteredAgents.length === 0 && (
+                          {filteredAgents.length === 0 ? (
                             <tr>
                               <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold text-xs">
                                 No hay registros registrados en el sistema.
                               </td>
                             </tr>
-                          )}
-                          {filteredAgents.map(agt => (
-                            <tr key={agt.id} className="hover:bg-slate-50/60 border-b border-slate-100 transition-all duration-150">
+                          ) : (() => {
+                            const agentsTotalPages = Math.ceil(filteredAgents.length / ITEMS_PER_PAGE);
+                            const currentAgentsPage = Math.max(1, Math.min(agentsPage, agentsTotalPages || 1));
+                            const paginatedAgents = filteredAgents.slice((currentAgentsPage - 1) * ITEMS_PER_PAGE, currentAgentsPage * ITEMS_PER_PAGE);
+                            return paginatedAgents.map(agt => (
+                              <tr key={agt.id} className="hover:bg-slate-50/60 border-b border-slate-100 transition-all duration-150">
                               <td className="py-5 px-6 font-bold text-slate-400">{agt.id}</td>
                               <td className="py-5 px-6 font-black text-[#04045E] uppercase">
                                 {agt.name}
@@ -7417,10 +7660,17 @@ function AdminConsole() {
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const agentsTotalPages = Math.ceil(filteredAgents.length / ITEMS_PER_PAGE);
+                      const currentAgentsPage = Math.max(1, Math.min(agentsPage, agentsTotalPages || 1));
+                      return renderPagination(currentAgentsPage, agentsTotalPages, setAgentsPage, filteredAgents.length, ITEMS_PER_PAGE);
+                    })()}
                   </div>
                 </div>
               )}
@@ -7520,6 +7770,20 @@ function AdminConsole() {
                         </span>
                       )}
                     </div>
+                    {/* Date Range Filter */}
+                    <div className="flex items-center gap-2 text-xs shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Hasta</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      {(startDate || endDate) && (
+                        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 rounded-lg px-2 py-1 hover:bg-rose-50 transition-all cursor-pointer">✕ Limpiar</button>
+                      )}
+                    </div>
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); exportDataToExcel(filteredProspects, 'Reporte_Prospectos'); }}
                       className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer"
@@ -7530,8 +7794,9 @@ function AdminConsole() {
 
                   {/* Table — VISTA PREVIA DE PROSPECTOS with interactive column filters */}
                   <div className="bg-white border border-slate-200 rounded-3xl shadow-sm">
-                    <div className="overflow-x-auto pb-32">
-                      <table className="w-full text-left border-collapse">
+                    <TopScrollWrapper minWidth="1280px">
+                      <div className="overflow-x-auto pb-32">
+                      <table className="w-full text-left border-collapse min-w-[1280px]">
                         <thead className="relative z-40 bg-slate-50">
                           <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b border-slate-200/80 select-none">
 
@@ -7749,8 +8014,12 @@ function AdminConsole() {
                                 No hay prospectos que coincidan con los filtros activos.
                               </td>
                             </tr>
-                          ) : filteredProspects.map(pr => (
-                            <tr key={pr.id} className="hover:bg-slate-50/60 transition-all duration-150">
+                          ) : (() => {
+                            const prospectsTotalPages = Math.ceil(filteredProspects.length / ITEMS_PER_PAGE);
+                            const currentProspectsPage = Math.max(1, Math.min(prospectsPage, prospectsTotalPages || 1));
+                            const paginatedProspects = filteredProspects.slice((currentProspectsPage - 1) * ITEMS_PER_PAGE, currentProspectsPage * ITEMS_PER_PAGE);
+                            return paginatedProspects.map(pr => (
+                              <tr key={pr.id} className="hover:bg-slate-50/60 transition-all duration-150">
                               <td className="p-4 pl-6 font-bold text-slate-400">{pr.id}</td>
                               <td className="p-4 font-black text-[#04045E] uppercase">{pr.name}</td>
                               <td className="p-4 text-[10px] text-slate-500">{pr.email}<br/>{pr.phone}</td>
@@ -7854,10 +8123,17 @@ function AdminConsole() {
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const prospectsTotalPages = Math.ceil(filteredProspects.length / ITEMS_PER_PAGE);
+                      const currentProspectsPage = Math.max(1, Math.min(prospectsPage, prospectsTotalPages || 1));
+                      return renderPagination(currentProspectsPage, prospectsTotalPages, setProspectsPage, filteredProspects.length, ITEMS_PER_PAGE);
+                    })()}
                   </div>
                 </div>
 
@@ -7897,7 +8173,21 @@ function AdminConsole() {
                   </div>
 
                   {/* Toolbar */}
-                  <div className="flex justify-end gap-2 bg-white p-4 rounded-2xl border border-slate-200">
+                  <div className="flex flex-wrap justify-end items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+                    {/* Date Range Filter */}
+                    <div className="flex items-center gap-2 text-xs mr-auto">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black text-slate-400 uppercase">Hasta</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                      </div>
+                      {(startDate || endDate) && (
+                        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 rounded-lg px-2 py-1 hover:bg-rose-50 transition-all cursor-pointer">✕ Limpiar</button>
+                      )}
+                    </div>
                     <button
                       onClick={exportOwnersExcel}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
@@ -7908,8 +8198,9 @@ function AdminConsole() {
 
                   {/* Table */}
                   <div className="bg-white border border-slate-200 rounded-3xl shadow-sm">
-                    <div className="overflow-x-auto pb-32">
-                      <table className="w-full text-left border-collapse">
+                    <TopScrollWrapper minWidth="1280px">
+                      <div className="overflow-x-auto pb-32">
+                      <table className="w-full text-left border-collapse min-w-[1280px]">
                         <thead className="relative z-40 bg-slate-50">
                           <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
                             <th className="p-4 pl-6 relative border-b border-slate-200/80">
@@ -8089,8 +8380,12 @@ function AdminConsole() {
                           </tr>
                         </thead>
                         <tbody className="divide-y text-xs font-semibold text-slate-700">
-                          {filteredOwners.map((own: Owner) => (
-                            <tr key={own.id}>
+                           {(() => {
+                             const ownersTotalPages = Math.ceil(filteredOwners.length / ITEMS_PER_PAGE);
+                             const currentOwnersPage = Math.max(1, Math.min(ownersPage, ownersTotalPages || 1));
+                             const paginatedOwners = filteredOwners.slice((currentOwnersPage - 1) * ITEMS_PER_PAGE, currentOwnersPage * ITEMS_PER_PAGE);
+                             return paginatedOwners.map((own: Owner) => (
+                               <tr key={own.id}>
                               <td className="p-4 pl-6 font-bold text-slate-400">{own.id}</td>
                               <td className="p-4 font-black text-[#04045E] uppercase">{own.name}</td>
                               <td className="p-4 text-[10px] text-slate-500">{own.email}<br/>{own.phone}</td>
@@ -8347,10 +8642,17 @@ function AdminConsole() {
                                 )}
                               </td>
                             </tr>
-                          ))}
+                            ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const ownersTotalPages = Math.ceil(filteredOwners.length / ITEMS_PER_PAGE);
+                      const currentOwnersPage = Math.max(1, Math.min(ownersPage, ownersTotalPages || 1));
+                      return renderPagination(currentOwnersPage, ownersTotalPages, setOwnersPage, filteredOwners.length, ITEMS_PER_PAGE);
+                    })()}
                   </div>
                 </div>
               )}
@@ -8403,7 +8705,7 @@ function AdminConsole() {
                     </div>
 
                     {/* Toolbar */}
-                    <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">
+                    <div className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200">
                       <div>
                         <h2 className="text-xs font-black text-[#04045E] uppercase tracking-wider">
                           Módulo de Constructoras
@@ -8411,6 +8713,20 @@ function AdminConsole() {
                         <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
                           Administración y asignación comercial de constructoras asociadas.
                         </p>
+                      </div>
+                      {/* Date Range Filter */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
+                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black text-slate-400 uppercase">Hasta</span>
+                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#04045E] text-[#04045E]" />
+                        </div>
+                        {(startDate || endDate) && (
+                          <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 rounded-lg px-2 py-1 hover:bg-rose-50 transition-all cursor-pointer">✕ Limpiar</button>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -8430,8 +8746,9 @@ function AdminConsole() {
 
                     {/* Table */}
                     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                      <TopScrollWrapper minWidth="1280px">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[1280px]">
                           <thead>
                             <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
                               <th className="p-4 pl-6 w-28 relative">
@@ -8492,8 +8809,11 @@ function AdminConsole() {
                                   No se encontraron constructoras con los filtros aplicados.
                                 </td>
                               </tr>
-                            ) : (
-                              filteredDevs.map(dev => (
+                            ) : (() => {
+                              const developersTotalPages = Math.ceil(filteredDevs.length / ITEMS_PER_PAGE);
+                              const currentDevelopersPage = Math.max(1, Math.min(developersPage, developersTotalPages || 1));
+                              const paginatedDevelopers = filteredDevs.slice((currentDevelopersPage - 1) * ITEMS_PER_PAGE, currentDevelopersPage * ITEMS_PER_PAGE);
+                              return paginatedDevelopers.map(dev => (
                                 <tr key={dev.id} className="hover:bg-slate-50 transition-colors">
                                   <td className="p-4 pl-6 font-bold text-slate-400">{dev.id}</td>
                                   <td className="p-4 font-black text-[#04045E] uppercase">{dev.empresa}</td>
@@ -8543,11 +8863,17 @@ function AdminConsole() {
                                     </div>
                                   </td>
                                 </tr>
-                              ))
-                              )}
+                              ));
+                            })()}
                           </tbody>
                         </table>
                       </div>
+                      </TopScrollWrapper>
+                      {(() => {
+                        const developersTotalPages = Math.ceil(filteredDevs.length / ITEMS_PER_PAGE);
+                        const currentDevelopersPage = Math.max(1, Math.min(developersPage, developersTotalPages || 1));
+                        return renderPagination(currentDevelopersPage, developersTotalPages, setDevelopersPage, filteredDevs.length, ITEMS_PER_PAGE);
+                      })()}
                     </div>
                   </div>
                 );
@@ -8598,20 +8924,23 @@ function AdminConsole() {
                       <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
                         {/* Rango de Fechas */}
                         <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
-                          <span className="text-[9px] font-black text-slate-400 uppercase">Inicio</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase">Desde</span>
                           <input 
                             type="date" 
-                            value={filterContractDateStart} 
-                            onChange={e => setFilterContractDateStart(e.target.value)} 
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)} 
                             className="bg-transparent font-bold text-[#04045E] focus:outline-none"
                           />
-                          <span className="text-[9px] font-black text-slate-400 uppercase ml-1">Fin</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase ml-1">Hasta</span>
                           <input 
                             type="date" 
-                            value={filterContractDateEnd} 
-                            onChange={e => setFilterContractDateEnd(e.target.value)} 
+                            value={endDate} 
+                            onChange={e => setEndDate(e.target.value)} 
                             className="bg-transparent font-bold text-[#04045E] focus:outline-none"
                           />
+                          {(startDate || endDate) && (
+                            <button onClick={() => { setStartDate(''); setEndDate(''); }} className="ml-1 text-[9px] font-black text-rose-500 hover:text-rose-700 cursor-pointer">✕</button>
+                          )}
                         </div>
 
                         {/* Tipo de Filtro / Estado Documental */}
@@ -8643,8 +8972,9 @@ function AdminConsole() {
 
                   {/* Table with Actions */}
                   <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
+                    <TopScrollWrapper minWidth="1280px">
+                      <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[1280px]">
                         <thead>
                           <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
                             <th className="p-4 pl-6 relative">
@@ -8698,9 +9028,12 @@ function AdminConsole() {
                           </tr>
                         </thead>
                         <tbody className="divide-y text-xs font-semibold text-slate-700">
-                          {[...filteredContracts]
-                            .sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime())
-                            .map(cnt => (
+                           {(() => {
+                             const sortedContracts = [...filteredContracts].sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime());
+                             const contractsTotalPages = Math.ceil(sortedContracts.length / ITEMS_PER_PAGE);
+                             const currentContractsPage = Math.max(1, Math.min(contractsPage, contractsTotalPages || 1));
+                             const paginatedContracts = sortedContracts.slice((currentContractsPage - 1) * ITEMS_PER_PAGE, currentContractsPage * ITEMS_PER_PAGE);
+                             return paginatedContracts.map(cnt => (
                             <tr key={cnt.id} className="hover:bg-slate-50/50 transition-all">
                               <td className="p-4 pl-6 font-bold text-slate-400">{cnt.id.substring(0, 8).toUpperCase()}</td>
                               <td className="p-4 font-black text-[#04045E] uppercase">{cnt.property?.title || cnt.propertyId}</td>
@@ -8790,10 +9123,18 @@ function AdminConsole() {
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const sortedContracts = [...filteredContracts].sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime());
+                      const contractsTotalPages = Math.ceil(sortedContracts.length / ITEMS_PER_PAGE);
+                      const currentContractsPage = Math.max(1, Math.min(contractsPage, contractsTotalPages || 1));
+                      return renderPagination(currentContractsPage, contractsTotalPages, setContractsPage, sortedContracts.length, ITEMS_PER_PAGE);
+                    })()}
                   </div>
                 </div>
               )}
@@ -9009,7 +9350,8 @@ function AdminConsole() {
 
                     {/* 3. MAQUETACIÓN PIXEL-PERFECT DE LA TABLA DE INGRESOS (11 Columnas Estrictas) */}
                     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                      <div className="overflow-x-auto">
+                      <TopScrollWrapper minWidth="1280px">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[1280px]">
                           <thead>
                             <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b border-slate-200 tracking-widest select-none">
@@ -9124,7 +9466,11 @@ function AdminConsole() {
                                 </td>
                               </tr>
                             )}
-                            {fullyFilteredPayments.map(pay => {
+                            {(() => {
+                              const paymentsTotalPages = Math.ceil(fullyFilteredPayments.length / ITEMS_PER_PAGE);
+                              const currentPaymentsPage = Math.max(1, Math.min(paymentsPage, paymentsTotalPages || 1));
+                              const paginatedPayments = fullyFilteredPayments.slice((currentPaymentsPage - 1) * ITEMS_PER_PAGE, currentPaymentsPage * ITEMS_PER_PAGE);
+                              return paginatedPayments.map(pay => {
                               const contractNum = pay.contractId?.substring(0, 8).toUpperCase() || '—';
                               const location = pay.contract?.property?.location || 'General';
 
@@ -9226,11 +9572,18 @@ function AdminConsole() {
                                   </td>
                                 </tr>
                               );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                            });
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const paymentsTotalPages = Math.ceil(fullyFilteredPayments.length / ITEMS_PER_PAGE);
+                      const currentPaymentsPage = Math.max(1, Math.min(paymentsPage, paymentsTotalPages || 1));
+                      return renderPagination(currentPaymentsPage, paymentsTotalPages, setPaymentsPage, fullyFilteredPayments.length, ITEMS_PER_PAGE);
+                    })()}
+                  </div>
                   </div>
                 );
               })()}
@@ -9291,6 +9644,13 @@ function AdminConsole() {
                   if (selectedExpVinculaciones.length > 0 && !selectedExpVinculaciones.includes(vincVal)) return false;
                   const statusVal = exp.status || '';
                   if (selectedExpStatuses.length > 0 && !selectedExpStatuses.includes(statusVal)) return false;
+
+                  // Date Range filter
+                  const startLimit = startDate ? new Date(startDate) : null;
+                  const endLimit = endDate ? new Date(endDate) : null;
+                  const expDate = exp.date ? new Date(exp.date) : null;
+                  if (startLimit && (!expDate || expDate < startLimit)) return false;
+                  if (endLimit && (!expDate || expDate > endLimit)) return false;
 
                   return matchSearch && matchStatus && matchCategory;
                 }).sort((a, b) => {
@@ -9369,12 +9729,21 @@ function AdminConsole() {
                         
                         {/* Date range picker */}
                         <div className="w-full md:w-auto">
-                          <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Rango Registro</label>
+                          <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Desde</label>
                           <input
-                            type="text"
-                            value={expDateRange}
-                            onChange={(e) => setExpDateRange(e.target.value)}
-                            placeholder="01/05/2026 - 31/05/2026"
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs w-full focus:outline-hidden font-semibold text-[#04045E]"
+                          />
+                        </div>
+
+                        <div className="w-full md:w-auto">
+                          <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Hasta</label>
+                          <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
                             className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs w-full focus:outline-hidden font-semibold text-[#04045E]"
                           />
                         </div>
@@ -9443,15 +9812,16 @@ function AdminConsole() {
                       <div className="p-5 border-b flex justify-between items-center bg-slate-50/40">
                         <h3 className="text-xs font-black text-[#04045E] uppercase tracking-wider">Historial de Auditoría de Gastos</h3>
                         <button
-                          onClick={() => exportDataToExcel(expenses, 'Auditoria_Gastos')}
+                          onClick={() => exportDataToExcel(filteredExpenses, 'Auditoria_Gastos')}
                           className="bg-white border hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all shadow-xs cursor-pointer"
                         >
                           Exportar Excel 📊
                         </button>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                      <TopScrollWrapper minWidth="1280px">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[1280px]">
                           <thead>
                             {/* Main headers */}
                             <tr className="bg-slate-50 text-[9px] font-black uppercase text-slate-500 border-b select-none">
@@ -9538,7 +9908,11 @@ function AdminConsole() {
                             </tr>
                           </thead>
                           <tbody className="divide-y text-xs font-semibold text-slate-700">
-                            {filteredExpenses.map(exp => {
+                            {(() => {
+                              const expensesTotalPages = Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE);
+                              const currentExpensesPage = Math.max(1, Math.min(expensesPage, expensesTotalPages || 1));
+                              const paginatedExpenses = filteredExpenses.slice((currentExpensesPage - 1) * ITEMS_PER_PAGE, currentExpensesPage * ITEMS_PER_PAGE);
+                              return paginatedExpenses.map(exp => {
                               // Conditionally pick colors for state tags
                               let statusClass = 'bg-slate-100 text-slate-600';
                               if (exp.status === 'PENDIENTE') statusClass = 'bg-amber-50 text-amber-600';
@@ -9635,11 +10009,18 @@ function AdminConsole() {
                                   </td>
                                 </tr>
                               );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                            });
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
+                    </TopScrollWrapper>
+                    {(() => {
+                      const expensesTotalPages = Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE);
+                      const currentExpensesPage = Math.max(1, Math.min(expensesPage, expensesTotalPages || 1));
+                      return renderPagination(currentExpensesPage, expensesTotalPages, setExpensesPage, filteredExpenses.length, ITEMS_PER_PAGE);
+                    })()}
+                  </div>
                   </div>
                 );
               })()}

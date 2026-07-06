@@ -257,7 +257,7 @@ export default function LoginPage() {
             exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
           };
           const payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(payloadObj))));
-          const mockToken = `${header}.${payload}.signature`;
+          const mockToken = `${header}.${payload}.demo_signature_local`;
 
           saveToken(mockToken);
           setIsLoading(false);
