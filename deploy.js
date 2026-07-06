@@ -33,12 +33,13 @@ const PROD_ENV = [
   `CORS_ORIGIN=${DOMAIN}`,
   `FRONTEND_URL=${DOMAIN}`,
   `CORS_ALLOWED_ORIGINS=${DOMAIN},https://www.propioinmuebles.com`,
-  `NEXT_PUBLIC_API_URL=${DOMAIN}/api`,
+  `NEXT_PUBLIC_API_URL=https://api.propioinmuebles.com/api`,
   `GOOGLE_CLIENT_ID=1047060533529-voghc370q9c4u041pric7f2lqvb606kg.apps.googleusercontent.com`,
   `GOOGLE_CLIENT_SECRET=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`,
-  `GOOGLE_CALLBACK_URL=${DOMAIN}/api/auth/google/callback`,
+  `GOOGLE_CALLBACK_URL=https://api.propioinmuebles.com/api/auth/google/callback`,
   `NODE_ENV=production`,
   `IS_DOCKER=true`,
+  `PHOTON_URL=https://photon.komoot.io`,
 ].join('\n');
 
 // ── Nginx config ────────────────────────────────────────────
@@ -150,21 +151,14 @@ async function deployToVPS() {
   await ssh.execCommand(`printf '${PROD_ENV.replace(/'/g, "'\\''")}' > ${VPS.remoteDir}/.env`);
   ok('.env de producción escrito.');
 
-  // Instalar y configurar nginx
-  log('FASE 3 — Configurando nginx como reverse proxy...');
+  // Instalar y configurar nginx usando el script setup_nginx.sh
+  log('FASE 3 — Configurando nginx y Certbot SSL...');
   const { stdout: nginxOut, stderr: nginxErr } = await ssh.execCommand(`
-    command -v nginx >/dev/null 2>&1 || apt-get install -y nginx -qq
-    cat > /etc/nginx/sites-available/propio.conf << 'NGINXEOF'
-${NGINX_CONF}
-NGINXEOF
-    ln -sf /etc/nginx/sites-available/propio.conf /etc/nginx/sites-enabled/propio.conf
-    rm -f /etc/nginx/sites-enabled/default
-    nginx -t 2>&1 && systemctl reload nginx 2>&1 || systemctl restart nginx 2>&1
-    systemctl enable nginx 2>&1
-    echo NGINX_OK
+    chmod +x ${VPS.remoteDir}/setup_nginx.sh &&
+    bash ${VPS.remoteDir}/setup_nginx.sh
   `);
-  if (nginxOut.includes('NGINX_OK')) ok('nginx configurado: / → :3000 | /api → :4000');
-  else console.log('   nginx:', (nginxOut + nginxErr).slice(0, 300));
+  console.log(nginxOut + nginxErr);
+  ok('Nginx + Certbot configurados con éxito.');
 
   // Verificar / instalar Docker
   log('FASE 3 — Verificando Docker...');
@@ -199,6 +193,14 @@ NGINXEOF
   // Mostrar últimas líneas del build
   const buildLog = (buildOut + buildErr).split('\n').slice(-20).join('\n');
   console.log(buildLog);
+
+  // Correr migraciones Prisma en producción
+  log('FASE 3 — Corriendo migraciones Prisma...');
+  const { stdout: migrationOut, stderr: migrationErr } = await ssh.execCommand(
+    `docker exec propio-backend npx prisma migrate deploy`
+  );
+  console.log(migrationOut + migrationErr);
+  ok('Migraciones de base de datos finalizadas.');
 
   // Estado final
   log('RESULTADO FINAL:');
